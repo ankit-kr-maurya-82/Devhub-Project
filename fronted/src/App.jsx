@@ -12,6 +12,7 @@ import AskQuestion from '../pages/AskQuestion.jsx'
 import Blogs from '../pages/Blogs.jsx'
 import BlogDetails from '../pages/BlogDetails.jsx'
 import CreateBlog from '../pages/CreateBlog.jsx'
+import ComingSoon from '../pages/ComingSoon.jsx'
 
 function App() {
 
@@ -30,6 +31,9 @@ function App() {
           <Route path="/blogs" element={<Blogs />} />
           <Route path="/blogs/:id" element={<BlogDetails />} />
           <Route path="/create-blog" element={<CreateBlog />} />
+          <Route path="/coding-practice" element={<ComingSoon title="Coding Practice" description="A place to sharpen your skills, one challenge at a time." />} />
+          <Route path="/community" element={<ComingSoon title="Community" description="Find your people. Share what you are building." />} />
+          <Route path="/tags" element={<ComingSoon title="Tags" description="Explore the technologies and topics that interest you." />} />
         </Route>
       </Routes>
     </BrowserRouter>
