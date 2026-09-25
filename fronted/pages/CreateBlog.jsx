@@ -16,6 +16,7 @@ const formats = [
   { label: 'Code block', symbol: '</>', before: '```\n', after: '\n```', placeholder: 'const idea = "Hello, DevHub!"', block: true },
 ]
 
+
 export default function CreateBlog() {
   const navigate = useNavigate()
   const blogs = useBlogs()
