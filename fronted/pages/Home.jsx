@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { useQuestions } from '../hooks/useQuestions'
+import { useBlogs } from '../hooks/useBlogs'
 import { Link } from 'react-router-dom'
 import Icon from '../components/Icon'
 import QuestionCard from '../components/QuestionCard'
 import BlogCard from '../components/BlogCard'
 import TagBadge from '../components/TagBadge'
-import { blogs, popularTags, communityStats } from '../data/home'
+import { popularTags, communityStats } from '../data/home'
 
 function SectionHeading({ id, title, description, to, linkLabel }) {
   return (
@@ -17,6 +18,7 @@ function SectionHeading({ id, title, description, to, linkLabel }) {
 }
 
 export default function Home() {
+  const blogs = useBlogs().slice(0, 3)
   const questions = [...useQuestions()].sort((a, b) => b.votes - a.votes).slice(0, 3)
   const [query, setQuery] = useState('')
   const [selectedTag, setSelectedTag] = useState('')
