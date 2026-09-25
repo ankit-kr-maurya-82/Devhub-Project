@@ -19,6 +19,7 @@ const CreateBlog = lazy(() => import('../pages/CreateBlog.jsx'))
 const CodingPractice = lazy(() => import('../pages/CodingPractice.jsx'))
 const ProblemDetails = lazy(() => import('../pages/ProblemDetails.jsx'))
 const Submissions = lazy(() => import('../pages/Submissions.jsx'))
+const Community = lazy(() => import('./pages/Community.jsx'))
 
 function App() {
   return (
@@ -39,7 +40,7 @@ function App() {
           <Route path="/coding" element={<CodingPractice />} />
           <Route path="/coding/problem/:id" element={<ProblemDetails />} />
           <Route path="/submissions" element={<Submissions />} />
-          <Route path="/community" element={<ComingSoon title="Community" description="Find your people. Share what you are building." />} />
+          <Route path="/community" element={<Community />} />
           <Route path="/tags" element={<ComingSoon title="Tags" description="Explore the technologies and topics that interest you." />} />
           <Route path="*" element={<NotFound />} />
         </Route>

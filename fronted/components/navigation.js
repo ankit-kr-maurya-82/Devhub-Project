@@ -5,7 +5,7 @@ export const navigation = [
   { label: 'Ask Question', to: '/ask-question', icon: 'plus' },
   { label: 'Blogs', to: '/blogs', icon: 'book', primary: true },
   { label: 'Coding Practice', to: '/coding', icon: 'code', primary: true },
-  { label: 'Community', to: '/community', icon: 'users' },
+  { label: 'Community', to: '/community', icon: 'users', primary: true },
   { label: 'Tags', to: '/tags', icon: 'hash' },
   { label: 'Profile', to: '/profile', icon: 'user' },
 ]

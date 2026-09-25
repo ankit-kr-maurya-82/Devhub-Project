@@ -11,6 +11,7 @@ export default function MainLayout() {
   const drawer = useRef(null)
   const menuButton = useRef(null)
   const location = useLocation()
+  const isCommunity = /^\/community\/?$/.test(location.pathname)
   const closeMenu = () => drawer.current?.close()
   const trapDrawerFocus = event => {
     if (event.key !== 'Tab') return
@@ -32,18 +33,18 @@ export default function MainLayout() {
   }, [location])
 
   useEffect(() => {
-    const page = navigation.find(item => item.to === location.pathname)
+    const page = navigation.find(item => item.to === (location.pathname.replace(/\/+$/, '') || '/'))
     const title = page?.label || (location.pathname.startsWith('/questions/') ? 'Question' : location.pathname.startsWith('/blogs/') ? 'Blog' : location.pathname.startsWith('/coding/problem/') ? 'Coding Problem' : location.pathname === '/submissions' ? 'Submissions' : location.pathname === '/create-blog' ? 'Create a blog' : 'Page not found')
     document.title = `${title} | DevHub`
     if (!location.hash) window.scrollTo({ top: 0, left: 0 })
   }, [location.pathname, location.hash])
 
   useEffect(() => {
-    const breakpoint = window.matchMedia('(min-width: 1024px)')
+    const breakpoint = window.matchMedia(isCommunity ? '(min-width: 1280px)' : '(min-width: 1024px)')
     const onResize = () => { if (breakpoint.matches) drawer.current?.close() }
     breakpoint.addEventListener('change', onResize)
     return () => breakpoint.removeEventListener('change', onResize)
-  }, [])
+  }, [isCommunity])
 
   useEffect(() => {
     if (!menuOpen) return
@@ -55,10 +56,10 @@ export default function MainLayout() {
   return (
     <div className="min-h-dvh bg-[#0c0d10] text-zinc-100">
       <a href="#main-content" className="fixed left-4 top-4 z-50 -translate-y-24 rounded-lg bg-violet-500 px-4 py-3 focus:translate-y-0">Skip to content</a>
-      <Navbar menuOpen={menuOpen} menuButtonRef={menuButton} onMenuToggle={() => { drawer.current?.showModal(); setMenuOpen(true) }} />
+      <Navbar showWorkspaceMenu={isCommunity} menuOpen={menuOpen} menuButtonRef={menuButton} onMenuToggle={() => { drawer.current?.showModal(); setMenuOpen(true) }} />
       <div className="mx-auto flex max-w-450">
-        <aside className="sticky top-18 hidden h-[calc(100dvh-4.5rem)] w-60 shrink-0 overflow-y-auto border-r border-white/10 bg-[#101115] lg:block"><Sidebar /></aside>
-        <main id="main-content" tabIndex={-1} className="min-w-0 flex-1 p-6 outline-none sm:p-10 lg:p-12"><PageBoundary key={location.pathname}><Outlet /></PageBoundary></main>
+        {!isCommunity && <aside className="sticky top-18 hidden h-[calc(100dvh-4.5rem)] w-60 shrink-0 overflow-y-auto border-r border-white/10 bg-[#101115] lg:block"><Sidebar /></aside>}
+        <main id="main-content" tabIndex={-1} className={`min-w-0 flex-1 outline-none ${isCommunity ? 'p-2 sm:p-4 lg:p-6' : 'p-6 sm:p-10 lg:p-12'}`}><PageBoundary key={location.pathname}><Outlet /></PageBoundary></main>
       </div>
       <dialog ref={drawer} id="mobile-navigation" aria-label="DevHub navigation" onClose={() => { setMenuOpen(false); if (menuButton.current?.offsetParent) menuButton.current.focus() }} onKeyDown={trapDrawerFocus} onClick={event => {
         if (event.target !== event.currentTarget) return
