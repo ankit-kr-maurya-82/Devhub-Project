@@ -2,6 +2,10 @@ import { lazy } from 'react'
 import PageBoundary from '../components/PageBoundary.jsx'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import MainLayout from '../layouts/MainLayout.jsx'
+import AdminLayout from './layouts/AdminLayout.jsx'
+import AdminProvider from './state/AdminProvider.jsx'
+import MockSessionProvider from './state/MockSessionProvider.jsx'
+import NotificationProvider from './state/NotificationProvider.jsx'
 import Home from '../pages/Home.jsx'
 import ComingSoon from '../pages/ComingSoon.jsx'
 import NotFound from '../pages/NotFound.jsx'
@@ -20,9 +24,18 @@ const CodingPractice = lazy(() => import('../pages/CodingPractice.jsx'))
 const ProblemDetails = lazy(() => import('../pages/ProblemDetails.jsx'))
 const Submissions = lazy(() => import('../pages/Submissions.jsx'))
 const Community = lazy(() => import('./pages/Community.jsx'))
+const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard.jsx'))
+const ManageUsers = lazy(() => import('./pages/admin/ManageUsers.jsx'))
+const ManageQuestions = lazy(() => import('./pages/admin/ManageQuestions.jsx'))
+const ManageBlogs = lazy(() => import('./pages/admin/ManageBlogs.jsx'))
+const Reports = lazy(() => import('./pages/admin/Reports.jsx'))
+const Notifications = lazy(() => import('./pages/Notifications.jsx'))
 
 function App() {
   return (
+    <MockSessionProvider>
+      <AdminProvider>
+        <NotificationProvider>
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<PageBoundary key="login"><Login /></PageBoundary>} />
@@ -41,11 +54,22 @@ function App() {
           <Route path="/coding/problem/:id" element={<ProblemDetails />} />
           <Route path="/submissions" element={<Submissions />} />
           <Route path="/community" element={<Community />} />
+          <Route path="/notifications" element={<Notifications />} />
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<AdminDashboard />} />
+            <Route path="users" element={<ManageUsers />} />
+            <Route path="questions" element={<ManageQuestions />} />
+            <Route path="blogs" element={<ManageBlogs />} />
+            <Route path="reports" element={<Reports />} />
+          </Route>
           <Route path="/tags" element={<ComingSoon title="Tags" description="Explore the technologies and topics that interest you." />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
     </BrowserRouter>
+        </NotificationProvider>
+      </AdminProvider>
+    </MockSessionProvider>
   )
 }
 

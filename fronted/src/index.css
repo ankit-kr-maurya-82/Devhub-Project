@@ -18,3 +18,36 @@
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }
+
+@layer base {
+  :root {
+    --page: #0c0d10;
+    --surface: #101115;
+    --surface-raised: #191b22;
+    --border: #2b2d36;
+    --text: #f4f4f5;
+    --muted: #a1a1aa;
+    --subtle: #92929f;
+    --accent: #c4b5fd;
+    --accent-soft: #251c3b;
+    --success: #6ee7b7;
+    --danger: #fda4af;
+    --warning: #fcd34d;
+  }
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --page: #f5f6fa;
+    --surface: #ffffff;
+    --surface-raised: #f0f1f6;
+    --border: #d8dbe5;
+    --text: #20212b;
+    --muted: #555b6b;
+    --subtle: #626879;
+    --accent: #6d28d9;
+    --accent-soft: #ede9fe;
+    --success: #047857;
+    --danger: #be123c;
+    --warning: #92400e;
+  }
+  body { background: var(--page); color: var(--text); }
+}

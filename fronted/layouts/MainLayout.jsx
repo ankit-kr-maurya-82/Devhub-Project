@@ -12,6 +12,8 @@ export default function MainLayout() {
   const menuButton = useRef(null)
   const location = useLocation()
   const isCommunity = /^\/community\/?$/.test(location.pathname)
+  const isAdmin = /^\/admin(?:\/|$)/.test(location.pathname)
+  const hasOwnSidebar = isCommunity || isAdmin
   const closeMenu = () => drawer.current?.close()
   const trapDrawerFocus = event => {
     if (event.key !== 'Tab') return
@@ -34,17 +36,18 @@ export default function MainLayout() {
 
   useEffect(() => {
     const page = navigation.find(item => item.to === (location.pathname.replace(/\/+$/, '') || '/'))
-    const title = page?.label || (location.pathname.startsWith('/questions/') ? 'Question' : location.pathname.startsWith('/blogs/') ? 'Blog' : location.pathname.startsWith('/coding/problem/') ? 'Coding Problem' : location.pathname === '/submissions' ? 'Submissions' : location.pathname === '/create-blog' ? 'Create a blog' : 'Page not found')
+    const adminTitles = { '/admin/users': 'Manage Users', '/admin/questions': 'Manage Questions', '/admin/blogs': 'Manage Blogs', '/admin/reports': 'Reports' }
+    const title = adminTitles[location.pathname.replace(/\/+$/, '')] || page?.label || (location.pathname.startsWith('/questions/') ? 'Question' : location.pathname.startsWith('/blogs/') ? 'Blog' : location.pathname.startsWith('/coding/problem/') ? 'Coding Problem' : location.pathname === '/submissions' ? 'Submissions' : location.pathname === '/create-blog' ? 'Create a blog' : 'Page not found')
     document.title = `${title} | DevHub`
     if (!location.hash) window.scrollTo({ top: 0, left: 0 })
   }, [location.pathname, location.hash])
 
   useEffect(() => {
-    const breakpoint = window.matchMedia(isCommunity ? '(min-width: 1280px)' : '(min-width: 1024px)')
+    const breakpoint = window.matchMedia(hasOwnSidebar ? '(min-width: 1280px)' : '(min-width: 1024px)')
     const onResize = () => { if (breakpoint.matches) drawer.current?.close() }
     breakpoint.addEventListener('change', onResize)
     return () => breakpoint.removeEventListener('change', onResize)
-  }, [isCommunity])
+  }, [hasOwnSidebar])
 
   useEffect(() => {
     if (!menuOpen) return
@@ -54,21 +57,21 @@ export default function MainLayout() {
   }, [menuOpen])
 
   return (
-    <div className="min-h-dvh bg-[#0c0d10] text-zinc-100">
+    <div className="min-h-dvh bg-[var(--page)] text-[var(--text)]">
       <a href="#main-content" className="fixed left-4 top-4 z-50 -translate-y-24 rounded-lg bg-violet-500 px-4 py-3 focus:translate-y-0">Skip to content</a>
-      <Navbar showWorkspaceMenu={isCommunity} menuOpen={menuOpen} menuButtonRef={menuButton} onMenuToggle={() => { drawer.current?.showModal(); setMenuOpen(true) }} />
+      <Navbar showWorkspaceMenu={hasOwnSidebar} menuOpen={menuOpen} menuButtonRef={menuButton} onMenuToggle={() => { drawer.current?.showModal(); setMenuOpen(true) }} />
       <div className="mx-auto flex max-w-450">
-        {!isCommunity && <aside className="sticky top-18 hidden h-[calc(100dvh-4.5rem)] w-60 shrink-0 overflow-y-auto border-r border-white/10 bg-[#101115] lg:block"><Sidebar /></aside>}
-        <main id="main-content" tabIndex={-1} className={`min-w-0 flex-1 outline-none ${isCommunity ? 'p-2 sm:p-4 lg:p-6' : 'p-6 sm:p-10 lg:p-12'}`}><PageBoundary key={location.pathname}><Outlet /></PageBoundary></main>
+        {!hasOwnSidebar && <aside className="sticky top-18 hidden h-[calc(100dvh-4.5rem)] w-60 shrink-0 overflow-y-auto border-r border-[var(--border)] bg-[var(--surface)] lg:block"><Sidebar /></aside>}
+        <main id="main-content" tabIndex={-1} className={`min-w-0 flex-1 outline-none ${isCommunity ? 'p-2 sm:p-4 lg:p-6' : isAdmin ? 'p-0' : 'p-4 sm:p-8 lg:p-10'}`}><PageBoundary key={location.pathname}><Outlet /></PageBoundary></main>
       </div>
       <dialog ref={drawer} id="mobile-navigation" aria-label="DevHub navigation" onClose={() => { setMenuOpen(false); if (menuButton.current?.offsetParent) menuButton.current.focus() }} onKeyDown={trapDrawerFocus} onClick={event => {
         if (event.target !== event.currentTarget) return
         const bounds = event.currentTarget.getBoundingClientRect()
         if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) closeMenu()
-      }} className="fixed inset-y-0 left-0 m-0 h-dvh max-h-dvh w-80 max-w-[88vw] overflow-y-auto border-r border-white/10 bg-[#101115] text-zinc-100 shadow-2xl backdrop:bg-black/70 backdrop:backdrop-blur-sm">
-        <div className="flex items-center justify-between border-b border-white/10 px-7 py-5"><span className="font-semibold">DevHub navigation</span><button type="button" onClick={closeMenu} aria-label="Close navigation" className="rounded-lg p-2 text-zinc-400 hover:bg-white/10"><Icon name="close" /></button></div>
+      }} className="fixed inset-y-0 left-0 m-0 h-dvh max-h-dvh w-80 max-w-[88vw] overflow-y-auto border-r border-[var(--border)] bg-[var(--surface)] text-[var(--text)] shadow-2xl backdrop:bg-black/70 backdrop:backdrop-blur-sm">
+        <div className="flex items-center justify-between border-b border-[var(--border)] px-7 py-5"><span className="font-semibold">DevHub navigation</span><button type="button" onClick={closeMenu} aria-label="Close navigation" className="rounded-lg p-2 text-[var(--muted)] hover:bg-[var(--surface-raised)]"><Icon name="close" /></button></div>
         <Sidebar compact onNavigate={closeMenu} />
-        <div className="flex gap-3 border-t border-white/10 p-5"><Link to="/login" onClick={closeMenu} className="flex-1 rounded-lg border border-white/10 py-3 text-center text-sm">Login</Link><Link to="/register" onClick={closeMenu} className="flex-1 rounded-lg bg-violet-500 py-3 text-center text-sm font-medium">Register</Link></div>
+        <div className="flex gap-3 border-t border-[var(--border)] p-5"><Link to="/login" onClick={closeMenu} className="flex-1 rounded-lg border border-[var(--border)] py-3 text-center text-sm">Login</Link><Link to="/register" onClick={closeMenu} className="flex-1 rounded-lg bg-violet-500 py-3 text-center text-sm font-medium">Register</Link></div>
       </dialog>
     </div>
   )
