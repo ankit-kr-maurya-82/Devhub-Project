@@ -18,18 +18,18 @@ function SectionHeading({ id, title, description, to, linkLabel }) {
 }
 
 export default function Home() {
-  const blogs = useBlogs().slice(0, 3)
-  const questions = [...useQuestions()].sort((a, b) => b.votes - a.votes).slice(0, 3)
+  const blogs = useBlogs()
+  const questions = [...useQuestions()].sort((a, b) => b.votes - a.votes)
   const [query, setQuery] = useState('')
   const [selectedTag, setSelectedTag] = useState('')
   const normalizedQuery = query.trim().toLowerCase()
   const matches = item => (!selectedTag || item.tags.includes(selectedTag)) &&
     [item.title, item.description, item.username || item.author, ...item.tags].join(' ').toLowerCase().includes(normalizedQuery)
-  const filteredQuestions = questions.filter(matches)
-  const filteredBlogs = blogs.filter(matches)
+  const hasFilters = Boolean(normalizedQuery || selectedTag)
+  const filteredQuestions = questions.filter(matches).slice(0, hasFilters ? undefined : 3)
+  const filteredBlogs = blogs.filter(matches).slice(0, hasFilters ? undefined : 3)
   const selectTag = tag => setSelectedTag(current => current === tag ? '' : tag)
   const clearFilters = () => { setQuery(''); setSelectedTag('') }
-  const hasFilters = Boolean(normalizedQuery || selectedTag)
 
   return (
     <div className="mx-auto max-w-6xl space-y-10">

@@ -9,7 +9,7 @@ const getSnapshot = () => questions
 const publish = next => { questions = next; listeners.forEach(listener => listener()) }
 
 export function useQuestions() {
-  return useSyncExternalStore(subscribe, getSnapshot)
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 }
 
 export function postQuestion({ title, description, code, tags }) {

@@ -16,7 +16,7 @@ export default function QuestionCard({ question, selectedTag, onTagSelect }) {
           <div className="mt-4 flex flex-wrap gap-2">{question.tags.map(tag => <TagBadge key={tag} tag={tag} selected={selectedTag === tag} onSelect={onTagSelect} />)}</div>
           <div className="mt-5 flex flex-wrap items-center justify-between gap-x-4 gap-y-3 border-t border-white/5 pt-4 text-xs text-zinc-500">
             <div className="flex flex-wrap gap-3"><span className="text-violet-300 sm:hidden">{question.votes} votes</span><span className="text-emerald-400">{question.answers} answers</span><span>{question.views} views</span></div>
-            <div className="flex flex-wrap items-center gap-2"><span aria-hidden="true" className="flex size-5 items-center justify-center rounded-full bg-violet-400/10 text-[10px] font-semibold text-violet-300">{question.username[0].toUpperCase()}</span><span className="text-zinc-300">{question.username}</span><span>{question.reputation?.toLocaleString()} reputation</span><span>· {question.time}</span></div>
+            <div className="flex flex-wrap items-center gap-2"><span aria-hidden="true" className="flex size-5 items-center justify-center rounded-full bg-violet-400/10 text-[10px] font-semibold text-violet-300">{question.username[0].toUpperCase()}</span><span className="text-zinc-300">{question.username}</span>{question.reputation != null && <span>{question.reputation.toLocaleString('en-US')} reputation</span>}<span>· {question.time}</span></div>
           </div>
         </div>
       </div>

@@ -50,7 +50,7 @@ export default function Blogs() {
           <input type="search" value={query} onChange={event => update('q', event.target.value)} placeholder="Search blogs, authors, or tags…" className="min-w-0 flex-1 bg-transparent text-sm outline-none" />
         </label>
         <div className="mt-3 flex min-h-6 flex-wrap items-center justify-between gap-3">
-          <p role="status" className="text-xs text-zinc-400">{visible.length} {visible.length === 1 ? 'article' : 'articles'}{tag && ` tagged ${tag}`}</p>
+          <p role="status" className="min-w-0 break-all text-xs text-zinc-400">{visible.length} {visible.length === 1 ? 'article' : 'articles'}{tag && ` tagged ${tag}`}</p>
           {(query || tag) && <button type="button" onClick={() => setParams({})} className="text-xs text-violet-300 hover:text-violet-200">Clear filters ×</button>}
         </div>
       </div>

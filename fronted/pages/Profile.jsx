@@ -4,6 +4,7 @@ import ActivityFeed from '../components/ActivityFeed'
 import Achievements from '../components/Achievements'
 import ContributionOverview from '../components/ContributionOverview'
 import Icon from '../components/Icon'
+import CodingProfileStats from '../components/coding/CodingProfileStats'
 import { developer, developerStats, formatDeveloperDate, profileAnswers, profileBlogs, profileQuestions } from '../data/developer'
 
 const tabs = ['Overview', 'Questions', 'Answers', 'Blogs', 'Activity']
@@ -93,6 +94,7 @@ export default function Profile() {
           })}
         </div>
         <aside className="min-w-0 space-y-6">
+          <CodingProfileStats />
           <section aria-labelledby="profile-skills" className="rounded-xl border border-white/10 bg-[#121317] p-5 sm:p-6"><h2 id="profile-skills" className="text-base font-semibold">Skills</h2><p className="mt-1 text-xs leading-5 text-zinc-400">Tools and technologies I work with.</p><ul className="mt-5 flex flex-wrap gap-2">{developer.skills.map(skill => <li key={skill} className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-zinc-300">{skill}</li>)}</ul></section>
           <section aria-labelledby="profile-achievements" className="rounded-xl border border-white/10 bg-[#121317] p-5 sm:p-6"><h2 id="profile-achievements" className="mb-5 text-base font-semibold">Achievements</h2><Achievements /></section>
         </aside>

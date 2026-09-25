@@ -3,6 +3,8 @@ import { Link, Outlet, useLocation } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import Sidebar from '../components/Sidebar'
 import Icon from '../components/Icon'
+import PageBoundary from '../components/PageBoundary'
+import { navigation } from '../components/navigation'
 
 export default function MainLayout() {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -10,10 +12,31 @@ export default function MainLayout() {
   const menuButton = useRef(null)
   const location = useLocation()
   const closeMenu = () => drawer.current?.close()
+  const trapDrawerFocus = event => {
+    if (event.key !== 'Tab') return
+    const controls = [...event.currentTarget.querySelectorAll('a[href], button:not([disabled])')]
+    const first = controls[0]
+    const last = controls.at(-1)
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault()
+      last?.focus()
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault()
+      first?.focus()
+    }
+  }
+
 
   useEffect(() => {
     drawer.current?.close()
   }, [location])
+
+  useEffect(() => {
+    const page = navigation.find(item => item.to === location.pathname)
+    const title = page?.label || (location.pathname.startsWith('/questions/') ? 'Question' : location.pathname.startsWith('/blogs/') ? 'Blog' : location.pathname.startsWith('/coding/problem/') ? 'Coding Problem' : location.pathname === '/submissions' ? 'Submissions' : location.pathname === '/create-blog' ? 'Create a blog' : 'Page not found')
+    document.title = `${title} | DevHub`
+    if (!location.hash) window.scrollTo({ top: 0, left: 0 })
+  }, [location.pathname, location.hash])
 
   useEffect(() => {
     const breakpoint = window.matchMedia('(min-width: 1024px)')
@@ -35,9 +58,13 @@ export default function MainLayout() {
       <Navbar menuOpen={menuOpen} menuButtonRef={menuButton} onMenuToggle={() => { drawer.current?.showModal(); setMenuOpen(true) }} />
       <div className="mx-auto flex max-w-450">
         <aside className="sticky top-18 hidden h-[calc(100dvh-4.5rem)] w-60 shrink-0 overflow-y-auto border-r border-white/10 bg-[#101115] lg:block"><Sidebar /></aside>
-        <main id="main-content" tabIndex={-1} className="min-w-0 flex-1 p-6 outline-none sm:p-10 lg:p-12"><Outlet /></main>
+        <main id="main-content" tabIndex={-1} className="min-w-0 flex-1 p-6 outline-none sm:p-10 lg:p-12"><PageBoundary key={location.pathname}><Outlet /></PageBoundary></main>
       </div>
-      <dialog ref={drawer} id="mobile-navigation" aria-label="DevHub navigation" onClose={() => { setMenuOpen(false); menuButton.current?.focus() }} onClick={(event) => { if (event.target === drawer.current) closeMenu() }} className="fixed inset-y-0 left-0 m-0 h-dvh max-h-dvh w-80 max-w-[88vw] overflow-y-auto border-r border-white/10 bg-[#101115] text-zinc-100 shadow-2xl backdrop:bg-black/70 backdrop:backdrop-blur-sm">
+      <dialog ref={drawer} id="mobile-navigation" aria-label="DevHub navigation" onClose={() => { setMenuOpen(false); if (menuButton.current?.offsetParent) menuButton.current.focus() }} onKeyDown={trapDrawerFocus} onClick={event => {
+        if (event.target !== event.currentTarget) return
+        const bounds = event.currentTarget.getBoundingClientRect()
+        if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) closeMenu()
+      }} className="fixed inset-y-0 left-0 m-0 h-dvh max-h-dvh w-80 max-w-[88vw] overflow-y-auto border-r border-white/10 bg-[#101115] text-zinc-100 shadow-2xl backdrop:bg-black/70 backdrop:backdrop-blur-sm">
         <div className="flex items-center justify-between border-b border-white/10 px-7 py-5"><span className="font-semibold">DevHub navigation</span><button type="button" onClick={closeMenu} aria-label="Close navigation" className="rounded-lg p-2 text-zinc-400 hover:bg-white/10"><Icon name="close" /></button></div>
         <Sidebar compact onNavigate={closeMenu} />
         <div className="flex gap-3 border-t border-white/10 p-5"><Link to="/login" onClick={closeMenu} className="flex-1 rounded-lg border border-white/10 py-3 text-center text-sm">Login</Link><Link to="/register" onClick={closeMenu} className="flex-1 rounded-lg bg-violet-500 py-3 text-center text-sm font-medium">Register</Link></div>

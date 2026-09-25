@@ -49,7 +49,7 @@ function Article({ blog }) {
         </div>
         <span className="text-xs text-zinc-400">Enjoyed the read? Join the conversation.</span>
       </div>
-      <section ref={commentsSection} id="comments" aria-labelledby="comments-heading" className="scroll-mt-24 space-y-5">
+      <section ref={commentsSection} id="comments" aria-labelledby="comments-heading" className="scroll-mt-36 space-y-5 md:scroll-mt-24">
         <h2 id="comments-heading" className="text-xl font-semibold">Comments ({blog.comments.length})</h2>
         <form onSubmit={submit} className="rounded-xl border border-white/10 bg-[#121317] p-5">
           <label htmlFor="blog-comment" className="text-sm font-semibold">Join the discussion</label>

@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import Icon from '../components/Icon'
 
@@ -11,6 +12,11 @@ function Brand() {
 }
 
 export default function AuthLayout({ children, title, description, mode = 'login' }) {
+  useEffect(() => {
+    document.title = `${mode === 'register' ? 'Register' : 'Login'} | DevHub`
+    window.scrollTo({ top: 0, left: 0 })
+  }, [mode])
+
   return (
     <main className="min-h-dvh bg-[#0c0d10] text-zinc-100 lg:grid lg:grid-cols-2">
       <aside aria-label="About DevHub" className="relative hidden flex-col overflow-hidden border-r border-white/10 bg-[#101115] px-10 py-10 lg:flex xl:px-16">

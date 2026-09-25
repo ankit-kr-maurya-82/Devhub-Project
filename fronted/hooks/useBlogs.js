@@ -2,10 +2,7 @@ import { useSyncExternalStore } from 'react'
 import { initialBlogs, markdownToText, readingTime } from '../data/blogs'
 
 // Shared mock state. A full page reload restores the sample articles.
-let blogs = initialBlogs.map(blog => ({
-  ...blog,
-  readingTime: readingTime(blog.content),
-}))
+let blogs = initialBlogs
 const listeners = new Set()
 
 function subscribe(listener) {
@@ -23,7 +20,7 @@ function update(next) {
 }
 
 export function useBlogs() {
-  return useSyncExternalStore(subscribe, getSnapshot)
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 }
 
 export function publishBlog({ title, tags, content }) {

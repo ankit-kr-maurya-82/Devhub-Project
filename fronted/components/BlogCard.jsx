@@ -23,7 +23,7 @@ export default function BlogCard({ blog, selectedTag, onTagSelect }) {
           {blog.tags.map(tag => onTagSelect ? (
             <TagBadge key={tag} tag={tag} selected={selectedTag === tag} onSelect={onTagSelect} />
           ) : (
-            <Link key={tag} to={`/blogs?tag=${encodeURIComponent(tag)}`} className="rounded-md bg-white/5 px-2.5 py-1 font-mono text-[11px] text-zinc-400 hover:text-violet-300">{tag}</Link>
+            <Link key={tag} to={`/blogs?tag=${encodeURIComponent(tag)}`} className="max-w-full break-all rounded-md bg-white/5 px-2.5 py-1 font-mono text-[11px] text-zinc-400 hover:text-violet-300">{tag}</Link>
           ))}
         </div>
         <div className="mt-auto flex items-center gap-2.5 border-t border-white/5 pt-4">

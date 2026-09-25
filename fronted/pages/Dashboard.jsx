@@ -5,6 +5,7 @@ import Achievements from '../components/Achievements'
 import TopTags from '../components/TopTags'
 import ContributionOverview from '../components/ContributionOverview'
 import Icon from '../components/Icon'
+import CodingDashboardSection from '../components/coding/CodingDashboardSection'
 import { developer } from '../data/developer'
 
 export default function Dashboard() {
@@ -16,6 +17,7 @@ export default function Dashboard() {
       </header>
       <p className="flex w-fit items-center gap-2 rounded-full border border-violet-400/15 bg-violet-400/5 px-3 py-1.5 text-[11px] text-violet-300"><span aria-hidden="true" className="size-1.5 rounded-full bg-violet-400" />Mock developer profile · September 2026</p>
       <DeveloperStats />
+      <CodingDashboardSection />
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
         <div className="min-w-0 space-y-6">
           <ContributionOverview />

@@ -14,6 +14,8 @@ export default function AuthField({ id, label, error, hint, type = 'text', ...in
           id={id}
           type={isPassword && passwordVisible ? 'text' : type}
           required
+          spellCheck={isPassword ? false : inputProps.spellCheck}
+          autoCapitalize={isPassword ? 'none' : inputProps.autoCapitalize}
           aria-invalid={Boolean(error)}
           aria-describedby={describedBy}
           className={`min-h-12 w-full rounded-xl border bg-[#0c0d10] px-4 py-3 text-sm text-zinc-100 transition-colors placeholder:text-zinc-500 focus:outline-none focus:ring-2 ${isPassword ? 'pr-16' : ''} ${error ? 'border-rose-400/70 focus:border-rose-400 focus:ring-rose-400/15' : 'border-white/10 hover:border-white/20 focus:border-violet-400 focus:ring-violet-400/15'}`}

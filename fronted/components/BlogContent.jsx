@@ -106,7 +106,7 @@ export default function BlogContent({ content = '' }) {
             return (
               <div key={index} className="min-w-0 overflow-hidden rounded-xl border border-white/10 bg-zinc-950/70">
                 {block.language && <div className="border-b border-white/5 px-4 py-1.5 font-mono text-xs text-zinc-500">{block.language}</div>}
-                <pre className="overflow-x-auto p-4 text-[13px] leading-6 text-zinc-200"><code>{block.text}</code></pre>
+                <pre tabIndex={0} aria-label="Code sample" className="overflow-x-auto p-4 text-[13px] leading-6 text-zinc-200"><code>{block.text}</code></pre>
               </div>
             )
           case 'quote':
