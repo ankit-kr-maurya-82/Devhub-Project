@@ -18,7 +18,9 @@ function CommunityDrawer({ kind, title, onClose, children }) {
     node.showModal()
     document.body.style.overflow = 'hidden'
     const breakpoint = window.matchMedia(kind === 'channels' ? '(min-width: 768px)' : '(min-width: 1024px)')
-    const closeOnResize = () => { if (breakpoint.matches) node.close() }
+    const closeOnResize = () => { 
+      if (breakpoint.matches) node.close() 
+      }
     breakpoint.addEventListener('change', closeOnResize)
     return () => {
       breakpoint.removeEventListener('change', closeOnResize)
@@ -35,10 +37,22 @@ function CommunityDrawer({ kind, title, onClose, children }) {
   }
 
   return (
-    <dialog ref={dialog} aria-label={title} onClose={event => { if (!event.currentTarget.open) onClose() }} onClick={closeOnBackdrop} className={`fixed inset-y-0 m-0 h-dvh max-h-dvh w-80 max-w-[90vw] overflow-y-auto border-white/10 bg-[#101115] p-0 text-zinc-100 shadow-2xl backdrop:bg-black/70 backdrop:backdrop-blur-sm ${kind === 'channels' ? 'left-0 right-auto border-r' : 'left-auto right-0 border-l'}`}>
+    <dialog 
+      ref={dialog} 
+      aria-label={title} 
+      onClose={event => { 
+        if (!event.currentTarget.open) onClose() 
+        }} 
+      onClick={closeOnBackdrop} 
+      className={`fixed inset-y-0 m-0 h-dvh max-h-dvh w-80 max-w-[90vw] overflow-y-auto border-white/10 bg-[#101115] p-0 text-zinc-100 shadow-2xl backdrop:bg-black/70 backdrop:backdrop-blur-sm ${kind === 'channels' ? 'left-0 right-auto border-r' : 'left-auto right-0 border-l'}`}>
       <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
         <h2 className="text-sm font-semibold">{title}</h2>
-        <button type="button" autoFocus onClick={() => dialog.current.close()} aria-label={`Close ${title.toLowerCase()}`} className="rounded-lg p-2 text-zinc-400 hover:bg-white/10 hover:text-white"><Icon name="close" /></button>
+        <button type="button" 
+        autoFocus 
+        onClick={() => dialog.current.close()} 
+        aria-label={`Close ${title.toLowerCase()}`} 
+        className="rounded-lg p-2 text-zinc-400 hover:bg-white/10 hover:text-white"
+        ><Icon name="close" /></button>
       </div>
       {children}
     </dialog>
