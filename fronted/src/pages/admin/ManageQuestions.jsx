@@ -10,8 +10,13 @@ export default function ManageQuestions() {
   const [selectedId, setSelectedId] = useState(null)
   const [feedback, setFeedback] = useState('')
   const search = query.trim().toLowerCase()
-  const filtered = questions.filter(item => (status === 'all' || item.status === status) && `${item.title} ${item.author} ${item.tags.join(' ')}`.toLowerCase().includes(search))
+  const filtered = questions
+    .filter(item =>
+      (status === 'all' || item.status === status) &&
+      `${item.title} ${item.author} ${item.tags.join(' ')}`
+        .toLowerCase().includes(search))
   const selected = questions.find(item => item.id === selectedId)
+
 
   function changeStatus(id, nextStatus) {
     const item = questions.find(question => question.id === id)
