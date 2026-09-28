@@ -20,6 +20,7 @@ export default function ManageBlogs() {
     setFeedback(`“${item.title}” ${nextStatus === 'published' ? 'was restored' : `is now ${nextStatus}`}.`)
   }
 
+  
   return <div className="min-w-0">
     <AdminPageHeader
       title="Manage blogs"
