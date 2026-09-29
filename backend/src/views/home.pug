@@ -3,8 +3,95 @@ html(lang="en")
     head
         meta(charset="UTF-8")
         meta(name="viewport", content="width=device-width, initial-scale=1.0")
-        title DevHub
+        title DevHub | Home
+
+        style.
+            body {
+                margin: 0;
+                font-family: Arial, sans-serif;
+                background: #111827;
+                color: white;
+            }
+
+            nav {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 20px 60px;
+                background: #1f2937;
+            }
+
+            nav h2 {
+                margin: 0;
+            }
+
+            nav a {
+                color: white;
+                text-decoration: none;
+                margin-left: 20px;
+            }
+
+            nav a:hover {
+                color: #60a5fa;
+            }
+
+            .hero {
+                min-height: 75vh;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                text-align: center;
+                padding: 20px;
+            }
+
+            .hero h1 {
+                font-size: 50px;
+                margin-bottom: 10px;
+            }
+
+            .hero p {
+                color: #9ca3af;
+                font-size: 18px;
+                max-width: 600px;
+            }
+
+            .buttons {
+                margin-top: 25px;
+            }
+
+            .buttons a {
+                display: inline-block;
+                margin: 5px;
+                padding: 12px 25px;
+                background: #2563eb;
+                color: white;
+                text-decoration: none;
+                border-radius: 6px;
+            }
+
+            .buttons a:hover {
+                background: #1d4ed8;
+            }
 
     body
-        p
-            | This is the home page.
+
+        nav
+            h2 DevHub
+
+            div
+                a(href="/") Home
+                a(href="/login") Login
+                a(href="/register") Register
+
+        section.hero
+            h1 Learn. Build. Share.
+
+            p
+                | DevHub is a developer community platform where developers can
+                | ask questions, share knowledge, write technical blogs,
+                | practice coding and connect with other developers.
+
+            .buttons
+                a(href="/register") Join DevHub
+                a(href="/login") Login

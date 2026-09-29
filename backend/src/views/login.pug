@@ -1,0 +1,112 @@
+doctype html
+html(lang="en")
+    head
+        meta(charset="UTF-8")
+        meta(name="viewport", content="width=device-width, initial-scale=1.0")
+        title DevHub | Login
+
+        style.
+            body {
+                margin: 0;
+                font-family: Arial, sans-serif;
+                background: #111827;
+                color: white;
+            }
+
+            .container {
+                min-height: 100vh;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }
+
+            .login-box {
+                width: 350px;
+                background: #1f2937;
+                padding: 30px;
+                border-radius: 10px;
+            }
+
+            h2 {
+                text-align: center;
+                margin-bottom: 25px;
+            }
+
+            label {
+                display: block;
+                margin-top: 15px;
+                margin-bottom: 5px;
+            }
+
+            input {
+                width: 100%;
+                padding: 10px;
+                border: none;
+                border-radius: 5px;
+                box-sizing: border-box;
+            }
+
+            button {
+                width: 100%;
+                margin-top: 20px;
+                padding: 12px;
+                border: none;
+                border-radius: 5px;
+                background: #2563eb;
+                color: white;
+                cursor: pointer;
+            }
+
+            button:hover {
+                background: #1d4ed8;
+            }
+
+            p {
+                text-align: center;
+                color: #9ca3af;
+            }
+
+            a {
+                color: #60a5fa;
+                text-decoration: none;
+            }
+
+            .error {
+                color: #f87171;
+            }
+
+    body
+        .container
+            .login-box
+                h2 Login to DevHub
+
+                if error
+                    p.error= error
+
+                form(action="/login" method="POST")
+                    label(for="email") Email
+                    input(
+                        type="email"
+                        id="email"
+                        name="email"
+                        placeholder="Enter your email"
+                        required
+                    )
+
+                    label(for="password") Password
+                    input(
+                        type="password"
+                        id="password"
+                        name="password"
+                        placeholder="Enter your password"
+                        required
+                    )
+
+                    button(type="submit") Login
+
+                p
+                    | Don't have an account? 
+                    a(href="/register") Register
+
+                p
+                    a(href="/") Back to Home
