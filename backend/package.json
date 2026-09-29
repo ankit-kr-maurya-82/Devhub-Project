@@ -25,6 +25,7 @@
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.9.5",
     "multer": "^2.3.0",
+    "pug": "^3.0.4",
     "socket.io": "^4.8.3"
   },
   "devDependencies": {
