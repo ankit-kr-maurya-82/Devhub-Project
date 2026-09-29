@@ -12,7 +12,6 @@ app.set("views", path.join(__dirname, "../src/views"));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
 app.use(
   express.static(path.join(__dirname, "../public"))
 );
@@ -22,17 +21,11 @@ app.get("/", (req, res) => {
 });
 
 
-app.get("/login",(req,res)=>{
-    res.render("login",{
-        title:"Login"
-    })
-})
-
-
 // import routes
 import authRoutes from "./routes/auth.routes.js";
 
 app.use("/api/v1/auth", authRoutes);
+app.use("/", authRoutes);
 
 
 export  {app};

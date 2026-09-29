@@ -8,6 +8,27 @@ const getRegisterPage = (req, res) => {
             title: "Register",
         });
 };
+ const getLoginPage = (req, res) => {
+    res.render("login", {
+        error: null
+    });
+};
+
+
+ const getDashboard = async (req, res) => {
+  try {
+    const user = req.user;
+
+    res.render("dashboard", {
+      title: "Dashboard - DevHub",
+      user,
+    });
+  } catch (error) {
+    console.error("Dashboard Error:", error);
+    res.status(500).send("Something went wrong");
+  }
+};
+
 
 const registerUser = async (req, res) => {
     const { username, email, password } = req.body;
@@ -72,4 +93,8 @@ const registerUser = async (req, res) => {
 }
 
 
-export { getRegisterPage, registerUser };
+export { 
+    getRegisterPage, 
+    registerUser, 
+    getDashboard,
+    getLoginPage};
