@@ -1,0 +1,44 @@
+doctype html
+html(lang="en")
+    head
+        meta(charset="UTF-8")
+        meta(name="viewport", content="width=device-width, initial-scale=1.0")
+        title DevHub | Edit Profile
+
+    body
+        h1 Edit Profile
+
+        if error
+            p(style="color:red")= error
+
+        form(action="/profile/edit" method="POST")
+
+            label(for="name") Name
+            input(
+                type="text"
+                name="name"
+                value=user.name
+                required
+            )
+
+            br
+            br
+
+            label(for="bio") Bio
+            textarea(name="bio")= user.bio
+
+            br
+            br
+
+            label(for="skills") Skills
+            input(
+                type="text"
+                name="skills"
+                value=user.skills ? user.skills.join(", ") : ""
+                placeholder="JavaScript, Node.js, MongoDB"
+            )
+
+            br
+            br
+
+            button(type="submit") Update Profile

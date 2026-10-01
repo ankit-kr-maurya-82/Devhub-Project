@@ -1,0 +1,35 @@
+doctype html
+html(lang="en")
+    head
+        meta(charset="UTF-8")
+        meta(name="viewport", content="width=device-width, initial-scale=1.0")
+        title DevHub | Profile
+
+    body
+        h1 Developer Profile
+
+        if user
+            h2= user.name
+            p Username: @#{user.username}
+            p Email: #{user.email}
+            p Reputation: #{user.reputation || 0}
+
+            if user.bio
+                p Bio: #{user.bio}
+            else
+                p Bio: No bio added
+
+            if user.skills && user.skills.length
+                h3 Skills
+                ul
+                    each skill in user.skills
+                        li= skill
+
+            a(href="/profile/edit") Edit Profile
+
+            br
+            br
+
+            a(href="/dashboard") Back to Dashboard
+        else
+            p User not found
