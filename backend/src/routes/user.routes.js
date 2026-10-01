@@ -4,7 +4,7 @@ import { authMiddleware as isAuthenticated } from "../middlewares/auth.middlewar
 
 const router = express.Router();
 
-router.get("/profile", isAuthenticated, getProfile);
+router.get("/profile/:userId", isAuthenticated, getProfile);
 
 
 export default router;
