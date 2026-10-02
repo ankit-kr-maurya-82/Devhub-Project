@@ -145,6 +145,18 @@ describe("password reset", { concurrency: false }, () => {
     }
   });
 
+  it("sets an HttpOnly authentication cookie after login", async () => {
+    const response = await request("/api/v1/auth/login", {
+      method: "POST",
+      body: { email, password: oldPassword },
+    });
+
+    assert.equal(response.status, 200);
+    assert.ok((await response.json()).token);
+    assert.match(response.headers.get("set-cookie"), /^token=/);
+    assert.match(response.headers.get("set-cookie"), /HttpOnly/i);
+  });
+
   it("validates missing or invalid email input and normalizes a valid address", async () => {
     for (const body of [undefined, {}, { email: " " }, { email: [email] }]) {
       const response = await request("/api/v1/auth/forgot-password", { method: "POST", body });
