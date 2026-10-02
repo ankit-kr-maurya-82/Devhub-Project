@@ -56,7 +56,53 @@ const getAllQuestions = async (req, res) => {
   }
 };
 
+const getQuestionById = async (req, res) => {
+    try{
+        const {questionId} = req.params;
+
+        if(!questionId){
+            return res.status(400).json({
+                success: false,
+                message: "Question ID is required"
+            });
+        }
+
+        const question = await Question.findByIdAndUpdate(questionId,
+            {
+                $inc: {views: 1}
+            },
+            {
+                new: true
+            }
+        ).populate(
+            "author",
+            "name username avatar reputation"
+        )
+
+        if( question ){
+            return res.status(200).json({
+                success: true,
+                data: question
+            })
+        } else {
+            return res.status(404).json({
+                success: false,
+                message: "Question not found"
+            })
+        }
+
+    } catch(error){
+        console.error("Get Question By ID Error:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        })
+    }
+}
+
 export {
-  createQuestion,
-    getAllQuestions
+    createQuestion,
+    getAllQuestions,
+    getQuestionById
 };

@@ -3,6 +3,7 @@ import express from "express";
 import {
   createQuestion,
   getAllQuestions,
+  getQuestionById,
 } from "../controllers/question.controller.js";
 
 import { authMiddleware } from "../middlewares/auth.middleware.js";
@@ -15,9 +16,7 @@ router.post(
   createQuestion
 );
 
-router.get(
-  "/",
-  getAllQuestions
-);
+router.get("/",getAllQuestions);
+router.get("/:questionId", getQuestionById);
 
 export default router;
