@@ -28,10 +28,12 @@ app.get("/", (req, res) => {
 // import routes
 import authRoutes from "./routes/auth.routes.js";
 import userRoutes from "./routes/user.routes.js";
+import questionRoutes from "./routes/question.routes.js";
 
 app.use(`/api/v1/auth`, authRoutes);
 app.use(`/api/v1/user`, userRoutes);
 app.use(handleJsonParseError);
+app.use("/api/v1/questions", questionRoutes);
 
 
 export  {app};
