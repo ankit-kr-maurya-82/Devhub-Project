@@ -73,7 +73,7 @@ const getQuestionById = async (req, res) => {
             },
             {
                 new: true
-            }
+            }   
         ).populate(
             "author",
             "name username avatar reputation"
@@ -101,8 +101,65 @@ const getQuestionById = async (req, res) => {
     }
 }
 
+
+const updateQuestion = async(req,res)=>{
+    try{
+        const {questionId} = req.params;
+
+        if(!questionId){
+            return res.status(400).json({
+                success: false,
+                message: "Question ID is required"
+            });
+        }
+
+        const {title, description, tags} = req.body;
+
+        const updateData = {};
+        
+        if(title) updateData.title = title;
+        if(description) updateData.description = description;
+        if(tags) updateData.tags = tags;
+
+
+        const question = await Question.findByIdAndUpdate(
+            questionId,
+            updateData,
+            {
+                new: true,
+                runValidators: true
+            }
+        ).populate(
+            "author",
+            "name username avatar reputation"
+        )
+
+        if( question ){
+            return res.status(200).json({
+                success: true,
+                message: "Question updated successfully",
+                data: question
+            })
+        } else {
+            return res.status(404).json({
+                success: false,
+                message: "Question not found"
+            })
+        }
+
+    } catch(error){
+        console.error("Update Question Error:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        })
+    }
+}
+
 export {
     createQuestion,
     getAllQuestions,
-    getQuestionById
+    getQuestionById,
+    updateQuestion
 };
