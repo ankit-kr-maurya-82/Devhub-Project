@@ -33,6 +33,30 @@ const createQuestion = async (req, res) => {
   }
 };
 
+
+const getAllQuestions = async (req, res) => {
+  try {
+    const questions = await Question.find()
+      .populate("author", "name username avatar reputation")
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      count: questions.length,
+      data: questions,
+    });
+
+  } catch (error) {
+    console.error("Get Questions Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
 export {
   createQuestion,
+    getAllQuestions
 };
