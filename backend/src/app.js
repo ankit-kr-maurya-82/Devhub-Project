@@ -30,6 +30,7 @@ import authRoutes from "./routes/auth.routes.js";
 import userRoutes from "./routes/user.routes.js";
 import questionRoutes from "./routes/question.routes.js";
 import answerRoutes, { answerVoteRouter } from "./routes/answer.routes.js";
+import commentRoutes from "./routes/comment.routes.js";
 
 app.use(`/api/v1/auth`, authRoutes);
 app.use(`/api/v1/user`, userRoutes);
@@ -37,6 +38,7 @@ app.use(handleJsonParseError);
 app.use("/api/v1/questions", questionRoutes);
 app.use("/api/v1/questions", answerRoutes);
 app.use("/api/v1/answers", answerVoteRouter);
+app.use("/api/v1", commentRoutes);
 
 
 export  {app};
