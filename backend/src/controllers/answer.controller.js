@@ -95,4 +95,75 @@ const getAnswersByQuestion = async (req, res) => {
   }
 };
 
-export { createAnswer, getAnswersByQuestion };
+const acceptAnswer = async (req, res) => {
+  try {
+    const { questionId, answerId } = req.params;
+
+    if (
+      !mongoose.Types.ObjectId.isValid(questionId) ||
+      !mongoose.Types.ObjectId.isValid(answerId)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid question or answer ID",
+      });
+    }
+
+    const question = await Question.findById(questionId);
+    if (!question) {
+      return res.status(404).json({
+        success: false,
+        message: "Question not found",
+      });
+    }
+
+    if (question.author.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Only the question author can accept an answer",
+      });
+    }
+
+    const answer = await Answer.findById(answerId);
+    if (!answer) {
+      return res.status(404).json({
+        success: false,
+        message: "Answer not found",
+      });
+    }
+
+    if (answer.question.toString() !== questionId) {
+      return res.status(400).json({
+        success: false,
+        message: "Answer does not belong to this question",
+      });
+    }
+
+    await Answer.updateMany(
+      { question: questionId },
+      { $set: { isAccepted: false } }
+    );
+
+    answer.isAccepted = true;
+    await answer.save();
+
+    question.isSolved = true;
+    await question.save();
+
+    await answer.populate("author", authorFields);
+
+    return res.status(200).json({
+      success: true,
+      message: "Answer accepted successfully",
+      data: answer,
+    });
+  } catch (error) {
+    console.error("Accept Answer Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+export { createAnswer, getAnswersByQuestion, acceptAnswer };
