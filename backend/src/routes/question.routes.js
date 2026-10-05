@@ -4,7 +4,8 @@ import {
   createQuestion,
   getAllQuestions,
   getQuestionById,
-  updateQuestion
+  updateQuestion,
+  deleteQuestion
 } from "../controllers/question.controller.js";
 
 import { authMiddleware } from "../middlewares/auth.middleware.js";
@@ -20,5 +21,11 @@ router.post(
 router.get("/",getAllQuestions);
 router.get("/:questionId", getQuestionById);
 router.patch("/:questionId",authMiddleware,updateQuestion);
+
+router.delete(
+  "/:questionId",
+  authMiddleware,
+  deleteQuestion
+);
 
 export default router;

@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Question from "../models/question.model.js";
 
 const createQuestion = async (req, res) => {
@@ -157,9 +158,53 @@ const updateQuestion = async(req,res)=>{
     }
 }
 
+const deleteQuestion = async (req, res) => {
+  try {
+    const { questionId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(questionId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid question ID",
+      });
+    }
+
+    const question = await Question.findById(questionId);
+
+    if (!question) {
+      return res.status(404).json({
+        success: false,
+        message: "Question not found",
+      });
+    }
+
+    if (question.author.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not allowed to delete this question",
+      });
+    }
+
+    await question.deleteOne();
+
+    return res.status(200).json({
+      success: true,
+      message: "Question deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete Question Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
 export {
     createQuestion,
     getAllQuestions,
     getQuestionById,
-    updateQuestion
+    updateQuestion,
+    deleteQuestion
 };
