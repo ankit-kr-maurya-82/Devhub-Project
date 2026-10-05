@@ -5,8 +5,10 @@ import {
   acceptAnswer,
 } from "../controllers/answer.controller.js";
 import { authMiddleware } from "../middlewares/auth.middleware.js";
+import { voteAnswer } from "../controllers/vote.controller.js";
 
 const router = express.Router();
+const answerVoteRouter = express.Router();
 
 router.post("/:questionId/answers", authMiddleware, createAnswer);
 router.get("/:questionId/answers", getAnswersByQuestion);
@@ -16,4 +18,7 @@ router.patch(
   acceptAnswer
 );
 
+answerVoteRouter.post("/:answerId/vote", authMiddleware, voteAnswer);
+
 export default router;
+export { answerVoteRouter };

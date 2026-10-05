@@ -9,6 +9,7 @@ import {
 } from "../controllers/question.controller.js";
 
 import { authMiddleware } from "../middlewares/auth.middleware.js";
+import { voteQuestion } from "../controllers/vote.controller.js";
 
 const router = express.Router();
 
@@ -27,5 +28,7 @@ router.delete(
   authMiddleware,
   deleteQuestion
 );
+
+router.post("/:questionId/vote", authMiddleware, voteQuestion);
 
 export default router;
