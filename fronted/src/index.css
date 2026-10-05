@@ -40,7 +40,7 @@
     --danger: #fda4af;
     --warning: #f5cc7c;
   }
-  body { margin: 0; min-width: 320px; background: var(--page); color: var(--text); line-height: 1.5; }
+  body { margin: 0; min-width: 0; background: var(--page); color: var(--text); line-height: 1.5; }
   button, a, input { -webkit-tap-highlight-color: transparent; }
   button, summary { cursor: pointer; }
   button:disabled { cursor: not-allowed; }
