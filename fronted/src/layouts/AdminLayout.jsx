@@ -11,8 +11,8 @@ export default function AdminLayout() {
     return (
       <section className="mx-auto my-8 max-w-xl space-y-5 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 sm:p-8">
         <Icon name="shield" className="size-10 text-[var(--accent)]" />
-        <h1 className="text-2xl">Admin preview</h1>
-        <p className="text-sm leading-6 text-[var(--muted)]">The user role shows the community experience. Choose Admin to explore the moderation tools in this mock preview.</p>
+        <h1 className="text-2xl font-semibold">Admin preview</h1>
+        <p className="text-sm leading-6 text-[var(--muted)]">Explore the tools for managing users, posts, and reports. Choose Admin below to try them with sample data.</p>
         <MockRoleSwitcher />
         <Link to="/" className="inline-block rounded-lg text-sm font-medium text-[var(--accent)]">Back to DevHub</Link>
       </section>
@@ -25,7 +25,7 @@ export default function AdminLayout() {
       <div className="min-w-0">
         <div className="border-b border-[var(--border)] bg-[var(--surface)] lg:hidden"><AdminSidebar compact /></div>
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] bg-[var(--surface)] px-4 py-3 sm:px-6">
-          <p className="text-xs leading-5 text-[var(--muted)]"><span className="font-medium text-[var(--accent)]">Phase 1 preview</span> · Mock data and actions reset on refresh.</p>
+          <p className="text-sm leading-5 text-[var(--muted)]"><span className="font-medium text-[var(--text)]">Admin preview</span> · Sample data. Changes reset on refresh.</p>
           <MockRoleSwitcher />
         </div>
         <div className="min-w-0 p-4 sm:p-6 xl:p-8"><Outlet /></div>

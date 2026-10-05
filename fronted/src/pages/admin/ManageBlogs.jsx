@@ -24,7 +24,7 @@ export default function ManageBlogs() {
   return <div className="min-w-0">
     <AdminPageHeader
       title="Manage blogs"
-      description="Review community writing and keep helpful, thoughtful articles in view."
+      description="Find articles, review details, and manage published posts."
       count={blogs.length} />
     <Feedback
       message={feedback} />

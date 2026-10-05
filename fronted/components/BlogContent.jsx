@@ -7,10 +7,10 @@ const fencePattern = /^```(.*)$/
 function inlineContent(text) {
   return text.split(/(\*\*[^*\n]+\*\*|`[^`\n]+`|\*[^*\n]+\*)/g).map((part, index) => {
     if (part.startsWith('**') && part.endsWith('**')) {
-      return <strong key={index} className="font-semibold text-zinc-100">{part.slice(2, -2)}</strong>
+      return <strong key={index} className="font-semibold text-[var(--text)]">{part.slice(2, -2)}</strong>
     }
     if (part.startsWith('`') && part.endsWith('`')) {
-      return <code key={index} className="rounded bg-violet-400/10 px-1.5 py-0.5 font-mono text-[0.9em] text-violet-200">{part.slice(1, -1)}</code>
+      return <code key={index} className="rounded bg-[var(--accent-soft)] px-1.5 py-0.5 font-mono text-[0.9em] text-[var(--accent)]">{part.slice(1, -1)}</code>
     }
     if (part.startsWith('*') && part.endsWith('*')) {
       return <em key={index}>{part.slice(1, -1)}</em>
@@ -95,26 +95,26 @@ function parseBlocks(content) {
 
 export default function BlogContent({ content = '' }) {
   return (
-    <div className="min-w-0 space-y-5 break-words text-[15px] leading-8 text-zinc-300">
+    <div className="min-w-0 space-y-5 break-words text-[15px] leading-8 text-[var(--text)]">
       {parseBlocks(content).map((block, index) => {
         switch (block.type) {
           case 'h2':
-            return <h2 key={index} className="pt-4 text-2xl font-semibold leading-snug tracking-tight text-zinc-100">{inlineContent(block.text)}</h2>
+            return <h2 key={index} className="pt-4 text-2xl font-semibold leading-snug tracking-tight text-[var(--text)]">{inlineContent(block.text)}</h2>
           case 'h3':
-            return <h3 key={index} className="pt-2 text-lg font-semibold leading-snug text-zinc-100">{inlineContent(block.text)}</h3>
+            return <h3 key={index} className="pt-2 text-lg font-semibold leading-snug text-[var(--text)]">{inlineContent(block.text)}</h3>
           case 'code':
             return (
-              <div key={index} className="min-w-0 overflow-hidden rounded-xl border border-white/10 bg-zinc-950/70">
-                {block.language && <div className="border-b border-white/5 px-4 py-1.5 font-mono text-xs text-zinc-500">{block.language}</div>}
-                <pre tabIndex={0} aria-label="Code sample" className="overflow-x-auto p-4 text-[13px] leading-6 text-zinc-200"><code>{block.text}</code></pre>
+              <div key={index} className="min-w-0 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--page)]">
+                {block.language && <div className="border-b border-[var(--border)] px-4 py-1.5 font-mono text-xs text-[var(--muted)]">{block.language}</div>}
+                <pre tabIndex={0} aria-label="Code sample" className="overflow-x-auto p-4 text-[13px] leading-6 text-[var(--text)]"><code>{block.text}</code></pre>
               </div>
             )
           case 'quote':
-            return <blockquote key={index} className="whitespace-pre-line rounded-r-lg border-l-2 border-violet-400 bg-violet-400/5 py-2 pl-5 pr-4 italic text-zinc-400">{inlineContent(block.text)}</blockquote>
+            return <blockquote key={index} className="whitespace-pre-line rounded-r-lg border-l-2 border-[var(--accent)] bg-[var(--accent-soft)] py-2 pl-5 pr-4 italic text-[var(--muted)]">{inlineContent(block.text)}</blockquote>
           case 'ol':
-            return <ol key={index} start={block.start} className="list-decimal space-y-2 pl-6 marker:text-violet-300">{block.items.map((item, itemIndex) => <li key={itemIndex} className="pl-1">{inlineContent(item)}</li>)}</ol>
+            return <ol key={index} start={block.start} className="list-decimal space-y-2 pl-6 marker:text-[var(--accent)]">{block.items.map((item, itemIndex) => <li key={itemIndex} className="pl-1">{inlineContent(item)}</li>)}</ol>
           case 'ul':
-            return <ul key={index} className="list-disc space-y-2 pl-6 marker:text-violet-300">{block.items.map((item, itemIndex) => <li key={itemIndex} className="pl-1">{inlineContent(item)}</li>)}</ul>
+            return <ul key={index} className="list-disc space-y-2 pl-6 marker:text-[var(--accent)]">{block.items.map((item, itemIndex) => <li key={itemIndex} className="pl-1">{inlineContent(item)}</li>)}</ul>
           default:
             return <p key={index} className="whitespace-pre-line">{inlineContent(block.text)}</p>
         }

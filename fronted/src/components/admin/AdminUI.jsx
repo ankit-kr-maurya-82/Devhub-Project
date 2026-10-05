@@ -4,23 +4,23 @@ import { formatDate } from './adminUtils.js'
 
 export function StatusBadge({ status }) {
   const color = ['active', 'published'].includes(status) ? 'var(--success)' : ['suspended', 'pending', 'reviewing', 'hidden'].includes(status) ? 'var(--warning)' : ['deleted', 'removed'].includes(status) ? 'var(--danger)' : 'var(--muted)'
-  return <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-raised)] px-2 py-1 text-[10px] font-semibold capitalize" style={{ color }}><span className="size-1 rounded-full bg-current" />{status}</span>
+  return <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-raised)] px-2 py-1 text-xs font-semibold capitalize" style={{ color }}><span className="size-1 rounded-full bg-current" />{status}</span>
 }
 
-export function AdminPageHeader({ eyebrow = 'Administration', title, description, count }) {
-  return <div className="mb-7 flex flex-wrap items-end justify-between gap-3"><div><p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--accent)]">{eyebrow}</p><h1 className="text-2xl font-semibold tracking-tight text-[var(--text)] sm:text-3xl">{title}</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">{description}</p></div>{count !== undefined && <span className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs text-[var(--muted)]">{count.toLocaleString()} records</span>}</div>
+export function AdminPageHeader({ title, description, count }) {
+  return <div className="mb-7"><div className="flex flex-wrap items-center gap-3"><h1 className="text-2xl font-semibold tracking-tight text-[var(--text)] sm:text-3xl">{title}</h1>{count !== undefined && <span className="rounded-full bg-[var(--surface-raised)] px-3 py-1 text-sm text-[var(--muted)]">{count.toLocaleString()} total</span>}</div><p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">{description}</p></div>
 }
 
 export function TableToolbar({ query, onQueryChange, queryLabel, status, onStatusChange, statuses, resultCount, children }) {
-  return <div className="mb-4 flex flex-wrap items-center gap-3"><label className="relative min-w-0 flex-1 basis-56"><Icon name="search" className="pointer-events-none absolute left-3 top-3 size-4 text-[var(--subtle)]" /><span className="sr-only">{queryLabel}</span><input value={query} onChange={event => onQueryChange(event.target.value)} placeholder={queryLabel} type="search" className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] pl-9 pr-3 text-sm text-[var(--text)] placeholder:text-[var(--subtle)]" /></label><label className="flex items-center gap-2 text-xs text-[var(--muted)]"><span>Status</span><select value={status} onChange={event => onStatusChange(event.target.value)} className="h-10 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-xs text-[var(--text)]"><option value="all">All statuses</option>{statuses.map(value => <option key={value} value={value}>{value.charAt(0).toUpperCase() + value.slice(1)}</option>)}</select></label>{children}<p aria-live="polite" className="w-full text-xs text-[var(--subtle)]">{resultCount} matching {resultCount === 1 ? 'record' : 'records'}</p></div>
+  return <div className="mb-4 flex flex-wrap items-center gap-3"><label className="relative min-w-0 flex-1 basis-56"><Icon name="search" className="pointer-events-none absolute left-3 top-3 size-4 text-[var(--subtle)]" /><span className="sr-only">{queryLabel}</span><input value={query} onChange={event => onQueryChange(event.target.value)} placeholder={queryLabel} type="search" className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] pl-9 pr-3 text-sm text-[var(--text)] placeholder:text-[var(--subtle)]" /></label><label className="flex items-center gap-2 text-sm text-[var(--muted)]"><span>Status</span><select value={status} onChange={event => onStatusChange(event.target.value)} className="h-10 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text)]"><option value="all">All statuses</option>{statuses.map(value => <option key={value} value={value}>{value.charAt(0).toUpperCase() + value.slice(1)}</option>)}</select></label>{children}<p aria-live="polite" className="w-full text-sm text-[var(--muted)]">{resultCount} {resultCount === 1 ? 'result' : 'results'}</p></div>
 }
 
 export function Feedback({ message }) {
-  return <div role="status" aria-live="polite" className={message ? 'mb-4 flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--accent-soft)] px-4 py-3 text-xs text-[var(--text)]' : 'sr-only'}>{message && <Icon name="check" className="size-4 shrink-0 text-[var(--success)]" />}{message}</div>
+  return <div role="status" aria-live="polite" className={message ? 'mb-4 flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--accent-soft)] px-4 py-3 text-sm text-[var(--text)]' : 'sr-only'}>{message && <Icon name="check" className="size-4 shrink-0 text-[var(--success)]" />}{message}</div>
 }
 
-export function EmptyState({ title = 'No matching records', description = 'Try another search or choose a different status.' }) {
-  return <div className="px-6 py-14 text-center"><Icon name="search" className="mx-auto mb-3 size-7 text-[var(--subtle)]" /><p className="text-sm font-medium text-[var(--text)]">{title}</p><p className="mt-2 text-xs text-[var(--muted)]">{description}</p></div>
+export function EmptyState({ title = 'No results', description = 'Try another search or choose a different status.' }) {
+  return <div className="px-6 py-14 text-center"><Icon name="search" className="mx-auto mb-3 size-7 text-[var(--subtle)]" /><p className="text-sm font-medium text-[var(--text)]">{title}</p><p className="mt-2 text-sm text-[var(--muted)]">{description}</p></div>
 }
 
 export function DetailDialog({ title, onClose, children }) {
@@ -45,7 +45,7 @@ export function DetailDialog({ title, onClose, children }) {
 }
 
 export function DetailField({ label, children }) {
-  return <div><dt className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--subtle)]">{label}</dt><dd className="m-0 break-words text-sm text-[var(--text)]">{children}</dd></div>
+  return <div><dt className="mb-1 text-xs font-semibold  text-[var(--subtle)]">{label}</dt><dd className="m-0 break-words text-sm text-[var(--text)]">{children}</dd></div>
 }
 
 export function ContentDetails({ item, type, onClose }) {

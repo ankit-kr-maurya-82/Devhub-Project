@@ -43,7 +43,8 @@ export default function MainLayout() {
   }, [location.pathname, location.hash])
 
   useEffect(() => {
-    const breakpoint = window.matchMedia(hasOwnSidebar ? '(min-width: 1280px)' : '(min-width: 1024px)')
+    if (hasOwnSidebar) return
+    const breakpoint = window.matchMedia('(min-width: 1024px)')
     const onResize = () => { if (breakpoint.matches) drawer.current?.close() }
     breakpoint.addEventListener('change', onResize)
     return () => breakpoint.removeEventListener('change', onResize)
@@ -58,7 +59,7 @@ export default function MainLayout() {
 
   return (
     <div className="min-h-dvh bg-[var(--page)] text-[var(--text)]">
-      <a href="#main-content" className="fixed left-4 top-4 z-50 -translate-y-24 rounded-lg bg-violet-500 px-4 py-3 focus:translate-y-0">Skip to content</a>
+      <a href="#main-content" className="fixed left-4 top-4 z-50 -translate-y-24 rounded-lg bg-[var(--primary)] px-4 py-3 text-white focus:translate-y-0">Skip to content</a>
       <Navbar showWorkspaceMenu={hasOwnSidebar} menuOpen={menuOpen} menuButtonRef={menuButton} onMenuToggle={() => { drawer.current?.showModal(); setMenuOpen(true) }} />
       <div className="mx-auto flex max-w-450">
         {!hasOwnSidebar && <aside className="sticky top-18 hidden h-[calc(100dvh-4.5rem)] w-60 shrink-0 overflow-y-auto border-r border-[var(--border)] bg-[var(--surface)] lg:block"><Sidebar /></aside>}
@@ -71,7 +72,7 @@ export default function MainLayout() {
       }} className="fixed inset-y-0 left-0 m-0 h-dvh max-h-dvh w-80 max-w-[88vw] overflow-y-auto border-r border-[var(--border)] bg-[var(--surface)] text-[var(--text)] shadow-2xl backdrop:bg-black/70 backdrop:backdrop-blur-sm">
         <div className="flex items-center justify-between border-b border-[var(--border)] px-7 py-5"><span className="font-semibold">DevHub navigation</span><button type="button" onClick={closeMenu} aria-label="Close navigation" className="rounded-lg p-2 text-[var(--muted)] hover:bg-[var(--surface-raised)]"><Icon name="close" /></button></div>
         <Sidebar compact onNavigate={closeMenu} />
-        <div className="flex gap-3 border-t border-[var(--border)] p-5"><Link to="/login" onClick={closeMenu} className="flex-1 rounded-lg border border-[var(--border)] py-3 text-center text-sm">Login</Link><Link to="/register" onClick={closeMenu} className="flex-1 rounded-lg bg-violet-500 py-3 text-center text-sm font-medium">Register</Link></div>
+        <div className="flex gap-3 border-t border-[var(--border)] p-5"><Link to="/login" onClick={closeMenu} className="ui-button-secondary flex-1">Log in</Link><Link to="/register" onClick={closeMenu} className="ui-button flex-1">Create account</Link></div>
       </dialog>
     </div>
   )

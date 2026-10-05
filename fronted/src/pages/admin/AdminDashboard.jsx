@@ -10,52 +10,26 @@ const metrics = [
     key: 'totalUsers',
     label: 'Total users',
     icon: 'users',
-    description: 'Developer accounts in the community'
-  },
-  {
-    key: 'activeUsers',
-    label: 'Active users',
-    icon: 'user',
-    description: 'Accounts in good standing',
-    tone: 'success'
+    description: 'Community accounts'
   },
   {
     key: 'totalQuestions',
     label: 'Questions',
     icon: 'message',
-    description: 'Questions shared by developers'
-  },
-  {
-    key: 'totalAnswers',
-    label: 'Answers',
-    icon: 'check',
-    description: 'Knowledge shared across questions'
+    description: 'Questions from members'
   },
   {
     key: 'totalBlogs',
     label: 'Blogs',
     icon: 'book',
-    description: 'Community articles and tutorials'
-  },
-  {
-    key: 'communityMessages',
-    label: 'Community messages',
-    icon: 'hash',
-    description: 'Conversations across DevHub'
+    description: 'Articles from members'
   },
   {
     key: 'reportedContent',
-    label: 'Reported content',
+    label: 'Open reports',
     icon: 'shield',
-    description: 'Reports awaiting a resolution',
+    description: 'Reports to review',
     tone: 'warning'
-  },
-  {
-    key: 'newUsersThisWeek',
-    label: 'New users this week',
-    icon: 'plus',
-    description: 'Fresh faces in the community',
-    tone: 'success'
   },
 ]
 
@@ -113,7 +87,7 @@ export default function AdminDashboard() {
     className="min-w-0"
   >
     <AdminPageHeader
-      title="Community overview" description="A clear view of your community, its content, and what needs your attention." /
+      title="Community overview" description="See recent activity and review what needs your attention." /
     >
     <div
       className="grid grid-cols-1 gap-3 min-[400px]:grid-cols-2 sm:gap-4 xl:grid-cols-4">
@@ -131,7 +105,7 @@ export default function AdminDashboard() {
             {section.title}
           </h2>
           <Link to={section.to}
-            className="shrink-0 text-xs font-medium text-[var(--accent)] hover:underline" aria-label={`View all ${section.title.toLowerCase()}`}
+            className="shrink-0 text-sm font-medium text-[var(--accent)] hover:underline" aria-label={`View all ${section.title.toLowerCase()}`}
           >
             View all
           </Link>
@@ -147,11 +121,11 @@ export default function AdminDashboard() {
                 className="flex items-start justify-between gap-3 px-5 py-4">
                 <div
                   className="min-w-0">
-                  <p className="truncate text-xs font-medium text-[var(--text)]">
+                  <p className="truncate text-sm font-medium text-[var(--text)]">
                     {item.title}
                   </p>
                   <p
-                    className="mt-1.5 truncate text-[10px] text-[var(--subtle)]">
+                    className="mt-1.5 truncate text-xs text-[var(--subtle)]">
                     {item.description} · {formatDate(item.date)}
                   </p>
                 </div>
@@ -161,7 +135,7 @@ export default function AdminDashboard() {
               </li>)}
         </ul>
         {section.items.length === 0 &&
-          <p className="px-5 py-8 text-xs text-[var(--muted)]">
+          <p className="px-5 py-8 text-sm text-[var(--muted)]">
             No recent activity.
           </p>
         }

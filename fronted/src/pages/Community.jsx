@@ -5,7 +5,6 @@ import ChatHeader from '../components/community/ChatHeader.jsx'
 import MessageList from '../components/community/MessageList.jsx'
 import MessageInput from '../components/community/MessageInput.jsx'
 import OnlineMembers from '../components/community/OnlineMembers.jsx'
-import TypingIndicator from '../components/community/TypingIndicator.jsx'
 import { communityChannels, communityMembers, createInitialConversations, currentUserId, directContacts } from '../data/community.js'
 
 function CommunityDrawer({ kind, title, onClose, children }) {
@@ -17,10 +16,10 @@ function CommunityDrawer({ kind, title, onClose, children }) {
     const previousOverflow = document.body.style.overflow
     node.showModal()
     document.body.style.overflow = 'hidden'
-    const breakpoint = window.matchMedia(kind === 'channels' ? '(min-width: 768px)' : '(min-width: 1024px)')
-    const closeOnResize = () => { 
-      if (breakpoint.matches) node.close() 
-      }
+    const breakpoint = window.matchMedia('(min-width: 768px)')
+    const closeOnResize = () => {
+      if (kind === 'channels' && breakpoint.matches) node.close()
+    }
     breakpoint.addEventListener('change', closeOnResize)
     return () => {
       breakpoint.removeEventListener('change', closeOnResize)
@@ -37,22 +36,15 @@ function CommunityDrawer({ kind, title, onClose, children }) {
   }
 
   return (
-    <dialog 
-      ref={dialog} 
-      aria-label={title} 
-      onClose={event => { 
-        if (!event.currentTarget.open) onClose() 
-        }} 
-      onClick={closeOnBackdrop} 
-      className={`fixed inset-y-0 m-0 h-dvh max-h-dvh w-80 max-w-[90vw] overflow-y-auto border-white/10 bg-[#101115] p-0 text-zinc-100 shadow-2xl backdrop:bg-black/70 backdrop:backdrop-blur-sm ${kind === 'channels' ? 'left-0 right-auto border-r' : 'left-auto right-0 border-l'}`}>
-      <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+    <dialog
+      ref={dialog}
+      aria-label={title}
+      onClose={event => { if (!event.currentTarget.open) onClose() }}
+      onClick={closeOnBackdrop}
+      className={`fixed inset-y-0 m-0 h-dvh max-h-dvh w-80 max-w-[90vw] overflow-y-auto border-[var(--border)] bg-[var(--surface)] p-0 text-[var(--text)] shadow-2xl backdrop:bg-black/70 backdrop:backdrop-blur-sm ${kind === 'channels' ? 'left-0 right-auto border-r' : 'left-auto right-0 border-l'}`}>
+      <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-4">
         <h2 className="text-sm font-semibold">{title}</h2>
-        <button type="button" 
-        autoFocus 
-        onClick={() => dialog.current.close()} 
-        aria-label={`Close ${title.toLowerCase()}`} 
-        className="rounded-lg p-2 text-zinc-400 hover:bg-white/10 hover:text-white"
-        ><Icon name="close" /></button>
+        <button type="button" autoFocus onClick={() => dialog.current.close()} aria-label={`Close ${title.toLowerCase()}`} className="rounded-lg p-2 text-[var(--muted)] hover:bg-[var(--surface-raised)] hover:text-[var(--text)]"><Icon name="close" /></button>
       </div>
       {children}
     </dialog>
@@ -112,22 +104,23 @@ export default function Community() {
   const sidebar = <CommunitySidebar channels={channels} contacts={contacts} members={communityMembers} activeConversation={activeConversation} onSelectChannel={selectChannel} onSelectDirectMessage={selectDirectMessage} currentUser={currentUser} />
 
   return (
-    <section aria-label="DevHub Community chat" className="flex h-[calc(100dvh-9.5rem)] min-h-[34rem] flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#101115] shadow-xl shadow-black/10 md:h-[calc(100dvh-7.5rem)]">
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-white/10 bg-violet-500/5 px-4 py-2 text-[11px] text-zinc-400">
-        <span className="font-medium text-violet-300">Community · Phase 1 preview</span>
-        <span>Mock members & activity · Messages reset on refresh</span>
+    <section aria-label="DevHub Community chat" className="mx-auto flex h-[calc(100dvh-7.5rem)] min-h-[38rem] max-w-6xl flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
+      <div className="shrink-0 border-b border-[var(--border)] px-4 py-4 sm:px-6">
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-xl font-semibold text-[var(--text)]">Community</h1>
+          <span className="rounded-full bg-[var(--surface-raised)] px-2.5 py-1 text-xs text-[var(--muted)]">Preview</span>
+        </div>
+        <p className="mt-1 text-sm text-[var(--muted)]">Sample conversations. Messages stay on this page and reset on refresh.</p>
       </div>
-      <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] md:grid-cols-[14rem_minmax(0,1fr)] lg:grid-cols-[14rem_minmax(0,1fr)_13rem] xl:grid-cols-[15.5rem_minmax(0,1fr)_15rem]">
-        <aside aria-label="Community channels and direct messages" className="hidden min-h-0 overflow-y-auto border-r border-white/10 md:block">{sidebar}</aside>
-        <div className="flex min-h-0 min-w-0 flex-col bg-[#0e0f13]">
+      <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] md:grid-cols-[14rem_minmax(0,1fr)] lg:grid-cols-[16rem_minmax(0,1fr)]">
+        <aside aria-label="Community channels and direct messages" className="hidden min-h-0 overflow-y-auto border-r border-[var(--border)] md:block">{sidebar}</aside>
+        <div className="flex min-h-0 min-w-0 flex-col bg-[var(--surface)]">
           <ChatHeader channel={channel} member={member} onOpenChannels={() => setDrawer('channels')} onOpenMembers={() => setDrawer('members')} />
           <MessageList key={conversationKey} messages={messages} members={communityMembers} currentUserId={currentUserId} onReact={toggleReaction} conversationName={conversationName} />
-          <div className="min-w-0 shrink-0 border-t border-white/10 bg-[#101115]">
-            <div className="min-h-8 px-4 pt-2 sm:px-5">{(channel?.id === 'javascript' || member?.id === 'rahul') && <TypingIndicator name="Rahul" />}</div>
+          <div className="min-w-0 shrink-0 border-t border-[var(--border)] bg-[var(--surface)] pt-3">
             <MessageInput key={conversationKey} conversationName={conversationName} onSend={sendMessage} />
           </div>
         </div>
-        <aside aria-label="Community members" className="hidden min-h-0 overflow-y-auto border-l border-white/10 lg:block"><OnlineMembers members={communityMembers} /></aside>
       </div>
       {drawer && <CommunityDrawer key={drawer} kind={drawer} title={drawer === 'channels' ? 'Community channels' : 'Community members'} onClose={() => setDrawer(null)}>{drawer === 'channels' ? sidebar : <OnlineMembers members={communityMembers} />}</CommunityDrawer>}
     </section>

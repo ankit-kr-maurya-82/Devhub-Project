@@ -13,12 +13,12 @@ export default function MessageList({ messages, members, currentUserId, onReact,
   }, [conversationName, newestMessageId])
 
   return (
-    <div ref={scrollRef} role="log" aria-label={`Messages in ${conversationName}`} aria-live="polite" aria-relevant="additions" tabIndex={0} className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-violet-400 sm:px-5">
+    <div ref={scrollRef} role="log" aria-label={`Messages in ${conversationName}`} aria-live="polite" aria-relevant="additions" tabIndex={0} className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--accent)] sm:px-5">
       {orderedMessages.length === 0 ? (
         <div className="flex min-h-56 flex-col items-center justify-center px-4 text-center">
-          <div className="mb-4 flex size-12 items-center justify-center rounded-2xl border border-violet-400/20 bg-violet-500/10 text-violet-400"><Icon name="message" /></div>
-          <h2 className="text-base font-semibold text-zinc-200">Start the conversation</h2>
-          <p className="mt-2 max-w-xs text-sm leading-6 text-zinc-500">Say hello, share an idea, or ask a question in {conversationName}.</p>
+          <div className="mb-4 flex size-12 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--accent-soft)] text-[var(--accent)]"><Icon name="message" /></div>
+          <h2 className="text-base font-semibold text-[var(--text)]">Start the conversation</h2>
+          <p className="mt-2 max-w-xs text-sm leading-6 text-[var(--muted)]">Say hello, share an idea, or ask a question in {conversationName}.</p>
         </div>
       ) : orderedMessages.map((message, index) => {
         const date = new Date(message.createdAt)
@@ -29,9 +29,9 @@ export default function MessageList({ messages, members, currentUserId, onReact,
           <Fragment key={message.id}>
             {startsDay && (
               <div className="my-3 flex items-center gap-3" aria-label={`Messages from ${date.toLocaleDateString()}`}>
-                <div className="h-px flex-1 bg-white/5" />
-                <span className="shrink-0 text-[10px] font-medium tracking-wide text-zinc-500">{date.toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' })}</span>
-                <div className="h-px flex-1 bg-white/5" />
+                <div className="h-px flex-1 bg-[var(--surface-raised)]" />
+                <span className="shrink-0 text-xs font-medium tracking-wide text-[var(--muted)]">{date.toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' })}</span>
+                <div className="h-px flex-1 bg-[var(--surface-raised)]" />
               </div>
             )}
             <MessageBubble message={message} author={memberMap.get(message.authorId)} currentUserId={currentUserId} onReact={onReact} />

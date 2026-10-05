@@ -5,9 +5,9 @@ import QuestionContent from '../components/QuestionContent'
 import { popularTags } from '../data/home'
 
 const fields = [
-  { name: 'title', label: 'Title', help: 'Be specific. 15–150 characters.', min: 15, max: 150, placeholder: 'e.g. Why does my React effect run twice in development?' },
-  { name: 'description', label: 'Description', help: 'Include the expected result and what you tried. 30–15,000 characters.', min: 30, max: 15000, rows: 7, placeholder: 'Give the community enough context to reproduce the problem…' },
-  { name: 'code', label: 'Code example (optional)', help: 'Paste a minimal example. Code is displayed as text and is never executed.', max: 15000, rows: 7, placeholder: '// Your code here' },
+  { name: 'title', label: 'Title', help: 'Summarize your question in 15–150 characters.', min: 15, max: 150, placeholder: 'e.g. Why does my React effect run twice in development?' },
+  { name: 'description', label: 'Description', help: 'Explain what happened and what you tried. 30–15,000 characters.', min: 30, max: 15000, rows: 7, placeholder: 'What are you trying to do, and where are you stuck?' },
+  { name: 'code', label: 'Code example (optional)', help: 'Add a short example to help others understand the problem.', max: 15000, rows: 4, placeholder: '// Your code here' },
   { name: 'tags', label: 'Tags', help: 'Add 1–5 tags separated by commas, each up to 25 characters.', max: 150, placeholder: 'React, JavaScript' },
 ]
 
@@ -48,28 +48,27 @@ export default function AskQuestion() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-7">
-      <Link to="/questions" className="inline-block text-sm text-violet-300 hover:text-violet-200">← Back to questions</Link>
-      <header><h1>Ask a Question</h1><p className="mt-3 text-sm text-zinc-400">A clear question is the first step toward a great answer.</p></header>
-      <div className="rounded-xl border border-violet-400/20 bg-violet-500/5 p-5 text-sm leading-6 text-zinc-400"><span className="font-medium text-violet-300">Make it easy to help.</span> Describe your goal, what you tried, and what happened. Include a small code example when it helps.</div>
-      <form onSubmit={submit} noValidate className="space-y-6 rounded-xl border border-white/10 bg-[#121317] p-5 sm:p-8">
+      <Link to="/questions" className="inline-block text-sm text-[var(--accent)] hover:underline">← Back to questions</Link>
+      <header><h1>Ask a question</h1><p className="mt-2 text-sm text-[var(--muted)]">Describe your problem so others can help.</p></header>
+      <form onSubmit={submit} noValidate className="space-y-6 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 sm:p-8">
         {fields.map(field => {
           const props = {
             id: `question-${field.name}`, name: field.name, value: form[field.name], onChange: updateField,
             required: field.name !== 'code', minLength: field.min, maxLength: field.max, placeholder: field.placeholder,
             'aria-invalid': Boolean(errors[field.name]), 'aria-describedby': `${field.name}-help${errors[field.name] ? ` ${field.name}-error` : ''}`,
-            className: `mt-2 w-full rounded-lg border bg-[#0c0d10] p-3 text-sm leading-6 text-zinc-200 focus:outline-violet-400 ${errors[field.name] ? 'border-rose-400/60' : 'border-white/10 focus:border-violet-400'} ${field.name === 'code' ? 'font-mono text-violet-200' : ''}`,
+            className: `mt-2 w-full rounded-lg border bg-[var(--page)] p-3 text-sm leading-6 text-[var(--text)] focus:outline-[var(--accent)] ${errors[field.name] ? 'border-[var(--danger)]' : 'border-[var(--border)] focus:border-[var(--accent)]'} ${field.name === 'code' ? 'font-mono text-[var(--accent)]' : ''}`,
           }
           return <div key={field.name}>
             <label htmlFor={props.id} className="text-sm font-semibold">{field.label}</label>
-            <p id={`${field.name}-help`} className="mt-1 text-xs leading-5 text-zinc-400">{field.help}</p>
+            <p id={`${field.name}-help`} className="mt-1 text-xs leading-5 text-[var(--muted)]">{field.help}</p>
             {field.rows ? <textarea {...props} rows={field.rows} spellCheck={field.name !== 'code'} /> : <input {...props} />}
-            {errors[field.name] && <p id={`${field.name}-error`} role="alert" className="mt-2 text-xs text-rose-300">{errors[field.name]}</p>}
-            {field.name === 'tags' && <div className="mt-3 flex flex-wrap gap-2">{tags.map(tag => <span key={tag} className="max-w-full break-all rounded-md bg-violet-500/10 px-2 py-1 font-mono text-xs text-violet-300">{tag}</span>)}</div>}
+            {errors[field.name] && <p id={`${field.name}-error`} role="alert" className="mt-2 text-xs text-[var(--danger)]">{errors[field.name]}</p>}
+            {field.name === 'tags' && <div className="mt-3 flex flex-wrap gap-2">{tags.map(tag => <span key={tag} className="max-w-full break-all rounded-md bg-[var(--accent-soft)] px-2 py-1 text-xs text-[var(--accent)]">{tag}</span>)}</div>}
           </div>
         })}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-5"><button ref={previewButton} type="button" onClick={togglePreview} aria-expanded={preview} aria-controls={preview ? 'question-preview' : undefined} className="rounded-lg border border-white/15 px-5 py-3 text-sm hover:bg-white/5">{preview ? 'Hide Preview' : 'Preview'}</button><button type="submit" className="rounded-lg bg-violet-500 px-5 py-3 text-sm font-semibold hover:bg-violet-400">Post Question</button></div>
-        {preview && <section ref={previewRef} tabIndex={-1} id="question-preview" aria-label="Question preview" className="min-w-0 space-y-4 rounded-xl border border-violet-400/20 bg-[#0c0d10] p-5 outline-none"><p className="font-mono text-xs text-violet-400">PREVIEW</p><h2 className="break-words text-xl font-semibold">{form.title || 'Your question title'}</h2><QuestionContent body={form.description || 'Your description will appear here.'} code={form.code} /><div className="flex flex-wrap gap-2">{tags.map(tag => <span key={tag} className="max-w-full break-all text-xs text-violet-300">#{tag}</span>)}</div></section>}
-        <p className="text-xs text-zinc-500">Frontend demo · your question is available until the page is reloaded.</p>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] pt-5"><button ref={previewButton} type="button" onClick={togglePreview} aria-expanded={preview} aria-controls={preview ? 'question-preview' : undefined} className="ui-button-secondary">{preview ? 'Hide preview' : 'Preview'}</button><button type="submit" className="ui-button">Post question</button></div>
+        {preview && <section ref={previewRef} tabIndex={-1} id="question-preview" aria-label="Question preview" className="min-w-0 space-y-4 rounded-xl border border-[var(--border)] bg-[var(--page)] p-5 outline-none"><p className="text-sm font-medium text-[var(--muted)]">Question preview</p><h2 className="break-words text-xl font-semibold">{form.title || 'Your question title'}</h2><QuestionContent body={form.description || 'Your description will appear here.'} code={form.code} /><div className="flex flex-wrap gap-2">{tags.map(tag => <span key={tag} className="max-w-full break-all text-xs text-[var(--accent)]">#{tag}</span>)}</div></section>}
+        <p className="text-xs text-[var(--muted)]">Demo: your question resets when you refresh the page.</p>
       </form>
     </div>
   )
