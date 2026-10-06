@@ -1,6 +1,16 @@
 import mongoose from "mongoose";
 import Question from "../models/question.model.js";
 
+const normalizeTags = (tags) => {
+  if (!Array.isArray(tags)) return [];
+  return [...new Set(tags
+    .filter((tag) => typeof tag === "string")
+    .map((tag) => tag.trim().toLowerCase())
+    .filter(Boolean))];
+};
+
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 const createQuestion = async (req, res) => {
   try {
     const { title, description, tags } = req.body;
@@ -15,7 +25,7 @@ const createQuestion = async (req, res) => {
     const question = await Question.create({
       title,
       description,
-      tags: Array.isArray(tags) ? tags : [],
+      tags: normalizeTags(tags),
       author: req.user._id,
     });
 
@@ -37,14 +47,72 @@ const createQuestion = async (req, res) => {
 
 const getAllQuestions = async (req, res) => {
   try {
-    const questions = await Question.find()
-      .populate("author", "name username avatar reputation")
-      .sort({ createdAt: -1 });
+    const { search, tag, status, sort = "newest" } = req.query;
+    const allowedSorts = {
+      newest: { createdAt: -1 },
+      oldest: { createdAt: 1 },
+      votes: { votes: -1 },
+      views: { views: -1 },
+    };
+    if (!Object.hasOwn(allowedSorts, sort)) {
+      return res.status(400).json({ success: false, message: "Invalid sort. Use newest, oldest, votes, or views." });
+    }
+    if (status !== undefined && status !== "solved" && status !== "unsolved") {
+      return res.status(400).json({ success: false, message: "Invalid status. Use solved or unsolved." });
+    }
+
+    const parsePositiveInteger = (value, fallback, name) => {
+      if (value === undefined) return { value: fallback };
+      if (typeof value !== "string" || !/^[1-9]\d*$/.test(value)) {
+        return { error: `${name} must be a positive integer` };
+      }
+      const parsed = Number(value);
+      if (!Number.isSafeInteger(parsed)) return { error: `${name} must be a positive integer` };
+      return { value: parsed };
+    };
+    const pageResult = parsePositiveInteger(req.query.page, 1, "page");
+    const limitResult = parsePositiveInteger(req.query.limit, 10, "limit");
+    if (pageResult.error || limitResult.error) {
+      return res.status(400).json({ success: false, message: pageResult.error || limitResult.error });
+    }
+    if (limitResult.value > 50) {
+      return res.status(400).json({ success: false, message: "limit must not exceed 50" });
+    }
+
+    const { page, limit } = { page: pageResult.value, limit: limitResult.value };
+    if (!Number.isSafeInteger((page - 1) * limit)) {
+      return res.status(400).json({ success: false, message: "page is too large" });
+    }
+    const filter = {};
+    if (typeof search === "string" && search.trim()) {
+      const searchRegex = new RegExp(escapeRegex(search.trim()), "i");
+      filter.$or = [{ title: searchRegex }, { description: searchRegex }];
+    }
+    if (typeof tag === "string" && tag.trim()) filter.tags = tag.trim().toLowerCase();
+    if (status === "solved") filter.isSolved = true;
+    if (status === "unsolved") filter.isSolved = false;
+
+    const [questions, totalQuestions] = await Promise.all([
+      Question.find(filter)
+        .populate("author", "name username avatar reputation")
+        .sort(allowedSorts[sort])
+        .skip((page - 1) * limit)
+        .limit(limit),
+      Question.countDocuments(filter),
+    ]);
+    const totalPages = Math.ceil(totalQuestions / limit);
 
     return res.status(200).json({
       success: true,
-      count: questions.length,
       data: questions,
+      pagination: {
+        page,
+        limit,
+        totalQuestions,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
     });
 
   } catch (error) {
@@ -120,7 +188,7 @@ const updateQuestion = async(req,res)=>{
         
         if(title) updateData.title = title;
         if(description) updateData.description = description;
-        if(tags) updateData.tags = tags;
+        if(tags !== undefined) updateData.tags = normalizeTags(tags);
 
 
         const question = await Question.findByIdAndUpdate(

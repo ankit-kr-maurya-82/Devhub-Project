@@ -52,6 +52,9 @@ const questionSchema = new mongoose.Schema(
   }
 );
 
+questionSchema.index({ createdAt: -1 });
+questionSchema.index({ tags: 1 });
+
 const Question = mongoose.model("Question", questionSchema);
 
 export default Question;
