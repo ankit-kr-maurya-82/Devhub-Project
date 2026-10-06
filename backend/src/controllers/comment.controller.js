@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import Answer from "../models/answer.model.js";
 import Comment from "../models/comment.model.js";
 import Question from "../models/question.model.js";
+import createNotification from "../utils/createNotification.js";
 
 const authorFields = "name username avatar reputation";
 
@@ -19,7 +20,7 @@ const addComment = async (req, res, targetType, TargetModel, idParam) => {
     if (!validateContent(req.body?.content)) {
       return res.status(400).json({ success: false, message: "Content must be between 1 and 1000 characters" });
     }
-    const target = await TargetModel.findById(targetId).select("_id");
+    const target = await TargetModel.findById(targetId).select("_id author question");
     if (!target) {
       return res.status(404).json({ success: false, message: `${targetType} not found` });
     }
@@ -28,6 +29,16 @@ const addComment = async (req, res, targetType, TargetModel, idParam) => {
       author: req.user._id,
       targetType,
       targetId,
+    });
+    const relatedQuestion = targetType === "Question" ? target._id : target.question;
+    await createNotification({
+      recipient: target.author,
+      sender: req.user._id,
+      type: "comment",
+      message: `${req.user.username || "Someone"} commented on your ${targetType.toLowerCase()}.`,
+      relatedQuestion,
+      relatedAnswer: targetType === "Answer" ? target._id : undefined,
+      relatedComment: comment._id,
     });
     await comment.populate("author", authorFields);
     return res.status(201).json({ success: true, message: "Comment added successfully", data: comment });

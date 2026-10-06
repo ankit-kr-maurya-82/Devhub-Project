@@ -3,6 +3,8 @@ import Answer from "../models/answer.model.js";
 import Question from "../models/question.model.js";
 import User from "../models/user.model.js";
 import Vote from "../models/vote.model.js";
+import Notification from "../models/notification.model.js";
+import createNotification from "../utils/createNotification.js";
 
 const scoreValue = (voteType) => (voteType === "upvote" ? 1 : -1);
 
@@ -35,6 +37,7 @@ const voteOnTarget = async ({ req, res, targetType, TargetModel, idParam }) => {
   await Vote.init();
   const session = await mongoose.startSession();
   let response;
+  let upvoteNotification;
 
   try {
     await session.withTransaction(async () => {
@@ -79,6 +82,18 @@ const voteOnTarget = async ({ req, res, targetType, TargetModel, idParam }) => {
           voteType,
         });
         await vote.save({ session });
+        if (voteType === "upvote") {
+          upvoteNotification = {
+            recipient: target.author,
+            sender: req.user._id,
+            type: targetType === "Question" ? "question_upvote" : "answer_upvote",
+            message: targetType === "Question"
+              ? "Someone upvoted your question."
+              : "Someone upvoted your answer.",
+            relatedQuestion: targetType === "Question" ? target._id : target.question,
+            relatedAnswer: targetType === "Answer" ? target._id : undefined,
+          };
+        }
         scoreDelta = scoreValue(voteType);
         reputationDelta = reputationValue(targetType, voteType);
         message = `${voteType === "upvote" ? "Upvote" : "Downvote"} recorded`;
@@ -94,6 +109,18 @@ const voteOnTarget = async ({ req, res, targetType, TargetModel, idParam }) => {
           reputationValue(targetType, existingVote.voteType);
         existingVote.voteType = voteType;
         await existingVote.save({ session });
+        if (voteType === "upvote") {
+          upvoteNotification = {
+            recipient: target.author,
+            sender: req.user._id,
+            type: targetType === "Question" ? "question_upvote" : "answer_upvote",
+            message: targetType === "Question"
+              ? "Someone upvoted your question."
+              : "Someone upvoted your answer.",
+            relatedQuestion: targetType === "Question" ? target._id : target.question,
+            relatedAnswer: targetType === "Answer" ? target._id : undefined,
+          };
+        }
         message = "Vote changed";
       }
 
@@ -126,6 +153,19 @@ const voteOnTarget = async ({ req, res, targetType, TargetModel, idParam }) => {
         },
       };
     });
+
+    if (upvoteNotification) {
+      const notificationFilter = {
+        recipient: upvoteNotification.recipient,
+        sender: upvoteNotification.sender,
+        type: upvoteNotification.type,
+        ...(upvoteNotification.relatedQuestion && { relatedQuestion: upvoteNotification.relatedQuestion }),
+        ...(upvoteNotification.relatedAnswer && { relatedAnswer: upvoteNotification.relatedAnswer }),
+      };
+      if (!(await Notification.exists(notificationFilter))) {
+        await createNotification(upvoteNotification);
+      }
+    }
 
     return res.status(response.status).json(response.body);
   } finally {

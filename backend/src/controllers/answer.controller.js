@@ -1,6 +1,8 @@
 import mongoose from "mongoose";
 import Answer from "../models/answer.model.js";
 import Question from "../models/question.model.js";
+import Notification from "../models/notification.model.js";
+import createNotification from "../utils/createNotification.js";
 
 const authorFields = "name username avatar reputation";
 
@@ -41,6 +43,15 @@ const createAnswer = async (req, res) => {
       { _id: questionId },
       { $inc: { answerCount: 1 } }
     );
+
+    await createNotification({
+      recipient: question.author,
+      sender: req.user._id,
+      type: "answer",
+      message: `${req.user.username || "Someone"} answered your question.`,
+      relatedQuestion: question._id,
+      relatedAnswer: answer._id,
+    });
 
     await answer.populate("author", authorFields);
 
@@ -144,11 +155,32 @@ const acceptAnswer = async (req, res) => {
       { $set: { isAccepted: false } }
     );
 
+    const wasAlreadyAccepted = answer.isAccepted;
     answer.isAccepted = true;
     await answer.save();
 
     question.isSolved = true;
     await question.save();
+
+    if (!wasAlreadyAccepted) {
+      const notificationExists = await Notification.exists({
+        recipient: answer.author,
+        sender: req.user._id,
+        type: "accepted_answer",
+        relatedQuestion: question._id,
+        relatedAnswer: answer._id,
+      });
+      if (!notificationExists) {
+        await createNotification({
+          recipient: answer.author,
+          sender: req.user._id,
+          type: "accepted_answer",
+          message: "Your answer was accepted.",
+          relatedQuestion: question._id,
+          relatedAnswer: answer._id,
+        });
+      }
+    }
 
     await answer.populate("author", authorFields);
 
