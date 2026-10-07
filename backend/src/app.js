@@ -32,6 +32,7 @@ import questionRoutes from "./routes/question.routes.js";
 import answerRoutes, { answerVoteRouter } from "./routes/answer.routes.js";
 import commentRoutes from "./routes/comment.routes.js";
 import notificationRoutes from "./routes/notification.routes.js";
+import roomRoutes from "./routes/room.routes.js";
 
 app.use(`/api/v1/auth`, authRoutes);
 app.use(`/api/v1/user`, userRoutes);
@@ -41,6 +42,7 @@ app.use("/api/v1/questions", answerRoutes);
 app.use("/api/v1/answers", answerVoteRouter);
 app.use("/api/v1", commentRoutes);
 app.use("/api/v1/notifications", notificationRoutes);
+app.use("/api/v1/rooms", roomRoutes);
 
 
 export  {app};
