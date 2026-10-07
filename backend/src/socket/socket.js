@@ -67,7 +67,9 @@ const initializeSocket = (httpServer) => {
       if (!payload || typeof payload.content !== "string") return emitSocketError(socket, "Message content is required");
       const content = payload.content.trim();
       if (!content || content.length > 2000) return emitSocketError(socket, "Message content must be between 1 and 2000 characters");
-      const message = await Message.create({ room: result.room._id, sender: socket.user._id, content, messageType: "text" });
+      const messageType = payload.messageType ?? "text";
+      if (!["text", "image", "file"].includes(messageType)) return emitSocketError(socket, "Invalid message type");
+      const message = await Message.create({ room: result.room._id, sender: socket.user._id, content, messageType });
       await message.populate("sender", "name username avatar");
       io.to(result.room._id.toString()).emit("newMessage", message);
     }));
@@ -95,6 +97,13 @@ const initializeSocket = (httpServer) => {
       }
       socket.emit("roomUsers", { roomId, users: [...users.values()] });
     }));
+
+    socket.on("disconnecting", () => {
+      const user = { _id: socket.user._id, name: socket.user.name, username: socket.user.username, avatar: socket.user.avatar };
+      for (const roomId of socket.rooms) {
+        if (roomId !== socket.id) socket.to(roomId).emit("userLeftRoom", { roomId, userId: socket.user._id, user });
+      }
+    });
   });
 
   return io;

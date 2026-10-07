@@ -11,7 +11,7 @@ const safeRoom = (query) => query.populate("owner", "name username avatar").popu
 
 const createRoom = async (req, res) => {
   try {
-    const { name, description, category, isPublic } = req.body ?? {};
+    const { name, description, category, isPublic, maxMembers } = req.body ?? {};
     if (typeof name !== "string" || name.trim().length < 3 || name.trim().length > 100) {
       return res.status(400).json({ success: false, message: "Name must be between 3 and 100 characters" });
     }
@@ -24,7 +24,10 @@ const createRoom = async (req, res) => {
     if (isPublic !== undefined && typeof isPublic !== "boolean") {
       return res.status(400).json({ success: false, message: "isPublic must be a boolean" });
     }
-    const room = await Room.create({ name, description, category, isPublic, owner: req.user._id, members: [req.user._id] });
+    if (maxMembers !== undefined && (!Number.isSafeInteger(maxMembers) || maxMembers < 1)) {
+      return res.status(400).json({ success: false, message: "maxMembers must be a positive integer" });
+    }
+    const room = await Room.create({ name, description, category, isPublic, maxMembers, owner: req.user._id, members: [req.user._id] });
     await room.populate("owner", "name username avatar");
     return res.status(201).json({ success: true, message: "Room created successfully", data: room });
   } catch (error) {
@@ -37,8 +40,8 @@ const getRooms = async (req, res) => {
   try {
     const page = parsePositive(req.query.page, 1);
     const limit = parsePositive(req.query.limit, 20);
-    if (!page || !limit || limit > 100 || !Number.isSafeInteger((page - 1) * limit)) {
-      return res.status(400).json({ success: false, message: "page and limit must be positive integers; limit must not exceed 100" });
+    if (!page || !limit || limit > 50 || !Number.isSafeInteger((page - 1) * limit)) {
+      return res.status(400).json({ success: false, message: "page and limit must be positive integers; limit must not exceed 50" });
     }
     const filter = { isPublic: true };
     if (req.query.category !== undefined) {

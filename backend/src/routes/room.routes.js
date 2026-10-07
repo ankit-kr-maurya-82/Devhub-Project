@@ -9,6 +9,6 @@ router.post("/", authMiddleware, createRoom);
 router.get("/:roomId", getRoomById);
 router.post("/:roomId/join", authMiddleware, joinRoom);
 router.post("/:roomId/leave", authMiddleware, leaveRoom);
-router.get("/:roomId/messages", getRoomMessages);
+router.get("/:roomId/messages", authMiddleware, getRoomMessages);
 
 export default router;

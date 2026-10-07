@@ -6,8 +6,9 @@ const getRoomMessages = async (req, res) => {
   try {
     const { roomId } = req.params;
     if (!mongoose.isValidObjectId(roomId)) return res.status(400).json({ success: false, message: "Invalid room ID" });
-    const room = await Room.findById(roomId).select("_id");
+    const room = await Room.findById(roomId).select("_id members");
     if (!room) return res.status(404).json({ success: false, message: "Room not found" });
+    if (!room.members.some((member) => member.equals(req.user._id))) return res.status(403).json({ success: false, message: "Only room members can access messages" });
     const parsePositive = (value, fallback) => {
       if (value === undefined) return fallback;
       if (typeof value !== "string" || !/^[1-9]\d*$/.test(value)) return null;
