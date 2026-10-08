@@ -33,9 +33,11 @@ import answerRoutes, { answerVoteRouter } from "./routes/answer.routes.js";
 import commentRoutes from "./routes/comment.routes.js";
 import notificationRoutes from "./routes/notification.routes.js";
 import roomRoutes from "./routes/room.routes.js";
+import presenceRoutes from "./routes/presence.routes.js";
 
 app.use(`/api/v1/auth`, authRoutes);
 app.use(`/api/v1/user`, userRoutes);
+app.use("/api/v1/users", presenceRoutes);
 app.use(handleJsonParseError);
 app.use("/api/v1/questions", questionRoutes);
 app.use("/api/v1/questions", answerRoutes);

@@ -4,6 +4,7 @@ import { Server } from "socket.io";
 import User from "../models/user.model.js";
 import Room from "../models/room.model.js";
 import Message from "../models/message.model.js";
+import { addUserSocket, removeUserSocket, isUserOnline } from "./presence.js";
 
 const emitSocketError = (socket, message) => socket.emit("socketError", { success: false, message });
 const validPayloadRoomId = (payload) => payload && typeof payload === "object" && typeof payload.roomId === "string" && mongoose.isValidObjectId(payload.roomId);
@@ -11,6 +12,44 @@ const isMember = (room, userId) => room?.members.some((member) => member.equals(
 
 const initializeSocket = (httpServer) => {
   const io = new Server(httpServer, { cors: { origin: process.env.CLIENT_ORIGIN?.split(",") ?? true, credentials: true } });
+  const presenceUpdates = new Map();
+
+  const savePresence = (userId, online) => {
+    const previous = presenceUpdates.get(userId) ?? Promise.resolve();
+    const update = previous.catch(() => {}).then(async () => {
+      // Recheck when this queued update runs so fast reconnects cannot be overwritten by stale disconnects.
+      if (isUserOnline(userId) !== online) return;
+      const user = await User.findById(userId).select("username isOnline lastSeen");
+      if (!user) return;
+      if (isUserOnline(userId) !== online) return;
+      user.isOnline = online;
+      if (!online) user.lastSeen = new Date();
+      await user.save();
+      if (isUserOnline(userId) !== online) return;
+      if (online) {
+        io.emit("userOnline", { userId, username: user.username, isOnline: true });
+      } else {
+        io.emit("userOffline", { userId, username: user.username, isOnline: false, lastSeen: user.lastSeen });
+      }
+    }).catch((error) => console.error("Socket presence update error:", error));
+    presenceUpdates.set(userId, update);
+    void update.finally(() => {
+      if (presenceUpdates.get(userId) === update) presenceUpdates.delete(userId);
+    });
+  };
+
+  const getRoomUsers = async (roomId) => {
+    const sockets = await io.in(roomId).fetchSockets();
+    const users = new Map();
+    for (const activeSocket of sockets) {
+      const user = activeSocket.data?.user;
+      if (user) {
+        const userId = user._id.toString();
+        users.set(userId, { userId, _id: userId, username: user.username, name: user.name, avatar: user.avatar });
+      }
+    }
+    return [...users.values()];
+  };
 
   io.use(async (socket, next) => {
     try {
@@ -29,6 +68,9 @@ const initializeSocket = (httpServer) => {
   });
 
   io.on("connection", (socket) => {
+    const userId = socket.user._id.toString();
+    if (addUserSocket(userId, socket.id)) savePresence(userId, true);
+
     const verifyRoomMembership = async (payload) => {
       if (!validPayloadRoomId(payload)) return { error: "A valid roomId is required" };
       const room = await Room.findById(payload.roomId).select("members");
@@ -49,6 +91,7 @@ const initializeSocket = (httpServer) => {
       await socket.join(roomId);
       socket.emit("roomJoined", { roomId });
       if (!alreadyJoined) socket.to(roomId).emit("userJoinedRoom", { roomId, user: { _id: socket.user._id, name: socket.user.name, username: socket.user.username, avatar: socket.user.avatar } });
+      socket.emit("roomUsers", { roomId, users: await getRoomUsers(roomId) });
     }));
 
     socket.on("leaveRoom", guard(async (payload) => {
@@ -89,13 +132,7 @@ const initializeSocket = (httpServer) => {
       if (result.error) return emitSocketError(socket, result.error);
       const roomId = result.room._id.toString();
       if (!socket.rooms.has(roomId)) return emitSocketError(socket, "Join the room first");
-      const sockets = await io.in(roomId).fetchSockets();
-      const users = new Map();
-      for (const activeSocket of sockets) {
-        const user = activeSocket.data?.user;
-        if (user) users.set(user._id.toString(), { _id: user._id, name: user.name, username: user.username, avatar: user.avatar });
-      }
-      socket.emit("roomUsers", { roomId, users: [...users.values()] });
+      socket.emit("roomUsers", { roomId, users: await getRoomUsers(roomId) });
     }));
 
     socket.on("disconnecting", () => {
@@ -103,6 +140,10 @@ const initializeSocket = (httpServer) => {
       for (const roomId of socket.rooms) {
         if (roomId !== socket.id) socket.to(roomId).emit("userLeftRoom", { roomId, userId: socket.user._id, user });
       }
+    });
+
+    socket.on("disconnect", () => {
+      if (removeUserSocket(userId, socket.id)) savePresence(userId, false);
     });
   });
 
