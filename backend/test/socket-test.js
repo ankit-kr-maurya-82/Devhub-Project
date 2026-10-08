@@ -29,6 +29,14 @@ socket.on("roomJoined", (data) => {
 
 socket.on("newMessage", (message) => {
   console.log("New message:", message);
+  socket.emit("reactToMessage", {
+    messageId: message._id,
+    emoji: "👍",
+  });
+});
+
+socket.on("messageReactionUpdated", (data) => {
+  console.log("Message reaction updated:", data);
 });
 
 socket.on("userJoinedRoom", (data) => {

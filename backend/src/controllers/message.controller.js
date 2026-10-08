@@ -23,11 +23,91 @@ const getRoomMessages = async (req, res) => {
       Message.find(filter).populate("sender", "name username avatar").sort({ createdAt: 1, _id: 1 }).skip((page - 1) * limit).limit(limit),
       Message.countDocuments(filter),
     ]);
-    return res.status(200).json({ success: true, data: messages, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } });
+    const visibleMessages = messages.map((message) => {
+      const data = message.toObject();
+      if (data.isDeleted) data.content = "This message was deleted";
+      return data;
+    });
+    return res.status(200).json({ success: true, data: visibleMessages, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } });
   } catch (error) {
     console.error("Get Room Messages Error:", error);
     return res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
 
-export { getRoomMessages };
+const editMessage = async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    if (!mongoose.isValidObjectId(messageId)) return res.status(400).json({ success: false, message: "Invalid message ID" });
+    if (!req.body || typeof req.body.content !== "string") return res.status(400).json({ success: false, message: "Message content is required" });
+    const content = req.body.content.trim();
+    if (!content || content.length > 2000) return res.status(400).json({ success: false, message: "Message content must be between 1 and 2000 characters" });
+    const message = await Message.findById(messageId);
+    if (!message) return res.status(404).json({ success: false, message: "Message not found" });
+    if (!message.sender.equals(req.user._id)) return res.status(403).json({ success: false, message: "You can only edit your own messages" });
+    if (message.isDeleted) return res.status(400).json({ success: false, message: "Deleted messages cannot be edited" });
+    message.content = content;
+    message.isEdited = true;
+    message.editedAt = new Date();
+    await message.save();
+    await message.populate("sender", "name username avatar");
+    return res.status(200).json({ success: true, message: "Message updated successfully", data: message });
+  } catch (error) {
+    console.error("Edit Message Error:", error);
+    return res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+const deleteMessage = async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    if (!mongoose.isValidObjectId(messageId)) return res.status(400).json({ success: false, message: "Invalid message ID" });
+    const message = await Message.findById(messageId);
+    if (!message) return res.status(404).json({ success: false, message: "Message not found" });
+    const room = await Room.findById(message.room).select("owner");
+    if (!room) return res.status(404).json({ success: false, message: "Room not found" });
+    if (!message.sender.equals(req.user._id) && !room.owner.equals(req.user._id)) return res.status(403).json({ success: false, message: "You are not allowed to delete this message" });
+    if (!message.isDeleted) {
+      message.isDeleted = true;
+      message.deletedAt = new Date();
+      message.content = "This message was deleted";
+      await message.save();
+    }
+    return res.status(200).json({ success: true, message: "Message deleted successfully", data: { messageId: message._id, roomId: message.room, isDeleted: true, deletedAt: message.deletedAt } });
+  } catch (error) {
+    console.error("Delete Message Error:", error);
+    return res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+const toggleMessageReaction = async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    if (!mongoose.isValidObjectId(messageId)) return res.status(400).json({ success: false, message: "Invalid message ID" });
+    if (!req.body || typeof req.body.emoji !== "string") return res.status(400).json({ success: false, message: "Emoji is required" });
+    const emoji = req.body.emoji.trim();
+    if (!emoji || emoji.length > 10) return res.status(400).json({ success: false, message: "Emoji must be between 1 and 10 characters" });
+
+    const message = await Message.findById(messageId);
+    if (!message) return res.status(404).json({ success: false, message: "Message not found" });
+    const room = await Room.findById(message.room).select("members");
+    if (!room) return res.status(404).json({ success: false, message: "Room not found" });
+    if (!room.members.some((member) => member.equals(req.user._id))) return res.status(403).json({ success: false, message: "Only room members can react to messages" });
+    if (message.isDeleted) return res.status(400).json({ success: false, message: "Cannot react to a deleted message" });
+
+    const existingIndex = message.reactions.findIndex((reaction) => reaction.user.equals(req.user._id) && reaction.emoji === emoji);
+    if (existingIndex >= 0) message.reactions.splice(existingIndex, 1);
+    else message.reactions.push({ user: req.user._id, emoji });
+    await message.save();
+    return res.status(200).json({
+      success: true,
+      message: "Reaction updated successfully",
+      data: { messageId: message._id, reactions: message.reactions },
+    });
+  } catch (error) {
+    console.error("Toggle Message Reaction Error:", error);
+    return res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+export { getRoomMessages, editMessage, deleteMessage, toggleMessageReaction };

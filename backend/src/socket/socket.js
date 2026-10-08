@@ -117,6 +117,63 @@ const initializeSocket = (httpServer) => {
       io.to(result.room._id.toString()).emit("newMessage", message);
     }));
 
+    socket.on("editMessage", guard(async (payload) => {
+      if (!payload || typeof payload.messageId !== "string" || !mongoose.isValidObjectId(payload.messageId)) return emitSocketError(socket, "A valid messageId is required");
+      if (typeof payload.content !== "string") return emitSocketError(socket, "Message content is required");
+      const content = payload.content.trim();
+      if (!content || content.length > 2000) return emitSocketError(socket, "Message content must be between 1 and 2000 characters");
+      const message = await Message.findById(payload.messageId);
+      if (!message) return emitSocketError(socket, "Message not found");
+      if (!message.sender.equals(socket.user._id)) return emitSocketError(socket, "You can only edit your own messages");
+      if (message.isDeleted) return emitSocketError(socket, "Deleted messages cannot be edited");
+      message.content = content;
+      message.isEdited = true;
+      message.editedAt = new Date();
+      await message.save();
+      await message.populate("sender", "name username avatar");
+      io.to(message.room.toString()).emit("messageUpdated", message);
+    }));
+
+    socket.on("deleteMessage", guard(async (payload) => {
+      if (!payload || typeof payload.messageId !== "string" || !mongoose.isValidObjectId(payload.messageId)) return emitSocketError(socket, "A valid messageId is required");
+      const message = await Message.findById(payload.messageId);
+      if (!message) return emitSocketError(socket, "Message not found");
+      const room = await Room.findById(message.room).select("owner");
+      if (!room) return emitSocketError(socket, "Room not found");
+      if (!message.sender.equals(socket.user._id) && !room.owner.equals(socket.user._id)) return emitSocketError(socket, "You are not allowed to delete this message");
+      if (!message.isDeleted) {
+        message.isDeleted = true;
+        message.deletedAt = new Date();
+        message.content = "This message was deleted";
+        await message.save();
+      }
+      io.to(message.room.toString()).emit("messageDeleted", { messageId: message._id.toString(), roomId: message.room.toString() });
+    }));
+
+    socket.on("reactToMessage", guard(async (payload) => {
+      if (!payload || typeof payload.messageId !== "string" || !mongoose.isValidObjectId(payload.messageId)) return emitSocketError(socket, "A valid messageId is required");
+      if (typeof payload.emoji !== "string") return emitSocketError(socket, "Emoji is required");
+      const emoji = payload.emoji.trim();
+      if (!emoji || emoji.length > 10) return emitSocketError(socket, "Emoji must be between 1 and 10 characters");
+
+      const message = await Message.findById(payload.messageId);
+      if (!message) return emitSocketError(socket, "Message not found");
+      const room = await Room.findById(message.room).select("members");
+      if (!room) return emitSocketError(socket, "Room not found");
+      if (!isMember(room, socket.user._id)) return emitSocketError(socket, "You are not a member of this room");
+      if (message.isDeleted) return emitSocketError(socket, "Cannot react to a deleted message");
+
+      const existingIndex = message.reactions.findIndex((reaction) => reaction.user.equals(socket.user._id) && reaction.emoji === emoji);
+      if (existingIndex >= 0) message.reactions.splice(existingIndex, 1);
+      else message.reactions.push({ user: socket.user._id, emoji });
+      await message.save();
+      io.to(message.room.toString()).emit("messageReactionUpdated", {
+        messageId: message._id.toString(),
+        roomId: message.room.toString(),
+        reactions: message.reactions,
+      });
+    }));
+
     const typingEvent = (outgoing) => guard(async (payload) => {
       const result = await verifyRoomMembership(payload);
       if (result.error) return emitSocketError(socket, result.error);
