@@ -9,6 +9,7 @@ import { addUserSocket, removeUserSocket, isUserOnline } from "./presence.js";
 const emitSocketError = (socket, message) => socket.emit("socketError", { success: false, message });
 const validPayloadRoomId = (payload) => payload && typeof payload === "object" && typeof payload.roomId === "string" && mongoose.isValidObjectId(payload.roomId);
 const isMember = (room, userId) => room?.members.some((member) => member.equals(userId));
+const replyPopulate = { path: "replyTo", select: "_id content sender isDeleted", populate: { path: "sender", select: "name username avatar" } };
 
 const initializeSocket = (httpServer) => {
   const io = new Server(httpServer, { cors: { origin: process.env.CLIENT_ORIGIN?.split(",") ?? true, credentials: true } });
@@ -112,8 +113,17 @@ const initializeSocket = (httpServer) => {
       if (!content || content.length > 2000) return emitSocketError(socket, "Message content must be between 1 and 2000 characters");
       const messageType = payload.messageType ?? "text";
       if (!["text", "image", "file"].includes(messageType)) return emitSocketError(socket, "Invalid message type");
-      const message = await Message.create({ room: result.room._id, sender: socket.user._id, content, messageType });
-      await message.populate("sender", "name username avatar");
+      let replyTo = null;
+      if (payload.replyTo !== undefined && payload.replyTo !== null) {
+        if (typeof payload.replyTo !== "string" || !mongoose.isValidObjectId(payload.replyTo)) return emitSocketError(socket, "Invalid replyTo message ID");
+        const parent = await Message.findById(payload.replyTo).select("_id room");
+        if (!parent) return emitSocketError(socket, "Reply target message not found");
+        if (!parent.room.equals(result.room._id)) return emitSocketError(socket, "Reply target must belong to the same room");
+        replyTo = parent._id;
+      }
+      const message = await Message.create({ room: result.room._id, sender: socket.user._id, content, messageType, replyTo });
+      await message.populate([{ path: "sender", select: "name username avatar" }, replyPopulate]);
+      if (message.replyTo?.isDeleted) message.replyTo.content = "This message was deleted";
       io.to(result.room._id.toString()).emit("newMessage", message);
     }));
 

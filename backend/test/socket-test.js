@@ -2,6 +2,7 @@ import { io } from "socket.io-client";
 
 const TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2YWMzZWRiNTQ1ZDg3MzYxMDMxMjQ0OTAiLCJ1c2VybmFtZSI6ImRrbSIsImlhdCI6MTc5MTM2NjA5OSwiZXhwIjoxNzkxMzY5Njk5fQ.msFyedCPGftk_giqFaYK-TYy6PijijyplWeRW8uum1A"; // Replace with your actual JWT token
 const ROOM_ID = "6ac60014a2bc1bbe19594c55";
+const MESSAGE_ID = "REPLACE_WITH_MESSAGE_ID";
 
 const socket = io("http://localhost:4000", {
   auth: {
@@ -22,13 +23,16 @@ socket.on("roomJoined", (data) => {
 
   socket.emit("sendMessage", {
     roomId: ROOM_ID,
-    content: "Hello from DevHub real-time chat!",
+    content: "This is a reply",
     messageType: "text",
+    replyTo: MESSAGE_ID,
   });
 });
 
 socket.on("newMessage", (message) => {
   console.log("New message:", message);
+  if (!message.replyTo) console.error("Expected replyTo information in newMessage");
+  else console.log("Reply target returned:", message.replyTo);
   socket.emit("reactToMessage", {
     messageId: message._id,
     emoji: "👍",

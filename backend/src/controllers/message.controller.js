@@ -2,6 +2,48 @@ import mongoose from "mongoose";
 import Room from "../models/room.model.js";
 import Message from "../models/message.model.js";
 
+const replyPopulate = { path: "replyTo", select: "_id content sender isDeleted", populate: { path: "sender", select: "name username avatar" } };
+
+const redactDeletedReply = (reply) => {
+  if (reply?.isDeleted) reply.content = "This message was deleted";
+};
+
+const createMessage = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    if (!mongoose.isValidObjectId(roomId)) return res.status(400).json({ success: false, message: "Invalid room ID" });
+    const room = await Room.findById(roomId).select("members");
+    if (!room) return res.status(404).json({ success: false, message: "Room not found" });
+    if (!room.members.some((member) => member.equals(req.user._id))) return res.status(403).json({ success: false, message: "Only room members can send messages" });
+
+    if (!req.body || typeof req.body.content !== "string") return res.status(400).json({ success: false, message: "Message content is required" });
+    const content = req.body.content.trim();
+    if (!content || content.length > 2000) return res.status(400).json({ success: false, message: "Message content must be between 1 and 2000 characters" });
+    const messageType = req.body.messageType ?? "text";
+    if (!["text", "image", "file"].includes(messageType)) return res.status(400).json({ success: false, message: "Invalid message type" });
+
+    let replyTo = null;
+    if (req.body.replyTo !== undefined && req.body.replyTo !== null) {
+      if (typeof req.body.replyTo !== "string" || !mongoose.isValidObjectId(req.body.replyTo)) return res.status(400).json({ success: false, message: "Invalid replyTo message ID" });
+      const parent = await Message.findById(req.body.replyTo).select("_id room");
+      if (!parent) return res.status(404).json({ success: false, message: "Reply target message not found" });
+      if (!parent.room.equals(room._id)) return res.status(400).json({ success: false, message: "Reply target must belong to the same room" });
+      replyTo = parent._id;
+    }
+
+    const message = await Message.create({ room: room._id, sender: req.user._id, content, messageType, replyTo });
+    await message.populate([
+      { path: "sender", select: "name username avatar" },
+      replyPopulate,
+    ]);
+    redactDeletedReply(message.replyTo);
+    return res.status(201).json({ success: true, message: "Message sent successfully", data: message });
+  } catch (error) {
+    console.error("Create Message Error:", error);
+    return res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
 const getRoomMessages = async (req, res) => {
   try {
     const { roomId } = req.params;
@@ -20,12 +62,13 @@ const getRoomMessages = async (req, res) => {
     if (!page || !limit || limit > 100 || !Number.isSafeInteger((page - 1) * limit)) return res.status(400).json({ success: false, message: "page and limit must be positive integers; limit must not exceed 100" });
     const filter = { room: room._id };
     const [messages, total] = await Promise.all([
-      Message.find(filter).populate("sender", "name username avatar").sort({ createdAt: 1, _id: 1 }).skip((page - 1) * limit).limit(limit),
+      Message.find(filter).populate("sender", "name username avatar").populate(replyPopulate).sort({ createdAt: 1, _id: 1 }).skip((page - 1) * limit).limit(limit),
       Message.countDocuments(filter),
     ]);
     const visibleMessages = messages.map((message) => {
       const data = message.toObject();
       if (data.isDeleted) data.content = "This message was deleted";
+      redactDeletedReply(data.replyTo);
       return data;
     });
     return res.status(200).json({ success: true, data: visibleMessages, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } });
@@ -50,7 +93,8 @@ const editMessage = async (req, res) => {
     message.isEdited = true;
     message.editedAt = new Date();
     await message.save();
-    await message.populate("sender", "name username avatar");
+    await message.populate([{ path: "sender", select: "name username avatar" }, replyPopulate]);
+    redactDeletedReply(message.replyTo);
     return res.status(200).json({ success: true, message: "Message updated successfully", data: message });
   } catch (error) {
     console.error("Edit Message Error:", error);
@@ -110,4 +154,4 @@ const toggleMessageReaction = async (req, res) => {
   }
 };
 
-export { getRoomMessages, editMessage, deleteMessage, toggleMessageReaction };
+export { createMessage, getRoomMessages, editMessage, deleteMessage, toggleMessageReaction };
