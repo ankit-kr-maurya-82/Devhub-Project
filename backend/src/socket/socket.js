@@ -124,9 +124,10 @@ const initializeSocket = (httpServer) => {
       const messageType = payload.messageType ?? "text";
       if (!["text", "image", "file"].includes(messageType)) return emitSocketError(socket, "Invalid message type");
       let replyTo = null;
-      if (payload.replyTo !== undefined && payload.replyTo !== null) {
-        if (typeof payload.replyTo !== "string" || !mongoose.isValidObjectId(payload.replyTo)) return emitSocketError(socket, "Invalid replyTo message ID");
-        const parent = await Message.findById(payload.replyTo).select("_id room");
+      const requestedReplyTo = typeof payload.replyTo === "string" ? payload.replyTo.trim() : payload.replyTo;
+      if (requestedReplyTo !== undefined && requestedReplyTo !== null && requestedReplyTo !== "") {
+        if (typeof requestedReplyTo !== "string" || !mongoose.isValidObjectId(requestedReplyTo)) return emitSocketError(socket, "Invalid replyTo message ID");
+        const parent = await Message.findById(requestedReplyTo).select("_id room");
         if (!parent) return emitSocketError(socket, "Reply target message not found");
         if (!parent.room.equals(result.room._id)) return emitSocketError(socket, "Reply target must belong to the same room");
         replyTo = parent._id;

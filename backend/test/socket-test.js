@@ -1,9 +1,31 @@
+import "dotenv/config";
+import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 import { io } from "socket.io-client";
+import Room from "../src/models/room.model.js";
+import "../src/models/user.model.js";
+import connectDB from "../src/db/index.js";
 
-const TOKEN = process.env.JWT_TOKEN;
-if (!TOKEN) throw new Error("Set JWT_TOKEN in the environment before running this manual Socket.IO test.");
-const ROOM_ID = "6ac60014a2bc1bbe19594c55";
-const MESSAGE_ID = "REPLACE_WITH_MESSAGE_ID";
+const ROOM_ID = process.env.SOCKET_TEST_ROOM_ID || "6ac9cf7446950272e627e4df"; // Replace with a valid room ID from your database
+
+const getSocketToken = async () => {
+  if (process.env.JWT_TOKEN) return process.env.JWT_TOKEN;
+  if (!process.env.JWT_SECRET || !process.env.MONGODB_URI) {
+    throw new Error("Set JWT_TOKEN, or configure JWT_SECRET and MONGODB_URI in .env.");
+  }
+
+  await connectDB();
+  try {
+    const room = await Room.findById(ROOM_ID).populate("members", "isActive");
+    const member = room?.members.find((candidate) => candidate.isActive);
+    if (!member) throw new Error(`No active member found for room ${ROOM_ID}. Set SOCKET_TEST_ROOM_ID to a room with an active member.`);
+    return jwt.sign({ userId: member._id.toString() }, process.env.JWT_SECRET, { expiresIn: "1h" });
+  } finally {
+    await mongoose.disconnect();
+  }
+};
+
+const TOKEN = await getSocketToken();
 
 const socket = io("http://localhost:4000", {
   auth: {
@@ -24,16 +46,13 @@ socket.on("roomJoined", (data) => {
 
   socket.emit("sendMessage", {
     roomId: ROOM_ID,
-    content: "This is a reply",
+    content: "This is a normal chat message",
     messageType: "text",
-    replyTo: MESSAGE_ID,
   });
 });
 
 socket.on("newMessage", (message) => {
   console.log("New message:", message);
-  if (!message.replyTo) console.error("Expected replyTo information in newMessage");
-  else console.log("Reply target returned:", message.replyTo);
   socket.emit("reactToMessage", {
     messageId: message._id,
     emoji: "👍",

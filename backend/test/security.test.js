@@ -2,12 +2,14 @@ import assert from "node:assert/strict";
 import { once } from "node:events";
 import { after, before, describe, it, mock } from "node:test";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 import { createServer } from "node:http";
 import { io as createClient } from "socket.io-client";
 import { app } from "../src/app.js";
 import initializeSocket from "../src/socket/socket.js";
 import User from "../src/models/user.model.js";
 import Question from "../src/models/question.model.js";
+import Message from "../src/models/message.model.js";
 
 describe("HTTP security controls", { concurrency: false }, () => {
   let server;
@@ -73,15 +75,34 @@ describe("Socket.IO security controls", { concurrency: false }, () => {
   const secret = "test-only-socket-secret";
   const userId = "507f1f77bcf86cd799439011";
   const roomId = "507f1f77bcf86cd799439012";
+  const otherRoomId = "507f1f77bcf86cd799439015";
+  const missingParentId = "507f1f77bcf86cd799439016";
+  const createdMessages = [];
+  const parentMessages = new Map();
 
   before(async () => {
     process.env.JWT_SECRET = secret;
     mock.method(User, "findById", () => ({ select: async () => ({
-      _id: userId, name: "Reader", username: "reader", avatar: "", isActive: true,
+      _id: new mongoose.Types.ObjectId(userId), name: "Reader", username: "reader", avatar: "", isActive: true,
       async save() {},
     }) }));
     const Room = (await import("../src/models/room.model.js")).default;
-    mock.method(Room, "findById", () => ({ select: async () => ({ _id: roomId, members: [] }) }));
+    mock.method(Room, "findById", (id) => ({ select: async () => ({
+      _id: new mongoose.Types.ObjectId(id), members: [new mongoose.Types.ObjectId(userId)],
+    }) }));
+    const foreignParentId = new mongoose.Types.ObjectId();
+    parentMessages.set(foreignParentId.toString(), { _id: foreignParentId, room: new mongoose.Types.ObjectId(otherRoomId) });
+    mock.method(Message, "findById", (id) => ({ select: async () => parentMessages.get(id) ?? null }));
+    mock.method(Message, "create", async (fields) => {
+      createdMessages.push(fields);
+      const message = {
+        _id: new mongoose.Types.ObjectId(),
+        ...fields,
+        async populate() { return this; },
+      };
+      parentMessages.set(message._id.toString(), { _id: message._id, room: new mongoose.Types.ObjectId(fields.room) });
+      return message;
+    });
     httpServer = createServer();
     ioServer = initializeSocket(httpServer);
     httpServer.listen(0, "127.0.0.1");
@@ -101,13 +122,39 @@ describe("Socket.IO security controls", { concurrency: false }, () => {
     mock.restoreAll();
   });
 
-  it("rejects invalid socket payloads and non-member message attempts", async () => {
-    const errorEvent = once(client, "socketError");
-    client.emit("sendMessage", { roomId: "bad-id", content: "hello" });
-    assert.equal((await errorEvent)[0].success, false);
+  it("sends normal messages and validates same-room replies", async () => {
+    const joined = once(client, "roomJoined");
+    client.emit("joinRoom", { roomId });
+    await joined;
 
-    const membershipError = once(client, "socketError");
-    client.emit("sendMessage", { roomId, content: "hello" });
-    assert.match((await membershipError)[0].message, /not a member/i);
+    const normalMessageEvent = once(client, "newMessage");
+    client.emit("sendMessage", { roomId, content: "ordinary message" });
+    const [normalMessage] = await normalMessageEvent;
+    assert.equal(createdMessages.at(-1).replyTo, null);
+
+    const emptyReplyMessage = once(client, "newMessage");
+    client.emit("sendMessage", { roomId, content: "empty reply field", replyTo: "  " });
+    await emptyReplyMessage;
+    assert.equal(createdMessages.at(-1).replyTo, null);
+
+    const replyMessage = once(client, "newMessage");
+    client.emit("sendMessage", { roomId, content: "reply", replyTo: normalMessage._id.toString() });
+    await replyMessage;
+    assert.equal(createdMessages.at(-1).replyTo.toString(), normalMessage._id.toString());
+  });
+
+  it("rejects malformed reply IDs and messages from another room", async () => {
+    const invalidReply = once(client, "socketError");
+    client.emit("sendMessage", { roomId, content: "invalid reply", replyTo: "not-an-object-id" });
+    assert.match((await invalidReply)[0].message, /Invalid replyTo message ID/);
+
+    const missingReply = once(client, "socketError");
+    client.emit("sendMessage", { roomId, content: "missing reply", replyTo: missingParentId });
+    assert.match((await missingReply)[0].message, /Reply target message not found/);
+
+    const foreignReply = once(client, "socketError");
+    const foreignParentId = [...parentMessages.entries()].find(([, parent]) => parent.room.toString() === otherRoomId)[0];
+    client.emit("sendMessage", { roomId, content: "foreign reply", replyTo: foreignParentId });
+    assert.match((await foreignReply)[0].message, /same room/i);
   });
 });

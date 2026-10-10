@@ -23,9 +23,10 @@ const createMessage = async (req, res) => {
     if (!["text", "image", "file"].includes(messageType)) return res.status(400).json({ success: false, message: "Invalid message type" });
 
     let replyTo = null;
-    if (req.body.replyTo !== undefined && req.body.replyTo !== null) {
-      if (typeof req.body.replyTo !== "string" || !mongoose.isValidObjectId(req.body.replyTo)) return res.status(400).json({ success: false, message: "Invalid replyTo message ID" });
-      const parent = await Message.findById(req.body.replyTo).select("_id room");
+    const requestedReplyTo = typeof req.body.replyTo === "string" ? req.body.replyTo.trim() : req.body.replyTo;
+    if (requestedReplyTo !== undefined && requestedReplyTo !== null && requestedReplyTo !== "") {
+      if (typeof requestedReplyTo !== "string" || !mongoose.isValidObjectId(requestedReplyTo)) return res.status(400).json({ success: false, message: "Invalid replyTo message ID" });
+      const parent = await Message.findById(requestedReplyTo).select("_id room");
       if (!parent) return res.status(404).json({ success: false, message: "Reply target message not found" });
       if (!parent.room.equals(room._id)) return res.status(400).json({ success: false, message: "Reply target must belong to the same room" });
       replyTo = parent._id;
