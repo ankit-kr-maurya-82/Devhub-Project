@@ -49,7 +49,6 @@ import presenceRoutes from "./routes/presence.routes.js";
 import messageRoutes from "./routes/message.routes.js";
 
 app.use(`/api/v1/auth`, authRoutes);
-app.use("/", authRoutes);
 app.use(`/api/v1/user`, userRoutes);
 app.use("/api/v1/users", presenceRoutes);
 app.use(handleJsonParseError);
