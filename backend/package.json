@@ -14,7 +14,8 @@
     "dev": "nodemon -r dotenv/config --experimental-json-modules src/index.js",
     "start": "node src/index.js",
     "vercel-start": "node src/index.js",
-    "test": "node --test test/*.test.js",
+    "test": "vitest run test/api.vitest.test.js",
+    "test:legacy": "node --test test/security.test.js",
     "test:socket:integration": "node --test test/integration/socket-multiuser.test.js"
   },
   "dependencies": {
@@ -33,9 +34,12 @@
     "multer": "^2.3.0",
     "pug": "^3.0.4",
     "socket.io": "^4.8.3",
-    "socket.io-client": "^4.8.4"
+    "socket.io-client": "^4.8.4",
+    "swagger-jsdoc": "^6.3.0",
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
-    "nodemon": "^3.1.14"
+    "nodemon": "^3.1.14",
+    "vitest": "^5.0.3"
   }
 }
