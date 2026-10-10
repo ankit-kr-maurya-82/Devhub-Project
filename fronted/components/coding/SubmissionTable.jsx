@@ -9,7 +9,7 @@ const statusStyles = {
 }
 
 export default function SubmissionTable({ submissions, compact = false }) {
-  if (!submissions.length) return <div className="rounded-xl border border-dashed border-[var(--border)] p-8 text-center"><h3 className="text-sm font-semibold">No matching submissions</h3><p className="mt-2 text-xs leading-5 text-[var(--muted)]">Try another status or language to see more sample results.</p><Link to="/coding" className="mt-4 inline-block text-sm text-[var(--accent)]">Browse problems →</Link></div>
+  if (!submissions.length) return <div className="rounded-xl border border-dashed border-[var(--border)] p-8 text-center"><h3 className="text-sm font-semibold">No stored submissions</h3><p className="mt-2 text-xs leading-5 text-[var(--muted)]">Submission history will appear here when the backend supports coding submissions.</p><Link to="/coding" className="mt-4 inline-block text-sm text-[var(--accent)]">Coding practice status →</Link></div>
   return (
     <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
       <table aria-label="Sample coding submissions" className="w-full min-w-190 border-collapse text-left text-sm">

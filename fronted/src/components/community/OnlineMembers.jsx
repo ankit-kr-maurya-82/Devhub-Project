@@ -30,7 +30,7 @@ export default function OnlineMembers({ members }) {
     <div className="flex h-full min-h-0 flex-col bg-[var(--surface)]">
       <div className="shrink-0 border-b border-[var(--border)] px-5 py-5">
         <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--text)]"><Icon name="users" className="size-4 text-[var(--muted)]" />Members</h2>
-        <p className="mt-1.5 text-xs text-[var(--muted)]">{members.length} sample community members</p>
+        <p className="mt-1.5 text-xs text-[var(--muted)]">{members.length} room {members.length === 1 ? 'member' : 'members'}</p>
       </div>
       <div className="min-h-0 flex-1 space-y-7 overflow-y-auto px-4 py-5">
         <MemberGroup title="Online" members={onlineMembers} online />

@@ -2,7 +2,6 @@ import { useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { postQuestion } from '../hooks/useQuestions'
 import QuestionContent from '../components/QuestionContent'
-import { popularTags } from '../data/home'
 
 const fields = [
   { name: 'title', label: 'Title', help: 'Summarize your question in 15–150 characters.', min: 15, max: 150, placeholder: 'e.g. Why does my React effect run twice in development?' },
@@ -20,7 +19,7 @@ export default function AskQuestion() {
   const [errors, setErrors] = useState({})
   const [serverError, setServerError] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const tags = [...new Set(form.tags.split(',').map(tag => tag.trim()).filter(Boolean).map(tag => popularTags.find(value => value.toLowerCase() === tag.toLowerCase()) || tag.toLowerCase()))]
+  const tags = [...new Set(form.tags.split(',').map(tag => tag.trim().toLowerCase()).filter(Boolean))]
 
   const updateField = event => {
     const { name, value } = event.target

@@ -1,4 +1,5 @@
 export default function DirectMessages({ contacts, members, activeMemberId, onSelectDirectMessage }) {
+  if (!contacts.length) return null
   return (
     <nav aria-label="Direct messages" className="mt-6">
       <h2 className="mb-2 px-3 text-xs font-semibold  text-[var(--muted)]">Direct messages</h2>

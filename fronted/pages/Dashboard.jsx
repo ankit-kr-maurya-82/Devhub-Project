@@ -1,34 +1,52 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import DeveloperStats from '../components/DeveloperStats'
-import ActivityFeed from '../components/ActivityFeed'
-import Achievements from '../components/Achievements'
-import TopTags from '../components/TopTags'
-import ContributionOverview from '../components/ContributionOverview'
 import Icon from '../components/Icon'
-import CodingDashboardSection from '../components/coding/CodingDashboardSection'
-import { developer } from '../data/developer'
+import api from '../src/lib/api.js'
+import { useMockSession } from '../src/state/useMockSession.js'
+
+const formatDate = value => value ? new Date(value).toLocaleDateString() : ''
 
 export default function Dashboard() {
+  const { user } = useMockSession()
+  const [questions, setQuestions] = useState([])
+  const [total, setTotal] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    let active = true
+    api.questions.list({ limit: '50', sort: 'newest' })
+      .then(result => {
+        if (!active) return
+        const userId = String(user?.id || user?._id || '')
+        const ownQuestions = result.data.filter(question => String(question.author?._id || question.author) === userId)
+        setQuestions(ownQuestions)
+        setTotal(ownQuestions.length)
+      })
+      .catch(requestError => { if (active) setError(requestError.message) })
+      .finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [user])
+
   return (
     <div className="mx-auto max-w-6xl space-y-7">
       <header className="ui-page-header">
-        <div><h1>My dashboard</h1><p className="mt-2 text-sm text-[var(--muted)]">Welcome back, {developer.name.split(' ')[0]}. Here’s your activity at a glance.</p></div>
+        <div><h1>My dashboard</h1><p className="mt-2 text-sm text-[var(--muted)]">Your account and questions on DevHub.</p></div>
         <Link to="/profile" className="ui-button-secondary"><Icon name="user" className="size-4" />View profile</Link>
       </header>
-      <p className="text-xs text-[var(--subtle)]">Sample profile and activity</p>
-      <DeveloperStats />
-      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_280px]">
-        <section aria-labelledby="dashboard-activity" className="ui-card p-5 sm:p-6">
-          <div className="mb-6 flex flex-wrap items-center justify-between gap-3"><h2 id="dashboard-activity" className="text-lg font-semibold">Recent activity</h2><Link to="/profile?tab=activity" className="rounded text-sm font-medium text-[var(--accent)] hover:underline">View all →</Link></div>
-          <ActivityFeed limit={4} />
-        </section>
-        <aside className="space-y-6">
-          <section aria-labelledby="dashboard-actions" className="ui-card p-5"><h2 id="dashboard-actions" className="mb-4 text-base font-semibold">What’s next?</h2><div className="space-y-2">{[{ to: '/ask-question', icon: 'message', label: 'Ask a question' }, { to: '/create-blog', icon: 'book', label: 'Write a blog' }, { to: '/coding', icon: 'code', label: 'Practice coding' }].map(item => <Link key={item.to} to={item.to} className="flex items-center gap-3 rounded-lg p-3 text-sm text-[var(--accent)] hover:bg-[var(--accent-soft)]"><Icon name={item.icon} className="size-4" />{item.label}<span aria-hidden="true" className="ml-auto">→</span></Link>)}</div></section>
-          <section aria-labelledby="dashboard-tags" className="ui-card p-5"><h2 id="dashboard-tags" className="mb-5 text-base font-semibold">Your top topics</h2><TopTags /></section>
-        </aside>
-      </div>
-      <CodingDashboardSection />
-      <details className="ui-card p-5 sm:p-6"><summary className="rounded text-base font-semibold">More progress and achievements</summary><div className="mt-6 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_280px]"><ContributionOverview /><section aria-label="Achievements"><h2 className="mb-4 text-base font-semibold">Achievements</h2><Achievements /></section></div></details>
+      <section className="ui-card p-5 sm:p-6">
+        <p className="text-sm text-[var(--muted)]">Signed in as</p>
+        <p className="mt-1 text-lg font-semibold">{user?.name || user?.username}</p>
+        <p className="mt-1 text-sm text-[var(--muted)]">{user?.email}</p>
+        <div className="mt-5 border-t border-[var(--border)] pt-5"><p className="text-xs text-[var(--muted)]">Reputation</p><p className="mt-1 text-2xl font-semibold tabular-nums">{user?.reputation ?? 0}</p></div>
+      </section>
+      <section aria-labelledby="dashboard-questions" className="ui-card p-5 sm:p-6">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3"><div><h2 id="dashboard-questions" className="text-lg font-semibold">Your questions</h2><p className="mt-1 text-sm text-[var(--muted)]">{total} {total === 1 ? 'question' : 'questions'} loaded from your account.</p></div><Link to="/ask-question" className="ui-button"><Icon name="plus" className="size-4" />Ask a question</Link></div>
+        {loading && <p role="status" className="text-sm text-[var(--muted)]">Loading your questions…</p>}
+        {error && <p role="alert" className="text-sm text-[var(--danger)]">Could not load your questions: {error}</p>}
+        {!loading && !error && questions.length === 0 && <p className="text-sm text-[var(--muted)]">You haven’t posted any questions yet.</p>}
+        <div className="divide-y divide-[var(--border)]">{questions.map(question => <article key={question._id} className="py-4 first:pt-0 last:pb-0"><Link to={`/questions/${question._id}`} className="font-semibold text-[var(--accent)] hover:underline">{question.title}</Link><div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--muted)]"><span>{question.answerCount || 0} answers</span><span>{question.votes || 0} votes</span><time dateTime={question.createdAt}>{formatDate(question.createdAt)}</time></div></article>)}</div>
+      </section>
     </div>
   )
 }

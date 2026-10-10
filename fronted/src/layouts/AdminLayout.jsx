@@ -23,7 +23,7 @@ export default function AdminLayout() {
       <div className="min-w-0">
         <div className="border-b border-[var(--border)] bg-[var(--surface)] lg:hidden"><AdminSidebar compact /></div>
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] bg-[var(--surface)] px-4 py-3 sm:px-6">
-          <p className="text-sm leading-5 text-[var(--muted)]"><span className="font-medium text-[var(--text)]">Admin workspace preview</span> · These management screens still use sample data.</p>
+          <p className="text-sm leading-5 text-[var(--muted)]"><span className="font-medium text-[var(--text)]">Admin workspace unavailable</span> · Administrative actions require backend APIs.</p>
         </div>
         <div className="min-w-0 p-4 sm:p-6 xl:p-8"><Outlet /></div>
       </div>

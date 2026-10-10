@@ -101,7 +101,7 @@ export default function Community() {
     api.rooms.list({ limit: '50' })
       .then(result => {
         if (!active) return
-        const nextRooms = result.data.map(room => ({ id: String(room._id), name: room.name, description: room.description || '', memberCount: room.members?.length || 0, onlineCount: 0, members: room.members || [] }))
+        const nextRooms = result.data.map(room => ({ id: String(room._id), name: room.name, description: room.description || '', memberCount: room.members?.length || 0, members: room.members || [] }))
         setRooms(nextRooms)
         setConnectionStatus(nextRooms.length ? 'Choose a public room' : 'No public rooms yet')
         if (nextRooms.length && user) void openRoom(nextRooms[0])
@@ -145,7 +145,7 @@ export default function Community() {
     try {
       const result = await api.rooms.create({ name: roomName.trim(), description: roomDescription.trim(), category: 'general', isPublic: true })
       const created = result.data
-      const room = { id: String(created._id), name: created.name, description: created.description || '', members: created.members || [currentUserId], memberCount: created.members?.length || 1, onlineCount: 0 }
+      const room = { id: String(created._id), name: created.name, description: created.description || '', members: created.members || [currentUserId], memberCount: created.members?.length || 1 }
       setRooms(previous => [room, ...previous.filter(item => item.id !== room.id)])
       setRoomName(''); setRoomDescription(''); setShowCreateRoom(false)
       await openRoom(room)
@@ -169,7 +169,7 @@ export default function Community() {
       <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] md:grid-cols-[14rem_minmax(0,1fr)] lg:grid-cols-[16rem_minmax(0,1fr)]">
         <aside aria-label="Community rooms" className="hidden min-h-0 overflow-y-auto border-r border-[var(--border)] md:block">{sidebar}</aside>
         <div className="flex min-h-0 min-w-0 flex-col bg-[var(--surface)]">
-          <ChatHeader channel={activeRoom ? { ...activeRoom, onlineCount: 0 } : null} onOpenChannels={() => setDrawer('channels')} onOpenMembers={() => setDrawer('members')} />
+          <ChatHeader channel={activeRoom} onOpenChannels={() => setDrawer('channels')} onOpenMembers={() => setDrawer('members')} />
           {loadingRooms || loadingMessages ? <p role="status" className="m-auto p-6 text-sm text-[var(--muted)]">{loadingRooms ? 'Loading public rooms…' : 'Loading room messages…'}</p> : activeRoom ? <MessageList key={activeRoom.id} messages={messages} members={members} currentUserId={currentUserId} onReact={toggleReaction} conversationName={conversationName} /> : <p className="m-auto p-6 text-sm text-[var(--muted)]">Select a room to begin.</p>}
           <div className="min-w-0 shrink-0 border-t border-[var(--border)] bg-[var(--surface)] pt-3">{activeRoom && <MessageInput key={activeRoom.id} conversationName={conversationName} onSend={sendMessage} />}</div>
         </div>

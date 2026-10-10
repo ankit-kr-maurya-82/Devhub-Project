@@ -2,13 +2,11 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { navigation } from './navigation'
 import Icon from './Icon'
-import { useMockSession } from '../src/state/useMockSession.js'
 
 export default function SearchBar() {
-  const { role } = useMockSession()
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
-  const matches = navigation.filter(item => (!item.role || item.role === role) && item.label.toLowerCase().includes(query.trim().toLowerCase()))
+  const matches = navigation.filter(item => item.label.toLowerCase().includes(query.trim().toLowerCase()))
   return (
     <div className="relative min-w-0 flex-1" onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false) }} onKeyDown={(event) => { if (event.key === 'Escape') setOpen(false) }}>
       <label className="flex h-10 items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] px-3 text-[var(--subtle)] focus-within:border-violet-400/70">

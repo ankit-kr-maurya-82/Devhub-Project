@@ -2,7 +2,6 @@ import { Link, useSearchParams } from 'react-router-dom'
 import QuestionCard from '../components/QuestionCard'
 import TagBadge from '../components/TagBadge'
 import Icon from '../components/Icon'
-import { popularTags } from '../data/home'
 import { useQuestions } from '../hooks/useQuestions'
 import { useQuestionStatus } from '../hooks/useQuestions'
 
@@ -21,6 +20,7 @@ export default function Questions() {
   }, { replace: true })
   const selectTag = value => update('tag', value === tag ? '' : value)
   const visible = questions.filter(question => (!tag || question.tags.includes(tag)) && (filter !== 'Unanswered' || question.answers === 0) && [question.title, question.description, question.username, ...question.tags].join(' ').toLowerCase().includes(query.trim().toLowerCase())).sort((a, b) => filter === 'Active' ? b.updatedAt - a.updatedAt : b.createdAt - a.createdAt)
+  const topics = [...new Set([...questions.flatMap(question => question.tags), ...(tag ? [tag] : [])])].sort()
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -36,7 +36,7 @@ export default function Questions() {
         </label>
         <div className="flex flex-wrap items-center gap-2">
           <span className="mr-1 text-xs font-medium text-[var(--muted)]">Topics</span>
-          {[...new Set([...popularTags, ...(tag ? [tag] : [])])].map(value => <TagBadge key={value} tag={value} selected={tag === value} onSelect={selectTag} />)}
+          {topics.map(value => <TagBadge key={value} tag={value} selected={tag === value} onSelect={selectTag} />)}
           {tag && <button type="button" onClick={() => update('tag', '')} className="px-2 py-1 text-xs text-[var(--accent)]">Clear topic</button>}
         </div>
       </section>

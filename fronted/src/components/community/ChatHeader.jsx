@@ -12,11 +12,7 @@ export default function ChatHeader({ channel, member, onOpenChannels, onOpenMemb
         <p className="mt-1 text-xs leading-5 text-[var(--muted)] sm:text-sm">{channel ? channel.description : `Your direct conversation with ${member?.name || 'a community member'}`}</p>
         <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--muted)] sm:text-xs">
           {channel ? (
-            <>
-              <span className="inline-flex items-center gap-1.5"><Icon name="users" className="size-3" />{channel.memberCount.toLocaleString()} members</span>
-              <span aria-hidden="true" className="text-[var(--muted)]">•</span>
-              <span className="inline-flex items-center gap-1.5"><span className="size-1.5 rounded-full bg-[var(--success)]" />{channel.onlineCount.toLocaleString()} online</span>
-            </>
+            <span className="inline-flex items-center gap-1.5"><Icon name="users" className="size-3" />{channel.memberCount.toLocaleString()} members</span>
           ) : (
             <>
               <span className="inline-flex items-center gap-1.5"><span className={`size-1.5 rounded-full ${member?.online ? 'bg-[var(--success)]' : 'bg-[var(--subtle)]'}`} />{member?.online ? 'Online' : 'Offline'}</span>

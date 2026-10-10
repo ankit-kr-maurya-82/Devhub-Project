@@ -36,7 +36,6 @@ export default function Notifications() {
           </div>
         )}
       </div>
-      <p className="mt-4 text-sm leading-5 text-[var(--muted)]">Sample activity. Changes reset when you refresh.</p>
     </div>
   )
 }
