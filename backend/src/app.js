@@ -14,11 +14,15 @@ const getAllowedOrigins = () => {
     .map((origin) => origin.trim())
     .filter(Boolean);
 
-  // The API and Swagger UI share an origin in local development. Never add
-  // this implicit local origin in production; production uses CLIENT_ORIGIN only.
+  // Allow the default Vite frontend and API/Swagger UI origins in local
+  // development. Never add these implicit local origins in production.
   if (process.env.NODE_ENV !== "production") {
     const port = process.env.PORT || "4000";
-    configuredOrigins.push(`http://localhost:${port}`);
+    configuredOrigins.push(
+      `http://localhost:${port}`,
+      "http://localhost:5173",
+      "http://127.0.0.1:5173",
+    );
   }
 
   return new Set(configuredOrigins);

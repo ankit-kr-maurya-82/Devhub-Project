@@ -149,6 +149,12 @@ describe("HTTP API integration with mocked persistence", () => {
 
   it("allows configured frontend origins and rejects other browser origins", async () => {
     await withEnvironment({ NODE_ENV: "development", CLIENT_ORIGIN: "https://frontend.example.test" }, async () => {
+      for (const origin of ["http://localhost:5173", "http://127.0.0.1:5173"]) {
+        const localFrontend = await requestFromOrigin(origin);
+        expect(localFrontend.status).toBe(200);
+        expect(localFrontend.headers.get("access-control-allow-origin")).toBe(origin);
+      }
+
       const allowed = await requestFromOrigin("https://frontend.example.test");
       expect(allowed.status).toBe(200);
       expect(allowed.headers.get("access-control-allow-origin")).toBe("https://frontend.example.test");
@@ -187,6 +193,8 @@ describe("HTTP API integration with mocked persistence", () => {
       const productionOrigin = await requestFromOrigin("https://production.example.test");
       expect(productionOrigin.status).toBe(200);
       expect(productionOrigin.headers.get("access-control-allow-origin")).toBe("https://production.example.test");
+      const localFrontend = await requestFromOrigin("http://localhost:5173");
+      expect(localFrontend.status).toBe(403);
       const localOrigin = await requestFromOrigin("http://localhost:4000");
       expect(localOrigin.status).toBe(403);
     });
