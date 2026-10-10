@@ -14,7 +14,8 @@
     "dev": "nodemon -r dotenv/config --experimental-json-modules src/index.js",
     "start": "node src/index.js",
     "vercel-start": "node src/index.js",
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "test:socket:integration": "node --test test/integration/socket-multiuser.test.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
