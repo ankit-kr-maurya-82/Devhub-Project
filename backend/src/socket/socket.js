@@ -11,9 +11,20 @@ const validPayloadRoomId = (payload) => payload && typeof payload === "object" &
 const isMember = (room, userId) => room?.members.some((member) => member.equals(userId));
 const replyPopulate = { path: "replyTo", select: "_id content sender isDeleted", populate: { path: "sender", select: "name username avatar" } };
 
+const getCookieToken = (cookieHeader = "") => {
+  for (const part of cookieHeader.split(";")) {
+    const separator = part.indexOf("=");
+    if (separator < 0 || part.slice(0, separator).trim() !== "token") continue;
+    try { return decodeURIComponent(part.slice(separator + 1).trim()); }
+    catch { return ""; }
+  }
+  return "";
+};
+
 const initializeSocket = (httpServer) => {
   const allowedOrigins = (process.env.CLIENT_ORIGIN || "").split(",").map((origin) => origin.trim()).filter(Boolean);
-  const io = new Server(httpServer, { cors: { origin: allowedOrigins, credentials: true } });
+  if (process.env.NODE_ENV !== "production") allowedOrigins.push("http://localhost:5173", "http://127.0.0.1:5173");
+  const io = new Server(httpServer, { cors: { origin: [...new Set(allowedOrigins)], credentials: true } });
   const presenceUpdates = new Map();
 
   const savePresence = (userId, online) => {
@@ -55,7 +66,7 @@ const initializeSocket = (httpServer) => {
 
   io.use(async (socket, next) => {
     try {
-      const token = socket.handshake.auth?.token;
+      const token = socket.handshake.auth?.token || getCookieToken(socket.handshake.headers.cookie);
       if (typeof token !== "string" || !token || !process.env.JWT_SECRET) return next(new Error("Authentication required"));
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       if (typeof decoded.userId !== "string" || !mongoose.isValidObjectId(decoded.userId)) return next(new Error("Invalid authentication token"));

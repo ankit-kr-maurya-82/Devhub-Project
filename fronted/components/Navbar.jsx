@@ -1,11 +1,12 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import Icon from './Icon'
 import SearchBar from './SearchBar'
 import NotificationBell from '../src/components/notifications/NotificationBell.jsx'
 import { useMockSession } from '../src/state/useMockSession.js'
 
 export default function Navbar({ menuOpen, onMenuToggle, menuButtonRef, showWorkspaceMenu = false }) {
-  const { theme, toggleTheme } = useMockSession()
+  const { theme, toggleTheme, user, logout } = useMockSession()
+  const navigate = useNavigate()
 
   return (
     <header className="sticky top-0 z-30 border-b border-[var(--border)] bg-[var(--surface)]">
@@ -16,8 +17,7 @@ export default function Navbar({ menuOpen, onMenuToggle, menuButtonRef, showWork
         <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
           <button type="button" onClick={toggleTheme} aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} className="flex size-11 items-center justify-center rounded-lg text-[var(--muted)] hover:bg-[var(--surface-raised)]"><Icon name={theme === 'dark' ? 'sun' : 'moon'} /></button>
           <NotificationBell />
-          <Link to="/login" className="hidden rounded-lg px-3 py-3 text-sm font-medium text-[var(--muted)] hover:bg-[var(--surface-raised)] sm:block">Log in</Link>
-          <Link to="/register" className="ui-button hidden sm:inline-flex">Create account</Link>
+          {user ? <><Link to="/profile" className="hidden max-w-36 truncate rounded-lg px-3 py-3 text-sm font-medium text-[var(--text)] hover:bg-[var(--surface-raised)] sm:block">{user.username || user.name || 'My profile'}</Link><button type="button" onClick={async () => { try { await logout(); navigate('/login') } catch (error) { console.error('Logout failed', error) } }} className="hidden rounded-lg px-3 py-3 text-sm font-medium text-[var(--muted)] hover:bg-[var(--surface-raised)] sm:block">Log out</button></> : <><Link to="/login" className="hidden rounded-lg px-3 py-3 text-sm font-medium text-[var(--muted)] hover:bg-[var(--surface-raised)] sm:block">Log in</Link><Link to="/register" className="ui-button hidden sm:inline-flex">Create account</Link></>}
         </div>
       </div>
       <div className="px-4 pb-3 md:hidden"><SearchBar /></div>

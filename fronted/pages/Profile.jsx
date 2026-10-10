@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import ActivityFeed from '../components/ActivityFeed'
 import Achievements from '../components/Achievements'
@@ -6,6 +6,7 @@ import ContributionOverview from '../components/ContributionOverview'
 import Icon from '../components/Icon'
 import CodingProfileStats from '../components/coding/CodingProfileStats'
 import { developer, developerStats, formatDeveloperDate, profileAnswers, profileBlogs, profileQuestions } from '../data/developer'
+import { useMockSession } from '../src/state/useMockSession.js'
 
 const tabs = ['Overview', 'Questions', 'Answers', 'Blogs', 'Activity']
 const postLists = { questions: profileQuestions, answers: profileAnswers, blogs: profileBlogs }
@@ -32,6 +33,13 @@ function PostList({ type }) {
 }
 
 export default function Profile() {
+  const { user, updateProfile } = useMockSession()
+  const profile = user || developer
+  const [editing, setEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
+  const [saveMessage, setSaveMessage] = useState('')
+  const [form, setForm] = useState(() => ({ name: user?.name || '', bio: user?.bio || '', skills: (user?.skills || []).join(', ') }))
   const [searchParams, setSearchParams] = useSearchParams()
   const tabRefs = useRef([])
   const requestedTab = searchParams.get('tab') || 'overview'
@@ -59,23 +67,40 @@ export default function Profile() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3"><Link to="/dashboard" className="rounded text-sm text-[var(--muted)] hover:text-[var(--accent)]">← Dashboard</Link><span className="rounded-full border border-[var(--border)] bg-[var(--accent-soft)] px-3 py-1.5 text-xs text-[var(--accent)]">Sample profile</span></div>
+      <div className="flex flex-wrap items-center justify-between gap-3"><Link to="/dashboard" className="rounded text-sm text-[var(--muted)] hover:text-[var(--accent)]">← Dashboard</Link><span className="rounded-full border border-[var(--border)] bg-[var(--accent-soft)] px-3 py-1.5 text-xs text-[var(--accent)]">{user ? 'Your DevHub profile' : 'Sign in to view your account profile'}</span></div>
       <header className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 sm:p-7">
         <div className="flex flex-wrap items-start justify-between gap-5">
           <div className="flex min-w-0 items-center gap-4">
-            <div role="img" aria-label={`${developer.name}'s avatar`} className="flex size-16 shrink-0 items-center justify-center rounded-full bg-[var(--accent-soft)] text-xl font-semibold text-[var(--accent)]">{developer.initials}</div>
-            <div className="min-w-0"><h1 className="break-words">{developer.name}</h1><p className="mt-1 break-words text-sm text-[var(--muted)]">@{developer.username}</p></div>
+            <div role="img" aria-label={`${profile.name || profile.username}'s avatar`} className="flex size-16 shrink-0 items-center justify-center rounded-full bg-[var(--accent-soft)] text-xl font-semibold text-[var(--accent)]">{(profile.name || profile.username || 'D').slice(0, 1).toUpperCase()}</div>
+            <div className="min-w-0"><h1 className="break-words">{profile.name || profile.username || 'Developer'}</h1><p className="mt-1 break-words text-sm text-[var(--muted)]">@{profile.username}</p></div>
           </div>
-          <div className="text-left sm:text-right"><p className="text-xl font-semibold tabular-nums">{reputation.toLocaleString('en-US')}</p><p className="text-xs text-[var(--muted)]">Reputation</p></div>
+          <div className="flex items-center gap-4"><div className="text-left sm:text-right"><p className="text-xl font-semibold tabular-nums">{(user?.reputation ?? reputation).toLocaleString('en-US')}</p><p className="text-xs text-[var(--muted)]">Reputation</p></div>{user && <button type="button" onClick={() => { setEditing(value => !value); setSaveError(''); setSaveMessage('') }} className="ui-button-secondary">{editing ? 'Cancel edit' : 'Edit profile'}</button>}</div>
         </div>
-        <p className="mt-5 text-sm font-medium">{developer.role}</p>
-        <p className="mt-2 max-w-2xl text-sm leading-7 text-[var(--muted)]">{developer.bio}</p>
+        <p className="mt-5 text-sm font-medium">{user?.email || developer.role}</p>
+        <p className="mt-2 max-w-2xl text-sm leading-7 text-[var(--muted)]">{profile.bio || (user ? 'Add a short bio to tell the community about yourself.' : developer.bio)}</p>
         <ul className="mt-5 flex flex-wrap gap-x-6 gap-y-3 text-xs text-[var(--muted)]">
           <li className="flex items-center gap-2"><Icon name="home" className="size-4" />{developer.location || 'Location not added'}</li>
           <li className="flex items-center gap-2"><Icon name="code" className="size-4" />{developer.github || 'GitHub not connected'}</li>
           <li className="flex items-center gap-2"><Icon name="clock" className="size-4" />Joined {developer.joined}</li>
         </ul>
       </header>
+
+      {editing && user && <form onSubmit={async event => {
+        event.preventDefault(); setSaving(true); setSaveError(''); setSaveMessage('')
+        try {
+          await updateProfile({ name: form.name.trim(), bio: form.bio.trim(), skills: form.skills.split(',').map(skill => skill.trim()).filter(Boolean) })
+          setSaveMessage('Profile updated.')
+          setEditing(false)
+        } catch (error) { setSaveError(error.message) }
+        finally { setSaving(false) }
+      }} className="space-y-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 sm:p-6">
+        <label className="block text-sm font-medium">Display name<input maxLength={100} value={form.name} onChange={event => setForm(current => ({ ...current, name: event.target.value }))} className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--page)] px-3 py-2" /></label>
+        <label className="block text-sm font-medium">Bio<textarea maxLength={300} rows={3} value={form.bio} onChange={event => setForm(current => ({ ...current, bio: event.target.value }))} className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--page)] px-3 py-2" /></label>
+        <label className="block text-sm font-medium">Skills, comma separated<input maxLength={1200} value={form.skills} onChange={event => setForm(current => ({ ...current, skills: event.target.value }))} className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--page)] px-3 py-2" /></label>
+        {saveError && <p role="alert" className="text-sm text-[var(--danger)]">{saveError}</p>}
+        <button disabled={saving} className="ui-button disabled:opacity-60">{saving ? 'Saving…' : 'Save profile'}</button>
+      </form>}
+      {saveMessage && <p role="status" className="text-sm text-[var(--success)]">{saveMessage}</p>}
 
       <div role="tablist" aria-label="Developer profile sections" className="flex gap-1 overflow-x-auto border-b border-[var(--border)] px-1 py-1">
         {tabs.map((tab, index) => {

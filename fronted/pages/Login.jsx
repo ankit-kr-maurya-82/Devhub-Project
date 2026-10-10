@@ -1,22 +1,28 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import AuthField from '../components/AuthField'
 import AuthLayout from '../layouts/AuthLayout'
+import { useMockSession } from '../src/state/useMockSession.js'
 
 export default function Login() {
   const [form, setForm] = useState({ email: '', password: '', rememberMe: false })
   const [errors, setErrors] = useState({})
   const [submitted, setSubmitted] = useState(false)
-  const [showResetInfo, setShowResetInfo] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [serverError, setServerError] = useState('')
+  const navigate = useNavigate()
+  const location = useLocation()
+  const { login } = useMockSession()
 
   const updateField = event => {
     const { name, value, type, checked } = event.target
     setForm(current => ({ ...current, [name]: type === 'checkbox' ? checked : value }))
     setErrors(current => ({ ...current, [name]: undefined }))
     setSubmitted(false)
+    setServerError('')
   }
 
-  const submit = event => {
+  const submit = async event => {
     event.preventDefault()
     const nextErrors = {}
     if (!form.email.trim()) nextErrors.email = 'Enter your email address.'
@@ -30,8 +36,16 @@ export default function Login() {
       event.currentTarget.elements.namedItem(firstInvalidField)?.focus()
       return
     }
-    setSubmitted(true)
-    setShowResetInfo(false)
+    setSubmitting(true)
+    try {
+      await login({ email: form.email.trim(), password: form.password })
+      setSubmitted(true)
+      navigate(location.state?.from || '/dashboard', { replace: true })
+    } catch (error) {
+      setServerError(error.message)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -45,19 +59,17 @@ export default function Login() {
             <input type="checkbox" name="rememberMe" checked={form.rememberMe} onChange={updateField} className="size-4 cursor-pointer rounded border-[var(--border)] accent-[var(--primary)]" />
             Remember me
           </label>
-          <button type="button" onClick={() => setShowResetInfo(visible => !visible)} aria-expanded={showResetInfo} aria-controls="password-reset-info" className="min-h-11 rounded text-sm font-medium text-[var(--accent)] transition-colors hover:text-[var(--accent)]">
+          <Link to="/forgot-password" className="min-h-11 rounded py-3 text-sm font-medium text-[var(--accent)] transition-colors hover:text-[var(--accent)]">
             Forgot password?
-          </button>
-        </div>
-        <div id="password-reset-info" hidden={!showResetInfo}>
-          {showResetInfo && <p role="status" className="rounded-xl border border-[var(--border)] bg-[var(--accent-soft)] p-4 text-sm leading-6 text-[var(--accent)]">Password reset isn’t available in this preview yet.</p>}
+          </Link>
         </div>
 
-        <button type="submit" className="flex min-h-12 w-full items-center justify-center gap-3 rounded-xl bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--primary-hover)] active:bg-[var(--primary-hover)]">
-          Log in
+        <button type="submit" disabled={submitting} className="flex min-h-12 w-full items-center justify-center gap-3 rounded-xl bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--primary-hover)] active:bg-[var(--primary-hover)] disabled:opacity-60">
+          {submitting ? 'Logging in…' : 'Log in'}
         </button>
         <div role="status" aria-atomic="true">
-          {submitted && <p className="rounded-xl border border-[var(--border)] bg-[var(--surface-raised)] p-4 text-sm leading-6 text-[var(--success)]">Your details look good. Sign-in isn’t available in this preview yet.</p>}
+          {serverError && <p role="alert" className="mb-3 rounded-xl border border-[var(--border)] bg-[var(--surface-raised)] p-4 text-sm leading-6 text-[var(--danger)]">{serverError}</p>}
+          {submitted && <p className="rounded-xl border border-[var(--border)] bg-[var(--surface-raised)] p-4 text-sm leading-6 text-[var(--success)]">Signed in successfully.</p>}
         </div>
       </form>
 

@@ -1,21 +1,28 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import AuthField from '../components/AuthField'
 import AuthLayout from '../layouts/AuthLayout'
+import { useMockSession } from '../src/state/useMockSession.js'
 
 export default function Register() {
   const [form, setForm] = useState({ fullName: '', username: '', email: '', password: '', confirmPassword: '' })
   const [errors, setErrors] = useState({})
   const [submitted, setSubmitted] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [serverError, setServerError] = useState('')
+  const navigate = useNavigate()
+  const location = useLocation()
+  const { register } = useMockSession()
 
   const updateField = event => {
     const { name, value } = event.target
     setForm(current => ({ ...current, [name]: value }))
     setErrors(current => ({ ...current, [name]: undefined, ...(name === 'password' ? { confirmPassword: undefined } : {}) }))
     setSubmitted(false)
+    setServerError('')
   }
 
-  const submit = event => {
+  const submit = async event => {
     event.preventDefault()
     const nextErrors = {}
     if (form.fullName.trim().length < 2) nextErrors.fullName = 'Enter your name using at least 2 characters.'
@@ -33,7 +40,16 @@ export default function Register() {
       event.currentTarget.elements.namedItem(firstInvalidField)?.focus()
       return
     }
-    setSubmitted(true)
+    setSubmitting(true)
+    try {
+      await register({ name: form.fullName.trim(), username: form.username.trim(), email: form.email.trim(), password: form.password })
+      setSubmitted(true)
+      navigate(location.state?.from || '/dashboard', { replace: true })
+    } catch (error) {
+      setServerError(error.message)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -45,11 +61,12 @@ export default function Register() {
         <AuthField id="register-password" name="password" label="Password" type="password" autoComplete="new-password" minLength={8} placeholder="Create a password" hint="Use at least 8 characters." value={form.password} onChange={updateField} error={errors.password} />
         <AuthField id="register-confirm-password" name="confirmPassword" label="Confirm password" type="password" autoComplete="new-password" placeholder="Re-enter your password" value={form.confirmPassword} onChange={updateField} error={errors.confirmPassword} />
 
-        <button type="submit" className="mt-2 flex min-h-12 w-full items-center justify-center gap-3 rounded-xl bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--primary-hover)] active:bg-[var(--primary-hover)]">
-          Create account
+        <button type="submit" disabled={submitting} className="mt-2 flex min-h-12 w-full items-center justify-center gap-3 rounded-xl bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--primary-hover)] active:bg-[var(--primary-hover)] disabled:opacity-60">
+          {submitting ? 'Creating account…' : 'Create account'}
         </button>
         <div role="status" aria-atomic="true">
-          {submitted && <p className="rounded-xl border border-[var(--border)] bg-[var(--surface-raised)] p-4 text-sm leading-6 text-[var(--success)]">Your details look good. Account creation isn’t available in this preview yet.</p>}
+          {serverError && <p role="alert" className="mb-3 rounded-xl border border-[var(--border)] bg-[var(--surface-raised)] p-4 text-sm leading-6 text-[var(--danger)]">{serverError}</p>}
+          {submitted && <p className="rounded-xl border border-[var(--border)] bg-[var(--surface-raised)] p-4 text-sm leading-6 text-[var(--success)]">Account created successfully.</p>}
         </div>
       </form>
 

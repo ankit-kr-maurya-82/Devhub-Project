@@ -18,7 +18,7 @@ import User from "../models/user.model.js";
 
 
 const registerUser = async (req, res) => {
-    const { username, email, password } = req.body ?? {};
+    const { name, username, email, password } = req.body ?? {};
 
     try {
         if(typeof username !== "string" || typeof email !== "string" || typeof password !== "string" || !username.trim() || !email.trim() || password.length < 6 || password.length > 128 || username.length > 30 || email.length > 254){
@@ -40,6 +40,7 @@ const registerUser = async (req, res) => {
 
         // Create a new user
         const newUser = new User({
+            name: typeof name === "string" ? name.trim().slice(0, 100) : undefined,
             username,
             email,
             password: hashedPassword,
@@ -67,8 +68,14 @@ const registerUser = async (req, res) => {
             ...(process.env.NODE_ENV === "production" ? {} : { token }),
             user: {
                 id: newUser._id,
+                name: newUser.name,
                 username: newUser.username,
                 email: newUser.email,
+                role: newUser.role,
+                avatar: newUser.avatar,
+                bio: newUser.bio,
+                skills: newUser.skills,
+                reputation: newUser.reputation,
             },
 
         })
@@ -134,8 +141,14 @@ const loginUser = async(req,res) => {
             ...(process.env.NODE_ENV === "production" ? {} : { token }),
             user: {
                 id: user._id,
+                name: user.name,
                 username: user.username,
                 email: user.email,
+                role: user.role,
+                avatar: user.avatar,
+                bio: user.bio,
+                skills: user.skills,
+                reputation: user.reputation,
             },
         }); 
 
@@ -152,6 +165,21 @@ const logoutUser = (req, res) => {
     res.clearCookie("token");
     res.status(200).json({ message: "Logout successful." });
 };
+
+const getCurrentUser = (req, res) => res.status(200).json({
+    success: true,
+    data: {
+        id: req.user._id,
+        name: req.user.name,
+        username: req.user.username,
+        email: req.user.email,
+        avatar: req.user.avatar,
+        bio: req.user.bio,
+        skills: req.user.skills,
+        reputation: req.user.reputation,
+        role: req.user.role,
+    },
+});
 
 const hashResetToken = (token) =>
     createHash("sha256").update(token).digest("hex");
@@ -266,6 +294,7 @@ const resetPassword = async (req, res) => {
 export { 
     registerUser, 
     getDashboard,
+    getCurrentUser,
     loginUser,
     logoutUser,
     forgetPassword,

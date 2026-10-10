@@ -9,9 +9,12 @@ import NotificationProvider from './state/NotificationProvider.jsx'
 import Home from '../pages/Home.jsx'
 import ComingSoon from '../pages/ComingSoon.jsx'
 import NotFound from '../pages/NotFound.jsx'
+import RequireAuth from './components/RequireAuth.jsx'
 
 const Login = lazy(() => import('../pages/Login.jsx'))
 const Register = lazy(() => import('../pages/Register.jsx'))
+const ForgotPassword = lazy(() => import('../pages/ForgotPassword.jsx'))
+const ResetPassword = lazy(() => import('../pages/ResetPassword.jsx'))
 const Dashboard = lazy(() => import('../pages/Dashboard.jsx'))
 const Profile = lazy(() => import('../pages/Profile.jsx'))
 const Questions = lazy(() => import('../pages/Questions.jsx'))
@@ -40,21 +43,23 @@ function App() {
       <Routes>
         <Route path="/login" element={<PageBoundary key="login"><Login /></PageBoundary>} />
         <Route path="/register" element={<PageBoundary key="register"><Register /></PageBoundary>} />
+        <Route path="/forgot-password" element={<PageBoundary key="forgot-password"><ForgotPassword /></PageBoundary>} />
+        <Route path="/reset-password/:token" element={<PageBoundary key="reset-password"><ResetPassword /></PageBoundary>} />
         <Route element={<MainLayout />}>
           <Route path="/" element={<Home />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/profile" element={<Profile />} />
+          <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
+          <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
           <Route path="/questions" element={<Questions />} />
           <Route path="/questions/:id" element={<QuestionDetails />} />
-          <Route path="/ask-question" element={<AskQuestion />} />
+          <Route path="/ask-question" element={<RequireAuth><AskQuestion /></RequireAuth>} />
           <Route path="/blogs" element={<Blogs />} />
           <Route path="/blogs/:id" element={<BlogDetails />} />
           <Route path="/create-blog" element={<CreateBlog />} />
           <Route path="/coding" element={<CodingPractice />} />
           <Route path="/coding/problem/:id" element={<ProblemDetails />} />
           <Route path="/submissions" element={<Submissions />} />
-          <Route path="/community" element={<Community />} />
-          <Route path="/notifications" element={<Notifications />} />
+          <Route path="/community" element={<RequireAuth><Community /></RequireAuth>} />
+          <Route path="/notifications" element={<RequireAuth><Notifications /></RequireAuth>} />
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboard />} />
             <Route path="users" element={<ManageUsers />} />

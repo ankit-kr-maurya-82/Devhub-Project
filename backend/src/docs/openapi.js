@@ -8,7 +8,7 @@
  *       required: true
  *       content:
  *         application/json:
- *           schema: { type: object, required: [username, email, password], properties: { username: { type: string }, email: { type: string, format: email }, password: { type: string, format: password } } }
+ *           schema: { type: object, required: [username, email, password], properties: { name: { type: string, maxLength: 100 }, username: { type: string }, email: { type: string, format: email }, password: { type: string, format: password } } }
  *     responses:
  *       '201': { description: User registered; response contains message and user, and may include a development-only JWT token }
  *       '400': { description: Invalid or duplicate registration input }
@@ -26,6 +26,14 @@
  *       '200': { description: Login successful; sets the HttpOnly token cookie and returns message, optional development token, and user }
  *       '400': { description: Invalid credentials or input }
  *       '429': { $ref: '#/components/responses/RateLimited' }
+ * /api/v1/auth/me:
+ *   get:
+ *     tags: [Authentication]
+ *     summary: Get the authenticated user's account profile
+ *     security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+ *     responses:
+ *       '200': { description: Current user fields excluding password and secrets }
+ *       '401': { $ref: '#/components/responses/Unauthorized' }
  * /api/v1/auth/dashboard:
  *   get:
  *     tags: [Authentication]

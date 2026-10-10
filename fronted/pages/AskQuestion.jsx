@@ -18,22 +18,25 @@ export default function AskQuestion() {
   const [form, setForm] = useState({ title: '', description: '', code: '', tags: '' })
   const [preview, setPreview] = useState(false)
   const [errors, setErrors] = useState({})
+  const [serverError, setServerError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
   const tags = [...new Set(form.tags.split(',').map(tag => tag.trim()).filter(Boolean).map(tag => popularTags.find(value => value.toLowerCase() === tag.toLowerCase()) || tag.toLowerCase()))]
 
   const updateField = event => {
     const { name, value } = event.target
     setForm(current => ({ ...current, [name]: value }))
     setErrors(current => ({ ...current, [name]: undefined }))
+    setServerError('')
   }
   const togglePreview = () => {
     setPreview(!preview)
     requestAnimationFrame(() => (preview ? previewButton.current : previewRef.current)?.focus())
   }
-  const submit = event => {
+  const submit = async event => {
     event.preventDefault()
     const nextErrors = {}
     if (form.title.trim().length < 15 || form.title.length > 150) nextErrors.title = 'Use 15–150 characters for your title.'
-    if (form.description.trim().length < 30 || form.description.length > 15000) nextErrors.description = 'Write 30–15,000 characters describing the problem.'
+    if (form.description.trim().length < 30 || form.description.length > 10000) nextErrors.description = 'Write 30–10,000 characters describing the problem.'
     if (form.code.length > 15000) nextErrors.code = 'Keep your code example under 15,000 characters.'
     if (!tags.length || tags.length > 5 || tags.some(tag => tag.length > 25 || !/^[a-z0-9][a-z0-9.+#-]*$/i.test(tag))) nextErrors.tags = 'Use 1–5 tags with letters, numbers, dots, +, #, or hyphens. Up to 25 characters each.'
     setErrors(nextErrors)
@@ -42,8 +45,18 @@ export default function AskQuestion() {
       event.currentTarget.elements.namedItem(firstInvalidField)?.focus()
       return
     }
-    const id = postQuestion({ title: form.title.trim(), description: form.description.trim(), code: form.code.trim(), tags })
-    navigate(`/questions/${id}`)
+    setSubmitting(true)
+    try {
+      const description = form.code.trim()
+        ? `${form.description.trim()}\n\n\`\`\`\n${form.code.trim()}\n\`\`\``
+        : form.description.trim()
+      const id = await postQuestion({ title: form.title.trim(), description, tags })
+      navigate(`/questions/${id}`)
+    } catch (error) {
+      setServerError(error.message)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -66,9 +79,10 @@ export default function AskQuestion() {
             {field.name === 'tags' && <div className="mt-3 flex flex-wrap gap-2">{tags.map(tag => <span key={tag} className="max-w-full break-all rounded-md bg-[var(--accent-soft)] px-2 py-1 text-xs text-[var(--accent)]">{tag}</span>)}</div>}
           </div>
         })}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] pt-5"><button ref={previewButton} type="button" onClick={togglePreview} aria-expanded={preview} aria-controls={preview ? 'question-preview' : undefined} className="ui-button-secondary">{preview ? 'Hide preview' : 'Preview'}</button><button type="submit" className="ui-button">Post question</button></div>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] pt-5"><button ref={previewButton} type="button" onClick={togglePreview} aria-expanded={preview} aria-controls={preview ? 'question-preview' : undefined} className="ui-button-secondary">{preview ? 'Hide preview' : 'Preview'}</button><button type="submit" disabled={submitting} className="ui-button disabled:opacity-60">{submitting ? 'Posting…' : 'Post question'}</button></div>
+        {serverError && <p role="alert" className="text-sm text-[var(--danger)]">{serverError}</p>}
         {preview && <section ref={previewRef} tabIndex={-1} id="question-preview" aria-label="Question preview" className="min-w-0 space-y-4 rounded-xl border border-[var(--border)] bg-[var(--page)] p-5 outline-none"><p className="text-sm font-medium text-[var(--muted)]">Question preview</p><h2 className="break-words text-xl font-semibold">{form.title || 'Your question title'}</h2><QuestionContent body={form.description || 'Your description will appear here.'} code={form.code} /><div className="flex flex-wrap gap-2">{tags.map(tag => <span key={tag} className="max-w-full break-all text-xs text-[var(--accent)]">#{tag}</span>)}</div></section>}
-        <p className="text-xs text-[var(--muted)]">Demo: your question resets when you refresh the page.</p>
+        <p className="text-xs text-[var(--muted)]">Questions are saved to your DevHub account.</p>
       </form>
     </div>
   )

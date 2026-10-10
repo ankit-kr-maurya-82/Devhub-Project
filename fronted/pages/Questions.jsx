@@ -4,9 +4,11 @@ import TagBadge from '../components/TagBadge'
 import Icon from '../components/Icon'
 import { popularTags } from '../data/home'
 import { useQuestions } from '../hooks/useQuestions'
+import { useQuestionStatus } from '../hooks/useQuestions'
 
 export default function Questions() {
   const questions = useQuestions()
+  const { loading, error } = useQuestionStatus()
   const [params, setParams] = useSearchParams()
   const query = params.get('q') || ''
   const tag = params.get('tag') || ''
@@ -45,10 +47,12 @@ export default function Questions() {
             {['Newest', 'Active', 'Unanswered'].map(value => <button key={value} type="button" aria-pressed={filter === value} onClick={() => update('filter', value)} className={`rounded-md px-3 py-2 text-xs font-medium ${filter === value ? 'bg-[var(--surface)] text-[var(--accent)] shadow-sm' : 'text-[var(--muted)] hover:text-[var(--text)]'}`}>{value === 'Active' ? 'Recently active' : value}</button>)}
           </div>
         </div>
+        {loading && !questions.length && <p role="status" className="ui-card p-6 text-sm text-[var(--muted)]">Loading questions…</p>}
+        {error && <p role="alert" className="ui-card p-6 text-sm text-[var(--danger)]">Could not load questions: {error}</p>}
         {visible.map(question => <QuestionCard key={question.id} question={question} selectedTag={tag} onTagSelect={selectTag} />)}
-        {!visible.length && <div className="ui-card p-8 text-center"><h2 className="font-semibold">No questions found</h2><p className="mt-2 text-sm text-[var(--muted)]">Try a different search or clear the filters.</p><button type="button" onClick={() => setParams({})} className="ui-button-secondary mt-4">Clear filters</button></div>}
+        {!loading && !error && !visible.length && <div className="ui-card p-8 text-center"><h2 className="font-semibold">No questions found</h2><p className="mt-2 text-sm text-[var(--muted)]">Try a different search or clear the filters.</p><button type="button" onClick={() => setParams({})} className="ui-button-secondary mt-4">Clear filters</button></div>}
       </section>
-      <p className="text-xs leading-5 text-[var(--muted)]">Demo: new questions, answers, and votes reset when you refresh the page.</p>
+      <p className="text-xs leading-5 text-[var(--muted)]">Questions are loaded from the DevHub API.</p>
     </div>
   )
 }

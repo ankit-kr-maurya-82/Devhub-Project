@@ -7,7 +7,8 @@ import {
     loginUser,
     logoutUser,
     forgetPassword,
-    resetPassword
+    resetPassword,
+    getCurrentUser,
 } from "../controllers/auth.controller.js";
 
 const router = express.Router();
@@ -17,6 +18,7 @@ const resetLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 40, standardHe
 router.post("/register", authLimiter, registerUser);
 router.post("/login", authLimiter, loginUser);
 router.get("/dashboard", authMiddleware, getDashboard);
+router.get("/me", authMiddleware, getCurrentUser);
 router.get("/logout", logoutUser);
 router.post(["/forgot-password", "/forget-password"], resetLimiter, forgetPassword);
 router.post("/reset-password/:token", resetLimiter, resetPassword);
