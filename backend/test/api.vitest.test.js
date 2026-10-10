@@ -175,12 +175,40 @@ describe("HTTP API integration with mocked persistence", () => {
     });
     expect(accepted.status).toBe(200);
     expect(accepted.headers.get("set-cookie")).toMatch(/token=/);
+    const acceptedBody = await accepted.json();
+    expect(acceptedBody).not.toHaveProperty("password");
+    expect(JSON.stringify(acceptedBody)).not.toContain(secret);
 
     const denied = await jsonRequest("/api/v1/auth/login", {
       method: "POST", token: null, body: { email: "reader@example.invalid", password: "wrong" },
     });
     expect(denied.status).toBe(400);
     expect((await denied.json()).message).toMatch(/invalid/i);
+  });
+
+  it("logs out by clearing the authentication cookie", async () => {
+    const response = await jsonRequest("/api/v1/auth/logout", { method: "GET", token: null });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("set-cookie")).toMatch(/token=/);
+    expect(response.headers.get("set-cookie")).toMatch(/(Expires=Thu, 01 Jan 1970|Max-Age=0)/i);
+    expect(JSON.stringify(await response.json())).not.toContain(secret);
+  });
+
+  it("does not leak the configured JWT secret or submitted password during registration", async () => {
+    vi.spyOn(User, "findOne").mockResolvedValue(null);
+    vi.spyOn(User.prototype, "save").mockImplementation(async function save() { this._id = userId; });
+    const errorLog = vi.spyOn(console, "error").mockImplementation(() => {});
+    const password = "password-canary-not-for-response";
+    const response = await jsonRequest("/api/v1/auth/register", {
+      method: "POST", token: null,
+      body: { username: "private-reader", email: "private@example.invalid", password },
+    });
+    const responseText = await response.text();
+    expect(response.status).toBe(201);
+    expect(responseText).not.toContain(secret);
+    expect(responseText).not.toContain(password);
+    expect(errorLog.mock.calls.flat().join(" ")).not.toContain(secret);
+    expect(errorLog.mock.calls.flat().join(" ")).not.toContain(password);
   });
 
   it("requires a valid active-user JWT for protected routes", async () => {
@@ -217,6 +245,20 @@ describe("HTTP API integration with mocked persistence", () => {
     expect(User.findById.mock.results.at(-1).value.select).toHaveBeenCalledWith("name username bio avatar skills reputation isOnline lastSeen createdAt");
   });
 
+  it("updates only the authenticated user's profile and rejects body-supplied identity", async () => {
+    const updated = { _id: userId, name: "Updated Reader", username: "reader" };
+    const updateProfile = vi.spyOn(User, "findByIdAndUpdate").mockImplementation(() => makeQuery(updated));
+    const response = await jsonRequest("/api/v1/user/profile", { method: "PUT", body: { name: "Updated Reader" } });
+    expect(response.status).toBe(200);
+    expect(updateProfile).toHaveBeenCalledWith(userId, { name: "Updated Reader" }, { new: true, runValidators: true });
+
+    const spoofed = await jsonRequest("/api/v1/user/profile", {
+      method: "PUT", body: { name: "Someone else", userId: otherId },
+    });
+    expect(spoofed.status).toBe(400);
+    expect(updateProfile).toHaveBeenCalledTimes(1);
+  });
+
   it("rejects invalid IDs before question persistence and blocks edits by non-owners", async () => {
     const invalid = await jsonRequest("/api/v1/questions/invalid");
     expect(invalid.status).toBe(400);
@@ -226,6 +268,29 @@ describe("HTTP API integration with mocked persistence", () => {
       method: "PATCH", body: { title: "A replacement question title" },
     });
     expect(forbidden.status).toBe(403);
+  });
+
+  it("blocks question deletion by a non-owner", async () => {
+    const question = { _id: questionId, author: otherId, deleteOne: vi.fn() };
+    vi.spyOn(Question, "findById").mockResolvedValue(question);
+    const response = await jsonRequest(`/api/v1/questions/${questionId}`, { method: "DELETE" });
+    expect(response.status).toBe(403);
+    expect(question.deleteOne).not.toHaveBeenCalled();
+  });
+
+  it("blocks a non-owner from accepting an answer and confirms answer edit/delete routes are absent", async () => {
+    vi.spyOn(Question, "findById").mockResolvedValue({ _id: questionId, author: otherId });
+    const findAnswer = vi.spyOn(Answer, "findById");
+    const forbidden = await jsonRequest(`/api/v1/questions/${questionId}/answers/${answerId}/accept`, { method: "PATCH" });
+    expect(forbidden.status).toBe(403);
+    expect(findAnswer).not.toHaveBeenCalled();
+
+    const edit = await jsonRequest(`/api/v1/questions/${questionId}/answers/${answerId}`, {
+      method: "PATCH", body: { content: "Unauthorized edit" },
+    });
+    const remove = await jsonRequest(`/api/v1/questions/${questionId}/answers/${answerId}`, { method: "DELETE" });
+    expect(edit.status).toBe(404);
+    expect(remove.status).toBe(404);
   });
 
   it("creates questions with the authenticated user as author", async () => {
@@ -263,6 +328,7 @@ describe("HTTP API integration with mocked persistence", () => {
   it("rejects non-members from sending messages and does not trust sender IDs", async () => {
     vi.spyOn(Room, "findById").mockImplementation(() => makeQuery({
       _id: roomId,
+      isPublic: false,
       members: [{ equals: (id) => String(id) === otherId }],
     }));
     const createMessage = vi.spyOn(Message, "create");
@@ -271,6 +337,51 @@ describe("HTTP API integration with mocked persistence", () => {
     });
     expect(response.status).toBe(403);
     expect(createMessage).not.toHaveBeenCalled();
+  });
+
+  it("blocks non-owners from editing or deleting another member's message", async () => {
+    const message = {
+      _id: messageId,
+      room: roomId,
+      sender: { equals: (id) => String(id) === otherId },
+      isDeleted: false,
+      save: vi.fn(),
+    };
+    vi.spyOn(Message, "findById").mockResolvedValue(message);
+    vi.spyOn(Room, "findById").mockImplementation(() => makeQuery({
+      owner: { equals: (id) => String(id) === otherId },
+      members: [{ equals: (id) => String(id) === userId }],
+    }));
+
+    const edit = await jsonRequest(`/api/v1/messages/${messageId}`, {
+      method: "PATCH", body: { content: "Unauthorized edit" },
+    });
+    expect(edit.status).toBe(403);
+    const remove = await jsonRequest(`/api/v1/messages/${messageId}`, { method: "DELETE" });
+    expect(remove.status).toBe(403);
+    expect(message.save).not.toHaveBeenCalled();
+  });
+
+  it("prevents non-members from reading a private room", async () => {
+    const privateRoom = {
+      _id: roomId,
+      isPublic: false,
+      members: [{ _id: { equals: (id) => String(id) === otherId } }],
+      toObject() { return { _id: roomId, isPublic: false }; },
+    };
+    vi.spyOn(Room, "findById").mockImplementation(() => makeQuery(privateRoom));
+    const response = await jsonRequest(`/api/v1/rooms/${roomId}`);
+    expect(response.status).toBe(403);
+  });
+
+  it("rate limits password-reset requests", async () => {
+    let lastResponse;
+    for (let attempt = 0; attempt < 41; attempt += 1) {
+      lastResponse = await jsonRequest("/api/v1/auth/forgot-password", {
+        method: "POST", token: null, body: {},
+      });
+    }
+    expect(lastResponse.status).toBe(429);
   });
 
   it("returns validation errors for malformed question bodies", async () => {
