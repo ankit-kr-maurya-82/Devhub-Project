@@ -9,6 +9,7 @@ import Answer from "../src/models/answer.model.js";
 import Room from "../src/models/room.model.js";
 import Message from "../src/models/message.model.js";
 import Notification from "../src/models/notification.model.js";
+import { validateEnvironment } from "../src/config/env.js";
 
 const secret = "vitest-only-devhub-secret";
 const userId = "507f1f77bcf86cd799439011";
@@ -60,6 +61,51 @@ const makeQuery = (result) => {
   };
   return query;
 };
+
+describe("startup environment validation", () => {
+  const validDevelopmentEnv = {
+    NODE_ENV: "development",
+    MONGODB_URI: "mongodb://127.0.0.1:27017/devhub_test",
+    JWT_SECRET: "test-only-secret",
+  };
+
+  it("accepts the existing MONGODB_URI name and the MONGO_URI compatibility alias", () => {
+    expect(validateEnvironment(validDevelopmentEnv)).toMatchObject({
+      port: 4000,
+      mongoUri: validDevelopmentEnv.MONGODB_URI,
+    });
+    expect(validateEnvironment({
+      NODE_ENV: "development", MONGO_URI: "mongodb+srv://example.invalid/devhub", JWT_SECRET: "test",
+    }).mongoUri).toBe("mongodb+srv://example.invalid/devhub");
+  });
+
+  it("rejects invalid ports, MongoDB URI values, and conflicting URI aliases", () => {
+    for (const PORT of ["0", "65536", "4000abc", "1.5"]) {
+      expect(() => validateEnvironment({ ...validDevelopmentEnv, PORT })).toThrow(/PORT/);
+    }
+    expect(() => validateEnvironment({ ...validDevelopmentEnv, MONGODB_URI: "https://example.invalid" })).toThrow(/MONGODB_URI/);
+    expect(() => validateEnvironment({ ...validDevelopmentEnv, MONGODB_URI: "mongodb://" })).toThrow(/MONGODB_URI/);
+    expect(() => validateEnvironment({
+      ...validDevelopmentEnv, MONGO_URI: "mongodb://different.invalid/db",
+    })).toThrow(/Set only one/);
+  });
+
+  it("requires a production JWT secret and explicit non-wildcard origins", () => {
+    const base = {
+      ...validDevelopmentEnv,
+      NODE_ENV: "production",
+      JWT_SECRET: "production-test-secret-0123456789",
+      CLIENT_ORIGIN: "https://app.example.invalid,https://admin.example.invalid",
+    };
+    expect(validateEnvironment(base).allowedOrigins).toHaveLength(2);
+    expect(() => validateEnvironment({ ...base, JWT_SECRET: "short" })).toThrow(/JWT_SECRET/);
+    expect(() => validateEnvironment({ ...base, JWT_SECRET: "                                " })).toThrow(/JWT_SECRET/);
+    expect(() => validateEnvironment({ ...base, JWT_SECRET: "replace_with_a_long_random_secret" })).toThrow(/JWT_SECRET/);
+    expect(() => validateEnvironment({ ...base, CLIENT_ORIGIN: "" })).toThrow(/CLIENT_ORIGIN/);
+    expect(() => validateEnvironment({ ...base, CLIENT_ORIGIN: "*" })).toThrow(/CLIENT_ORIGIN/);
+    expect(() => validateEnvironment({ ...base, CLIENT_ORIGIN: "https://app.example.invalid/path" })).toThrow(/CLIENT_ORIGIN/);
+  });
+});
 
 beforeAll(async () => {
   process.env.JWT_SECRET = secret;
@@ -209,6 +255,22 @@ describe("HTTP API integration with mocked persistence", () => {
     expect(responseText).not.toContain(password);
     expect(errorLog.mock.calls.flat().join(" ")).not.toContain(secret);
     expect(errorLog.mock.calls.flat().join(" ")).not.toContain(password);
+  });
+
+  it("does not log credential-bearing database errors or include them in login responses", async () => {
+    const password = "login-password-canary";
+    vi.spyOn(User, "findOne").mockRejectedValue(new Error(`database failure with ${password} and ${secret}`));
+    const errorLog = vi.spyOn(console, "error").mockImplementation(() => {});
+    const response = await jsonRequest("/api/v1/auth/login", {
+      method: "POST", token: null, body: { email: "reader@example.invalid", password },
+    });
+    const responseText = await response.text();
+    const logText = errorLog.mock.calls.flat().join(" ");
+    expect(response.status).toBe(500);
+    expect(responseText).not.toContain(password);
+    expect(responseText).not.toContain(secret);
+    expect(logText).not.toContain(password);
+    expect(logText).not.toContain(secret);
   });
 
   it("requires a valid active-user JWT for protected routes", async () => {

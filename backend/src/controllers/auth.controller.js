@@ -77,8 +77,8 @@ const registerUser = async (req, res) => {
 
 
 
-    } catch (error) {
-        console.error("Error during user registration:", error);
+    } catch {
+        console.error("User registration failed.");
         res
             .status(500)
             .json({ message: "Server error during registration." });
@@ -139,8 +139,8 @@ const loginUser = async(req,res) => {
             },
         }); 
 
-    } catch (error) {
-        console.error("Error during user login:", error);
+    } catch {
+        console.error("User login failed.");
         res
             .status(500)
             .json({message: "Server error during login."});
@@ -198,8 +198,8 @@ const forgetPassword = async (req, res) => {
             message,
             ...(isDevelopment ? { resetToken, resetUrl } : {}),
         });
-    } catch (error) {
-        console.error("Error during forget password:", error);
+    } catch {
+        console.error("Password reset request failed.");
         return sendPasswordMessage(res, 500, "Server error during forget password.");
     }
 };
@@ -257,8 +257,8 @@ const resetPassword = async (req, res) => {
             return sendPasswordMessage(res, 400, invalidLinkMessage);
         }
         return res.status(200).json({ message: "Password reset successfully. Please log in." });
-    } catch (error) {
-        console.error("Error during reset password:", error);
+    } catch {
+        console.error("Password reset failed.");
         return sendPasswordMessage(res, 500, "Server error during password reset.");
     }
 };

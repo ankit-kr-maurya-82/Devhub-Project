@@ -10,7 +10,7 @@
  *         application/json:
  *           schema: { type: object, required: [username, email, password], properties: { username: { type: string }, email: { type: string, format: email }, password: { type: string, format: password } } }
  *     responses:
- *       '201': { description: User registered; response contains message and user }
+ *       '201': { description: User registered; response contains message and user, and may include a development-only JWT token }
  *       '400': { description: Invalid or duplicate registration input }
  *       '429': { $ref: '#/components/responses/RateLimited' }
  * /api/v1/auth/login:
