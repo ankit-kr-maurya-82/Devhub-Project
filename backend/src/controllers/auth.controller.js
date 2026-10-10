@@ -32,10 +32,10 @@ const getRegisterPage = (req, res) => {
 
 
 const registerUser = async (req, res) => {
-    const { username, email, password } = req.body;
+    const { username, email, password } = req.body ?? {};
 
     try {
-        if(!username || !email || !password){
+        if(typeof username !== "string" || typeof email !== "string" || typeof password !== "string" || !username.trim() || !email.trim() || password.length < 6 || password.length > 128 || username.length > 30 || email.length > 254){
             return res
                 .status(400)
                 .json({ message: "Username, email, and password are required." });
@@ -70,9 +70,15 @@ const registerUser = async (req, res) => {
             process.env.JWT_SECRET,
             { expiresIn: "1h" }
         );
+        res.cookie("token", token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            maxAge: 60 * 60 * 1000,
+        });
         res.status(201).json({
             message: "User registered successfully.",
-            token,
+            ...(process.env.NODE_ENV === "production" ? {} : { token }),
             user: {
                 id: newUser._id,
                 username: newUser.username,
@@ -95,10 +101,10 @@ const registerUser = async (req, res) => {
 
 
 const loginUser = async(req,res) => {
-    const {email, password} = req.body;
+    const {email, password} = req.body ?? {};
 
     try{
-        if(!email || !password){
+        if(typeof email !== "string" || typeof password !== "string" || !email.trim() || !password || password.length > 128){
             return res
                 .status(400)
                 .json({message: "Email and password are required."});
@@ -139,7 +145,7 @@ const loginUser = async(req,res) => {
 
         res.status(200).json({
             message: "Login successful.",
-            token,
+            ...(process.env.NODE_ENV === "production" ? {} : { token }),
             user: {
                 id: user._id,
                 username: user.username,
@@ -224,7 +230,7 @@ const forgetPassword = async (req, res) => {
         const user = await User.findOne({ email: email.trim().toLowerCase() });
         if (!user) {
             return sendPasswordMessage(
-                req, res, 400, "forgot-password", "User with this email does not exist."
+                req, res, 200, "forgot-password", "If an account exists for that email, password reset instructions will be available shortly."
             );
         }
 

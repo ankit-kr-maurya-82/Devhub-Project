@@ -9,7 +9,7 @@ const authorFields = "name username avatar reputation";
 const createAnswer = async (req, res) => {
   try {
     const { questionId } = req.params;
-    const { content } = req.body;
+    const { content } = req.body ?? {};
 
     if (!mongoose.Types.ObjectId.isValid(questionId)) {
       return res.status(400).json({
@@ -18,7 +18,7 @@ const createAnswer = async (req, res) => {
       });
     }
 
-    if (typeof content !== "string" || !content.trim()) {
+    if (typeof content !== "string" || !content.trim() || content.trim().length > 10000) {
       return res.status(400).json({
         success: false,
         message: "Answer content is required",

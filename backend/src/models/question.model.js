@@ -6,6 +6,7 @@ const questionSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      maxlength: 10000,
       minlength: 10,
       maxlength: 200,
     },

@@ -87,6 +87,8 @@ const editMessage = async (req, res) => {
     if (!content || content.length > 2000) return res.status(400).json({ success: false, message: "Message content must be between 1 and 2000 characters" });
     const message = await Message.findById(messageId);
     if (!message) return res.status(404).json({ success: false, message: "Message not found" });
+    const room = await Room.findById(message.room).select("members");
+    if (!room || !room.members.some((member) => member.equals(req.user._id))) return res.status(403).json({ success: false, message: "Only room members can edit messages" });
     if (!message.sender.equals(req.user._id)) return res.status(403).json({ success: false, message: "You can only edit your own messages" });
     if (message.isDeleted) return res.status(400).json({ success: false, message: "Deleted messages cannot be edited" });
     message.content = content;
@@ -108,8 +110,9 @@ const deleteMessage = async (req, res) => {
     if (!mongoose.isValidObjectId(messageId)) return res.status(400).json({ success: false, message: "Invalid message ID" });
     const message = await Message.findById(messageId);
     if (!message) return res.status(404).json({ success: false, message: "Message not found" });
-    const room = await Room.findById(message.room).select("owner");
+    const room = await Room.findById(message.room).select("owner members");
     if (!room) return res.status(404).json({ success: false, message: "Room not found" });
+    if (!room.members.some((member) => member.equals(req.user._id))) return res.status(403).json({ success: false, message: "Only room members can delete messages" });
     if (!message.sender.equals(req.user._id) && !room.owner.equals(req.user._id)) return res.status(403).json({ success: false, message: "You are not allowed to delete this message" });
     if (!message.isDeleted) {
       message.isDeleted = true;

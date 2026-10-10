@@ -6,7 +6,7 @@ import { authMiddleware } from "../middlewares/auth.middleware.js";
 const router = express.Router();
 router.get("/", getRooms);
 router.post("/", authMiddleware, createRoom);
-router.get("/:roomId", getRoomById);
+router.get("/:roomId", authMiddleware, getRoomById);
 router.post("/:roomId/join", authMiddleware, joinRoom);
 router.post("/:roomId/leave", authMiddleware, leaveRoom);
 router.post("/:roomId/messages", authMiddleware, createMessage);

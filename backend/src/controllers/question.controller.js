@@ -13,9 +13,9 @@ const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const createQuestion = async (req, res) => {
   try {
-    const { title, description, tags } = req.body;
+    const { title, description, tags } = req.body ?? {};
 
-    if (!title || !description) {
+    if (typeof title !== "string" || title.trim().length < 10 || title.trim().length > 200 || typeof description !== "string" || !description.trim() || description.trim().length > 10000 || (tags !== undefined && (!Array.isArray(tags) || tags.length > 10 || tags.some((tag) => typeof tag !== "string" || tag.length > 30)))) {
       return res.status(400).json({
         success: false,
         message: "Title and description are required",
@@ -23,8 +23,8 @@ const createQuestion = async (req, res) => {
     }
 
     const question = await Question.create({
-      title,
-      description,
+      title: title.trim(),
+      description: description.trim(),
       tags: normalizeTags(tags),
       author: req.user._id,
     });
@@ -129,10 +129,10 @@ const getQuestionById = async (req, res) => {
     try{
         const {questionId} = req.params;
 
-        if(!questionId){
+        if(!mongoose.isValidObjectId(questionId)){
             return res.status(400).json({
                 success: false,
-                message: "Question ID is required"
+                message: "Invalid question ID"
             });
         }
 
@@ -175,22 +175,29 @@ const updateQuestion = async(req,res)=>{
     try{
         const {questionId} = req.params;
 
-        if(!questionId){
+        if(!mongoose.isValidObjectId(questionId)){
             return res.status(400).json({
                 success: false,
                 message: "Question ID is required"
             });
         }
 
+        const existing = await Question.findById(questionId);
+        if (!existing) return res.status(404).json({ success: false, message: "Question not found" });
+        if (existing.author.toString() !== req.user._id.toString()) return res.status(403).json({ success: false, message: "You are not allowed to update this question" });
+
         const {title, description, tags} = req.body;
 
+        if (req.body && Object.keys(req.body).some((key) => !["title", "description", "tags"].includes(key))) return res.status(400).json({ success: false, message: "Only title, description, and tags can be updated" });
         const updateData = {};
         
-        if(title) updateData.title = title;
-        if(description) updateData.description = description;
+        if (title !== undefined) { if (typeof title !== "string" || !title.trim() || title.trim().length > 200) return res.status(400).json({ success: false, message: "Invalid title" }); updateData.title = title.trim(); }
+        if (description !== undefined) { if (typeof description !== "string" || !description.trim() || description.trim().length > 10000) return res.status(400).json({ success: false, message: "Invalid description" }); updateData.description = description.trim(); }
         if(tags !== undefined) updateData.tags = normalizeTags(tags);
 
 
+        if (tags !== undefined && (!Array.isArray(tags) || tags.length > 10 || tags.some((tag) => typeof tag !== "string" || tag.length > 30))) return res.status(400).json({ success: false, message: "Invalid tags" });
+        if (!Object.keys(updateData).length) return res.status(400).json({ success: false, message: "No fields provided for update" });
         const question = await Question.findByIdAndUpdate(
             questionId,
             updateData,

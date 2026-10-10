@@ -6,6 +6,7 @@ const answerSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      maxlength: 10000,
     },
     author: {
       type: mongoose.Schema.Types.ObjectId,

@@ -2,7 +2,11 @@ import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
 import cookieParser from "cookie-parser";
-import { handleJsonParseError } from "./middlewares/error.middleware.js";
+import helmet from "helmet";
+import cors from "cors";
+import { handleJsonParseError, handleError } from "./middlewares/error.middleware.js";
+
+const allowedOrigins = (process.env.CLIENT_ORIGIN || "").split(",").map((origin) => origin.trim()).filter(Boolean);
 
 const app = express();
 
@@ -12,7 +16,15 @@ const __dirname = path.dirname(__filename);
 app.set("view engine", "pug");
 app.set("views", path.join(__dirname, "../src/views"));
 
-app.use(express.json());
+app.disable("x-powered-by");
+app.use(helmet());
+app.use(cors({ origin(origin, callback) {
+  if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+  const error = new Error("Origin not allowed");
+  error.status = 403;
+  return callback(error);
+}, credentials: true }));
+app.use(express.json({ limit: "32kb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(
@@ -37,6 +49,7 @@ import presenceRoutes from "./routes/presence.routes.js";
 import messageRoutes from "./routes/message.routes.js";
 
 app.use(`/api/v1/auth`, authRoutes);
+app.use("/", authRoutes);
 app.use(`/api/v1/user`, userRoutes);
 app.use("/api/v1/users", presenceRoutes);
 app.use(handleJsonParseError);
@@ -47,6 +60,7 @@ app.use("/api/v1", commentRoutes);
 app.use("/api/v1/notifications", notificationRoutes);
 app.use("/api/v1/rooms", roomRoutes);
 app.use("/api/v1/messages", messageRoutes);
+app.use(handleError);
 
 
 export  {app};

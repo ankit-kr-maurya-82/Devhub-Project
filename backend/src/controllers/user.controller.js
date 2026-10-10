@@ -1,10 +1,12 @@
 import User from "../models/user.model.js";
+import mongoose from "mongoose";
 
 const getProfile = async (req, res) => {
     try {
+        if (!mongoose.isValidObjectId(req.params.userId)) return res.status(400).json({ success: false, message: "Invalid user ID" });
         const user = await User.findById(
             req.params.userId
-        ).select("-password");
+        ).select("name username bio avatar skills reputation isOnline lastSeen createdAt");
 
         if (!user) {
             return res.status(404).json({
@@ -30,7 +32,13 @@ const getProfile = async (req, res) => {
 
 const updateProfile = async (req, res) => {
   try {
-    const { name, username, bio, avatar, skills } = req.body;
+    const { name, username, bio, avatar, skills } = req.body ?? {};
+    if (Object.keys(req.body ?? {}).some((key) => !["name", "username", "bio", "avatar", "skills"].includes(key))) return res.status(400).json({ success: false, message: "Unsupported profile field" });
+    for (const [value, max, label] of [[name, 100, "name"], [username, 30, "username"], [bio, 300, "bio"], [avatar, 2048, "avatar"]]) {
+      if (value !== undefined && (typeof value !== "string" || value.length > max)) return res.status(400).json({ success: false, message: `Invalid ${label}` });
+    }
+    if (username !== undefined && !/^[a-zA-Z0-9_]+$/.test(username)) return res.status(400).json({ success: false, message: "Invalid username" });
+    if (skills !== undefined && (!Array.isArray(skills) || skills.length > 30 || skills.some((skill) => typeof skill !== "string" || !skill.trim() || skill.length > 40))) return res.status(400).json({ success: false, message: "Invalid skills" });
 
     const updateData = {};
 

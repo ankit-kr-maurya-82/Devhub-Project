@@ -12,7 +12,8 @@ const isMember = (room, userId) => room?.members.some((member) => member.equals(
 const replyPopulate = { path: "replyTo", select: "_id content sender isDeleted", populate: { path: "sender", select: "name username avatar" } };
 
 const initializeSocket = (httpServer) => {
-  const io = new Server(httpServer, { cors: { origin: process.env.CLIENT_ORIGIN?.split(",") ?? true, credentials: true } });
+  const allowedOrigins = (process.env.CLIENT_ORIGIN || "").split(",").map((origin) => origin.trim()).filter(Boolean);
+  const io = new Server(httpServer, { cors: { origin: allowedOrigins, credentials: true } });
   const presenceUpdates = new Map();
 
   const savePresence = (userId, online) => {
@@ -79,7 +80,16 @@ const initializeSocket = (httpServer) => {
       if (!isMember(room, socket.user._id)) return { error: "You are not a member of this room" };
       return { room };
     };
+    const eventTimes = [];
+    const allowEvent = () => {
+      const now = Date.now();
+      while (eventTimes.length && eventTimes[0] <= now - 10_000) eventTimes.shift();
+      if (eventTimes.length >= 40) return false;
+      eventTimes.push(now);
+      return true;
+    };
     const guard = (handler) => async (payload) => {
+      if (!allowEvent()) return emitSocketError(socket, "Too many events. Please slow down.");
       try { await handler(payload); }
       catch (error) { console.error("Socket event error:", error); emitSocketError(socket, "Unable to complete socket event"); }
     };
@@ -134,6 +144,8 @@ const initializeSocket = (httpServer) => {
       if (!content || content.length > 2000) return emitSocketError(socket, "Message content must be between 1 and 2000 characters");
       const message = await Message.findById(payload.messageId);
       if (!message) return emitSocketError(socket, "Message not found");
+      const room = await Room.findById(message.room).select("members");
+      if (!room || !isMember(room, socket.user._id)) return emitSocketError(socket, "You are not a member of this room");
       if (!message.sender.equals(socket.user._id)) return emitSocketError(socket, "You can only edit your own messages");
       if (message.isDeleted) return emitSocketError(socket, "Deleted messages cannot be edited");
       message.content = content;
@@ -148,8 +160,9 @@ const initializeSocket = (httpServer) => {
       if (!payload || typeof payload.messageId !== "string" || !mongoose.isValidObjectId(payload.messageId)) return emitSocketError(socket, "A valid messageId is required");
       const message = await Message.findById(payload.messageId);
       if (!message) return emitSocketError(socket, "Message not found");
-      const room = await Room.findById(message.room).select("owner");
+      const room = await Room.findById(message.room).select("owner members");
       if (!room) return emitSocketError(socket, "Room not found");
+      if (!isMember(room, socket.user._id)) return emitSocketError(socket, "You are not a member of this room");
       if (!message.sender.equals(socket.user._id) && !room.owner.equals(socket.user._id)) return emitSocketError(socket, "You are not allowed to delete this message");
       if (!message.isDeleted) {
         message.isDeleted = true;

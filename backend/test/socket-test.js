@@ -1,6 +1,7 @@
 import { io } from "socket.io-client";
 
-const TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2YWMzZWRiNTQ1ZDg3MzYxMDMxMjQ0OTAiLCJ1c2VybmFtZSI6ImRrbSIsImlhdCI6MTc5MTM2NjA5OSwiZXhwIjoxNzkxMzY5Njk5fQ.msFyedCPGftk_giqFaYK-TYy6PijijyplWeRW8uum1A"; // Replace with your actual JWT token
+const TOKEN = process.env.JWT_TOKEN;
+if (!TOKEN) throw new Error("Set JWT_TOKEN in the environment before running this manual Socket.IO test.");
 const ROOM_ID = "6ac60014a2bc1bbe19594c55";
 const MESSAGE_ID = "REPLACE_WITH_MESSAGE_ID";
 

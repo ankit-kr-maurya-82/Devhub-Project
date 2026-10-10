@@ -28,7 +28,7 @@ const authMiddleware = async(req,res,next)=>{
             token,
             process.env.JWT_SECRET
         )
-        console.log("Decoded token:", decoded);
+        if (!decoded || typeof decoded.userId !== "string" || !/^[a-f\d]{24}$/i.test(decoded.userId)) return rejectAuthentication();
 
         const user = await User.findById(decoded.userId).select("-password");
 

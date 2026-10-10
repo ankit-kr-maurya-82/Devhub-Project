@@ -72,6 +72,7 @@ const getRoomById = async (req, res) => {
     if (!mongoose.isValidObjectId(roomId)) return res.status(400).json({ success: false, message: "Invalid room ID" });
     const room = await safeRoom(Room.findById(roomId));
     if (!room) return res.status(404).json({ success: false, message: "Room not found" });
+    if (!room.isPublic && !room.members.some((member) => member._id.equals(req.user._id))) return res.status(403).json({ success: false, message: "You are not a member of this room" });
     return res.status(200).json({ success: true, data: { ...room.toObject(), memberCount: room.members.length } });
   } catch (error) {
     console.error("Get Room Error:", error);
