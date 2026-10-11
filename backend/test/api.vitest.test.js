@@ -376,6 +376,19 @@ describe("HTTP API integration with mocked persistence", () => {
     expect(question.deleteOne).not.toHaveBeenCalled();
   });
 
+  it("allows the question owner to update and delete their question", async () => {
+    const question = { _id: questionId, author: userId, deleteOne: vi.fn().mockResolvedValue(undefined) };
+    vi.spyOn(Question, "findById").mockResolvedValue(question);
+    const updated = { _id: questionId, author: userId, title: "Updated question title" };
+    vi.spyOn(Question, "findByIdAndUpdate").mockReturnValue({ populate: vi.fn().mockResolvedValue(updated) });
+    const edit = await jsonRequest(`/api/v1/questions/${questionId}`, { method: "PATCH", body: { title: "Updated question title" } });
+    expect(edit.status).toBe(200);
+    expect(Question.findByIdAndUpdate).toHaveBeenCalledWith(questionId, { title: "Updated question title" }, { new: true, runValidators: true });
+    const remove = await jsonRequest(`/api/v1/questions/${questionId}`, { method: "DELETE" });
+    expect(remove.status).toBe(200);
+    expect(question.deleteOne).toHaveBeenCalledOnce();
+  });
+
   it("blocks a non-owner from accepting an answer and confirms answer edit/delete routes are absent", async () => {
     vi.spyOn(Question, "findById").mockResolvedValue({ _id: questionId, author: otherId });
     const findAnswer = vi.spyOn(Answer, "findById");
@@ -549,6 +562,24 @@ describe("HTTP API integration with mocked persistence", () => {
     expect(Notification.create).toHaveBeenCalledWith(expect.objectContaining({ recipient: otherId, sender: userId, relatedComment: commentId }));
   });
 
+  it("enforces comment ownership for update and delete operations", async () => {
+    const foreign = { _id: commentId, author: otherId, content: "Original", save: vi.fn(), deleteOne: vi.fn() };
+    const own = { _id: commentId, author: userId, content: "Original", save: vi.fn().mockResolvedValue(undefined), deleteOne: vi.fn().mockResolvedValue(undefined), populate: vi.fn().mockResolvedValue(undefined) };
+    vi.spyOn(Comment, "findById").mockResolvedValueOnce(foreign).mockResolvedValueOnce(own).mockResolvedValueOnce(foreign).mockResolvedValueOnce(own);
+    const foreignEdit = await jsonRequest(`/api/v1/comments/${commentId}`, { method: "PATCH", body: { content: "Unauthorized edit" } });
+    expect(foreignEdit.status).toBe(403);
+    expect(foreign.save).not.toHaveBeenCalled();
+    const ownEdit = await jsonRequest(`/api/v1/comments/${commentId}`, { method: "PATCH", body: { content: "Updated comment" } });
+    expect(ownEdit.status).toBe(200);
+    expect(own.content).toBe("Updated comment");
+    const foreignDelete = await jsonRequest(`/api/v1/comments/${commentId}`, { method: "DELETE" });
+    expect(foreignDelete.status).toBe(403);
+    expect(foreign.deleteOne).not.toHaveBeenCalled();
+    const ownDelete = await jsonRequest(`/api/v1/comments/${commentId}`, { method: "DELETE" });
+    expect(ownDelete.status).toBe(200);
+    expect(own.deleteOne).toHaveBeenCalledOnce();
+  });
+
   it("scopes notification listing and read updates to the authenticated recipient", async () => {
     vi.spyOn(Notification, "find").mockReturnValue(makeQuery([]));
     vi.spyOn(Notification, "countDocuments").mockResolvedValue(0);
@@ -567,6 +598,9 @@ describe("HTTP API integration with mocked persistence", () => {
     const publicList = await jsonRequest("/api/v1/coding/problems?difficulty=easy");
     expect(publicList.status).toBe(200);
     expect(CodingProblem.find).toHaveBeenCalledWith({ status: "published", difficulty: "easy" });
+    vi.spyOn(CodingProblem, "findOne").mockResolvedValue(null);
+    const unpublished = await jsonRequest("/api/v1/coding/problems/draft-problem");
+    expect(unpublished.status).toBe(404);
     const create = vi.spyOn(CodingProblem, "create");
     const denied = await jsonRequest("/api/v1/coding/problems", { method: "POST", body: { title: "A valid problem", description: "A sufficiently long problem description.", difficulty: "easy" } });
     expect(denied.status).toBe(403);
@@ -583,6 +617,7 @@ describe("HTTP API integration with mocked persistence", () => {
     const submitted = await jsonRequest("/api/v1/coding/problems/two-sum/submissions", { method: "POST", body: { language: "javascript", sourceCode: "return 2", user: otherId } });
     expect(submitted.status).toBe(201);
     expect(Submission.create).toHaveBeenCalledWith(expect.objectContaining({ problem: problemId, user: userId, language: "javascript", verdict: "unavailable" }));
+    expect(await submitted.json()).not.toHaveProperty("data.sourceCode");
 
     const historyQuery = makeQuery([]);
     const historyFind = vi.spyOn(Submission, "find").mockReturnValue(historyQuery);
@@ -603,6 +638,22 @@ describe("HTTP API integration with mocked persistence", () => {
     const malformed = await jsonRequest("/api/v1/admin/reports/not-an-id", { method: "PATCH", body: { action: "hide" } });
     expect(malformed.status).toBe(400);
     expect(Report.findById).not.toHaveBeenCalled();
+  });
+
+  it("creates reports for existing targets using the authenticated reporter and validates payloads", async () => {
+    vi.spyOn(Blog, "findById").mockReturnValue({ select: vi.fn().mockResolvedValue({ _id: blogId }) });
+    const created = { _id: reportId, status: "open", createdAt: new Date() };
+    const create = vi.spyOn(Report, "create").mockResolvedValue(created);
+    const valid = await jsonRequest("/api/v1/reports", {
+      method: "POST", body: { targetType: "blog", targetId: blogId, reason: "spam", details: "Repeated promotional content" },
+    });
+    expect(valid.status).toBe(201);
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({ reporter: userId, targetType: "blog", targetId: blogId, reason: "spam" }));
+    const invalid = await jsonRequest("/api/v1/reports", {
+      method: "POST", body: { targetType: "blog", targetId: blogId, reason: "spam", reporter: otherId },
+    });
+    expect(invalid.status).toBe(400);
+    expect(create).toHaveBeenCalledOnce();
   });
 
   it("returns pending on a failed moderation write and resumes the same journaled action over HTTP", async () => {
