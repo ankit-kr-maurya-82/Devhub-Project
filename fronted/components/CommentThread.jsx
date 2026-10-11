@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../src/lib/api.js'
 import { useMockSession } from '../src/state/useMockSession.js'
@@ -15,16 +15,22 @@ export default function CommentThread({ targetType, targetId }) {
   const listComments = targetType === 'Question' ? api.comments.questionList : api.comments.answerList
   const addComment = targetType === 'Question' ? api.comments.addQuestion : api.comments.addAnswer
 
-  const refresh = useCallback(async () => {
-    try {
-      const result = await listComments(targetId)
-      setComments(result.data)
-      setError('')
-    } catch (requestError) { setError(requestError.message) }
-    finally { setLoading(false) }
+  useEffect(() => {
+    let active = true
+    listComments(targetId)
+      .then(result => {
+        if (!active) return
+        setComments(result.data)
+        setError('')
+      })
+      .catch(requestError => {
+        if (active) setError(requestError.message)
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => { active = false }
   }, [listComments, targetId])
-
-  useEffect(() => { refresh() }, [refresh])
 
   async function submit(event) {
     event.preventDefault()
