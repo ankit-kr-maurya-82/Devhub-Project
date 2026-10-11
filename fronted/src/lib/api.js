@@ -44,6 +44,15 @@ export const api = {
     acceptAnswer: (questionId, answerId) => request(`/questions/${encodeURIComponent(questionId)}/answers/${encodeURIComponent(answerId)}/accept`, { method: 'PATCH' }),
     voteAnswer: (id, voteType) => request(`/answers/${encodeURIComponent(id)}/vote`, { method: 'POST', body: { voteType } }),
   },
+  blogs: {
+    list: params => request(`/blogs${params ? `?${new URLSearchParams(params)}` : ''}`),
+    mine: params => request(`/blogs/mine${params ? `?${new URLSearchParams(params)}` : ''}`),
+    mineGet: slug => request(`/blogs/mine/${encodeURIComponent(slug)}`),
+    get: slug => request(`/blogs/${encodeURIComponent(slug)}`),
+    create: details => request('/blogs', { method: 'POST', body: details }),
+    update: (slug, details) => request(`/blogs/${encodeURIComponent(slug)}`, { method: 'PATCH', body: details }),
+    remove: slug => request(`/blogs/${encodeURIComponent(slug)}`, { method: 'DELETE' }),
+  },
   comments: {
     questionList: id => request(`/questions/${encodeURIComponent(id)}/comments`),
     addQuestion: (id, content) => request(`/questions/${encodeURIComponent(id)}/comments`, { method: 'POST', body: { content } }),

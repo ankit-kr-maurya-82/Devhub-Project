@@ -1,5 +1,19 @@
-// Blog data is unavailable until a persistent backend API is connected.
-export function useBlogs() { return [] }
-export async function publishBlog() { throw new Error('Blog publishing is not available yet.') }
-export async function addBlogComment() { throw new Error('Blog comments are not available yet.') }
-export async function toggleBlogLike() { throw new Error('Blog likes are not available yet.') }
+import api from '../src/lib/api.js'
+import { markdownToText, readingTime } from '../data/blogs.js'
+
+export function mapBlog(blog) {
+  return {
+    ...blog,
+    id: blog.slug,
+    authorId: String(blog.author?._id || blog.author || ''),
+    author: blog.author?.username || blog.author?.name || 'DevHub member',
+    description: markdownToText(blog.content).slice(0, 220),
+    readingTime: readingTime(blog.content),
+    category: blog.tags?.[0] || 'Community',
+    icon: 'code',
+    accent: 'violet',
+    tags: blog.tags || [],
+  }
+}
+
+export const blogApi = api.blogs

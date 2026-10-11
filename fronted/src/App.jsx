@@ -19,6 +19,9 @@ const Questions = lazy(() => import('../pages/Questions.jsx'))
 const QuestionDetails = lazy(() => import('../pages/QuestionDetails.jsx'))
 const AskQuestion = lazy(() => import('../pages/AskQuestion.jsx'))
 const FeatureUnavailable = lazy(() => import('../pages/FeatureUnavailable.jsx'))
+const Blogs = lazy(() => import('../pages/Blogs.jsx'))
+const BlogDetails = lazy(() => import('../pages/BlogDetails.jsx'))
+const CreateBlog = lazy(() => import('../pages/CreateBlog.jsx'))
 const Community = lazy(() => import('./pages/Community.jsx'))
 const Notifications = lazy(() => import('./pages/Notifications.jsx'))
 
@@ -39,9 +42,10 @@ function App() {
               <Route path="/questions" element={<Questions />} />
               <Route path="/questions/:id" element={<QuestionDetails />} />
               <Route path="/ask-question" element={<RequireAuth><AskQuestion /></RequireAuth>} />
-              <Route path="/blogs" element={<FeatureUnavailable title="Blogs" description="Blog publishing and reading are not connected to a persistent API yet." />} />
-              <Route path="/blogs/:id" element={<FeatureUnavailable title="Blog" description="Blog publishing and reading are not connected to a persistent API yet." />} />
-              <Route path="/create-blog" element={<FeatureUnavailable title="Write a blog" description="Blog publishing is not connected to a persistent API yet." />} />
+              <Route path="/blogs" element={<Blogs />} />
+              <Route path="/blogs/:slug/edit" element={<RequireAuth><CreateBlog /></RequireAuth>} />
+              <Route path="/blogs/:slug" element={<BlogDetails />} />
+              <Route path="/create-blog" element={<RequireAuth><CreateBlog /></RequireAuth>} />
               <Route path="/coding" element={<FeatureUnavailable title="Coding practice" description="Problem and submission data are not connected to a persistent API yet." />} />
               <Route path="/coding/problem/:id" element={<FeatureUnavailable title="Coding problem" description="Problem and submission data are not connected to a persistent API yet." />} />
               <Route path="/submissions" element={<RequireAuth><FeatureUnavailable title="Submissions" description="Problem submissions are not stored by the backend yet." /></RequireAuth>} />

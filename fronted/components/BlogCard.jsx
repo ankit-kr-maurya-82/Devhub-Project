@@ -30,10 +30,6 @@ export default function BlogCard({ blog, selectedTag, onTagSelect }) {
           <p className="break-words font-medium text-[var(--text)]">{blog.author}</p>
           <time dateTime={blog.publishedAt} className="text-[var(--muted)]">{formatBlogDate(blog.publishedAt)}</time>
         </div>
-        <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-[var(--muted)]">
-          <span className="flex items-center gap-1.5"><Icon name="heart" className={`size-3.5 ${blog.liked ? 'fill-current text-[var(--accent)]' : ''}`} />{blog.likes} likes</span>
-          <Link to={`/blogs/${blog.id}#comments`} className="flex items-center gap-1.5 hover:text-[var(--accent)]"><Icon name="message" className="size-3.5" />{blog.comments.length} comments</Link>
-        </div>
       </div>
     </article>
   )

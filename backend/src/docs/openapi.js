@@ -1,5 +1,92 @@
 /**
  * @swagger
+ * /api/v1/blogs:
+ *   get:
+ *     tags: [Blogs]
+ *     summary: List published blogs with pagination, search, and tag filtering
+ *     parameters:
+ *       - { in: query, name: page, schema: { type: integer, minimum: 1 } }
+ *       - { in: query, name: limit, schema: { type: integer, minimum: 1, maximum: 50 } }
+ *       - { in: query, name: search, schema: { type: string, maxLength: 100 } }
+ *       - { in: query, name: tag, schema: { type: string, maxLength: 30 } }
+ *     responses:
+ *       '200': { description: Published blog page and pagination metadata }
+ *       '400': { $ref: '#/components/responses/BadRequest' }
+ *   post:
+ *     tags: [Blogs]
+ *     summary: Create an authenticated user's blog
+ *     security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { type: object, required: [title, content], properties: { title: { type: string, minLength: 5, maxLength: 180 }, slug: { type: string, pattern: '^[a-z0-9]+(-[a-z0-9]+)*$' }, content: { type: string, minLength: 20, maxLength: 40000 }, tags: { type: array, maxItems: 10, items: { type: string, maxLength: 30 } }, status: { type: string, enum: [draft, published] } } }
+ *     responses:
+ *       '201': { description: Blog created; author is taken from the authenticated account }
+ *       '400': { $ref: '#/components/responses/BadRequest' }
+ *       '401': { $ref: '#/components/responses/Unauthorized' }
+ *       '409': { description: Slug already exists }
+ * /api/v1/blogs/mine:
+ *   get:
+ *     tags: [Blogs]
+ *     summary: List the authenticated user's blogs, including drafts
+ *     security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+ *     parameters:
+ *       - { in: query, name: page, schema: { type: integer, minimum: 1 } }
+ *       - { in: query, name: limit, schema: { type: integer, minimum: 1, maximum: 50 } }
+ *     responses:
+ *       '200': { description: Owner's blog page }
+ *       '401': { $ref: '#/components/responses/Unauthorized' }
+ * /api/v1/blogs/mine/{slug}:
+ *   get:
+ *     tags: [Blogs]
+ *     summary: Get one of the authenticated user's blogs, including drafts
+ *     security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+ *     parameters:
+ *       - { in: path, name: slug, required: true, schema: { type: string } }
+ *     responses:
+ *       '200': { description: Owner's blog }
+ *       '401': { $ref: '#/components/responses/Unauthorized' }
+ *       '404': { description: Blog not found for this owner }
+ * /api/v1/blogs/{slug}:
+ *   get:
+ *     tags: [Blogs]
+ *     summary: Get a published blog by slug
+ *     parameters:
+ *       - { in: path, name: slug, required: true, schema: { type: string } }
+ *     responses:
+ *       '200': { description: Published blog }
+ *       '404': { description: Published blog not found }
+ *   patch:
+ *     tags: [Blogs]
+ *     summary: Update an owned blog
+ *     security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+ *     parameters:
+ *       - { in: path, name: slug, required: true, schema: { type: string } }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { type: object, properties: { title: { type: string, minLength: 5, maxLength: 180 }, slug: { type: string }, content: { type: string, minLength: 20, maxLength: 40000 }, tags: { type: array, maxItems: 10, items: { type: string, maxLength: 30 } }, status: { type: string, enum: [draft, published] } } }
+ *     responses:
+ *       '200': { description: Blog updated }
+ *       '400': { $ref: '#/components/responses/BadRequest' }
+ *       '401': { $ref: '#/components/responses/Unauthorized' }
+ *       '403': { description: Blog belongs to another author }
+ *       '409': { description: Slug already exists }
+ *   delete:
+ *     tags: [Blogs]
+ *     summary: Delete an owned blog
+ *     security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+ *     parameters:
+ *       - { in: path, name: slug, required: true, schema: { type: string } }
+ *     responses:
+ *       '200': { description: Blog deleted }
+ *       '401': { $ref: '#/components/responses/Unauthorized' }
+ *       '403': { description: Blog belongs to another author }
+ *       '404': { description: Blog not found }
+ *
+ * @swagger
  * /api/v1/auth/register:
  *   post:
  *     tags: [Authentication]
@@ -564,7 +651,7 @@ const options = {
     tags: [
       { name: "Authentication" }, { name: "Users" }, { name: "Questions" },
       { name: "Answers" }, { name: "Comments" }, { name: "Notifications" },
-      { name: "Rooms" }, { name: "Messages" },
+      { name: "Rooms" }, { name: "Messages" }, { name: "Blogs" },
     ],
   },
   apis: [fileURLToPath(new URL("./openapi.js", import.meta.url))],

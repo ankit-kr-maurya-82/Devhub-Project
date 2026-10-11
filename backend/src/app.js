@@ -81,6 +81,7 @@ import notificationRoutes from "./routes/notification.routes.js";
 import roomRoutes from "./routes/room.routes.js";
 import presenceRoutes from "./routes/presence.routes.js";
 import messageRoutes from "./routes/message.routes.js";
+import blogRoutes from "./routes/blog.routes.js";
 
 app.use(`/api/v1/auth`, authRoutes);
 app.use(`/api/v1/user`, userRoutes);
@@ -93,6 +94,7 @@ app.use("/api/v1", commentRoutes);
 app.use("/api/v1/notifications", notificationRoutes);
 app.use("/api/v1/rooms", roomRoutes);
 app.use("/api/v1/messages", messageRoutes);
+app.use("/api/v1/blogs", blogRoutes);
 app.use(handleError);
 
 
