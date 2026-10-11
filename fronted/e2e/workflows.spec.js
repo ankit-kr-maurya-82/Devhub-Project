@@ -8,6 +8,7 @@ const adminEmail = process.env.E2E_ADMIN_EMAIL
 const adminPassword = process.env.E2E_ADMIN_PASSWORD
 const apiBase = process.env.E2E_API_URL ? new URL('/api/v1/', process.env.E2E_API_URL).toString().replace(/\/$/, '') : ''
 const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`
+const createdBlogSlug = title => title.toLowerCase().replaceAll(' ', '-')
 
 test.beforeEach(async ({ context }) => {
   if (!enabled) return
@@ -48,10 +49,25 @@ async function removeOwnedBlog(page, slug) {
   expect([200, 204, 404]).toContain(response.status())
 }
 
+async function removeOwnedComment(page, id) {
+  if (!id) return
+  const response = await page.request.delete(`${apiBase}/comments/${encodeURIComponent(id)}`)
+  expect([200, 204, 404]).toContain(response.status())
+}
+
 async function removeAdminProblem(page, slug) {
   if (!slug) return
   const response = await page.request.delete(`${apiBase}/coding/problems/${encodeURIComponent(slug)}`)
   expect([200, 204, 404]).toContain(response.status())
+}
+
+async function cleanupAll(actions) {
+  const errors = []
+  for (const action of actions) {
+    try { await action() }
+    catch (error) { errors.push(error) }
+  }
+  if (errors.length) throw new AggregateError(errors, 'One or more E2E cleanup actions failed.')
 }
 
 test('registration and login validation; login persists in an HttpOnly cookie and logout protects pages', async ({ page, context }) => {
@@ -92,11 +108,13 @@ test('unauthenticated requests cannot create or mutate protected resources', asy
   for (const response of responses) expect(response.status()).toBe(401)
 })
 
-test('question owner can create a question, vote, and manage their comment', async ({ page }) => {
-  test.skip(!userEmail || !userPassword, 'Dedicated E2E user credentials are not configured.')
+test('question owner can create a question and manage their comment while another account votes', async ({ page }) => {
+  test.skip(!userEmail || !userPassword || !adminEmail || !adminPassword, 'Dedicated ordinary and second-account credentials are required for ownership and voting checks.')
   await login(page)
   const title = `E2E question ${runId}`
   let questionId
+  let commentId
+  let voteRecorded = false
 
   try {
     await page.goto('/ask-question')
@@ -107,15 +125,27 @@ test('question owner can create a question, vote, and manage their comment', asy
     await page.getByRole('button', { name: 'Post question', exact: true }).click()
     const created = await (await createResponse).json()
     questionId = created.data?._id || created.data?.id
+    expect(questionId, 'the test must capture the created question ID for scoped cleanup').toBeTruthy()
     await expect(page.getByRole('heading', { name: title })).toBeVisible()
 
+    await page.getByRole('button', { name: 'Log out', exact: true }).click()
+    await login(page, adminEmail, adminPassword)
     const voteResponse = page.waitForResponse(response => response.request().method() === 'POST' && /\/vote$/.test(response.url()))
     await page.getByRole('button', { name: 'Upvote question' }).click()
-    expect((await voteResponse).ok()).toBe(true)
+    const voteResult = await voteResponse
+    expect(voteResult.ok()).toBe(true)
+    voteRecorded = true
+
+    await page.getByRole('button', { name: 'Log out', exact: true }).click()
+    await login(page)
 
     const comment = `E2E comment ${runId}`
+    const commentResponse = page.waitForResponse(response => response.request().method() === 'POST' && new RegExp(`/questions/${questionId}/comments$`).test(new URL(response.url()).pathname))
     await page.getByRole('textbox', { name: 'Add a comment' }).fill(comment)
     await page.getByRole('button', { name: 'Comment', exact: true }).click()
+    const createdComment = await (await commentResponse).json()
+    commentId = createdComment.data?._id || createdComment.data?.id
+    expect(commentId, 'the test must capture the created comment ID for scoped cleanup').toBeTruthy()
     const commentRow = page.locator('article').filter({ hasText: comment }).last()
     await expect(commentRow).toBeVisible()
     await commentRow.getByRole('button', { name: 'Edit', exact: true }).click()
@@ -126,7 +156,28 @@ test('question owner can create a question, vote, and manage their comment', asy
     await updatedRow.getByRole('button', { name: 'Delete', exact: true }).click()
     await expect(page.getByText(`${comment} updated`, { exact: true })).toHaveCount(0)
   } finally {
-    await removeOwnedQuestion(page, questionId)
+    await cleanupAll([
+      async () => {
+        if (commentId) {
+          await login(page)
+          await removeOwnedComment(page, commentId)
+        }
+      },
+      async () => {
+        if (voteRecorded && questionId) {
+          await login(page, adminEmail, adminPassword)
+          const response = await page.request.post(`${apiBase}/questions/${encodeURIComponent(questionId)}/vote`, { data: { voteType: 'upvote' } })
+          expect(response.status()).toBe(200)
+          expect((await response.json()).message).toBe('Vote removed')
+        }
+      },
+      async () => {
+        if (questionId) {
+          await login(page)
+          await removeOwnedQuestion(page, questionId)
+        }
+      },
+    ])
   }
 })
 
@@ -134,7 +185,8 @@ test('published blog browsing and owner draft, publish, edit, and delete flow', 
   test.skip(!userEmail || !userPassword, 'Dedicated E2E user credentials are not configured.')
   await login(page)
   const title = `E2E blog ${runId}`
-  const slug = title.toLowerCase().replaceAll(' ', '-')
+  let slug = createdBlogSlug(title)
+  let blogCreated = false
 
   try {
     await page.goto('/blogs')
@@ -144,7 +196,13 @@ test('published blog browsing and owner draft, publish, edit, and delete flow', 
     await page.getByLabel('Tags, comma separated').fill('e2e')
     await page.getByLabel('Content', { exact: true }).fill(`Disposable E2E content ${runId} to verify publication visibility and owner operations.`)
     await page.getByLabel('Publication').selectOption('draft')
+    const creationResponse = page.waitForResponse(response => response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith('/api/v1/blogs'))
     await page.getByRole('button', { name: 'Save blog' }).click()
+    const createdResponse = await creationResponse
+    expect(createdResponse.status()).toBe(201)
+    const createdBlog = await createdResponse.json()
+    slug = createdBlog.data?.slug || slug
+    blogCreated = true
     await expect(page).toHaveURL(new RegExp(`/blogs/${slug}/edit$`))
 
     await page.getByRole('button', { name: 'Log out', exact: true }).click()
@@ -166,7 +224,12 @@ test('published blog browsing and owner draft, publish, edit, and delete flow', 
     await page.getByRole('alertdialog').getByRole('button', { name: 'Delete blog' }).click()
     await expect(page).toHaveURL(/\/create-blog$/)
   } finally {
-    await removeOwnedBlog(page, slug)
+    if (blogCreated) {
+      await cleanupAll([async () => {
+        await login(page)
+        await removeOwnedBlog(page, slug)
+      }])
+    }
   }
 })
 
@@ -201,9 +264,11 @@ test('regular users are denied admin screens and admin APIs; admin can review re
   await page.getByRole('button', { name: 'Log out', exact: true }).click()
   await login(page, adminEmail, adminPassword)
   const blogTitle = `E2E reported blog ${runId}`
-  const blogSlug = blogTitle.toLowerCase().replaceAll(' ', '-')
+  const blogSlug = createdBlogSlug(blogTitle)
   const problemTitle = `E2E admin problem ${runId}`
   const problemSlug = problemTitle.toLowerCase().replaceAll(' ', '-')
+  let blogCreated = false
+  let problemCreated = false
 
   try {
     await page.goto('/create-blog')
@@ -211,7 +276,11 @@ test('regular users are denied admin screens and admin APIs; admin can review re
     await page.getByLabel('Tags, comma separated').fill('e2e')
     await page.getByLabel('Content', { exact: true }).fill(`Test-only report fixture ${runId}; safe to remove after this run.`)
     await page.getByLabel('Publication').selectOption('published')
+    const blogCreation = page.waitForResponse(response => response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith('/api/v1/blogs'))
     await page.getByRole('button', { name: 'Save blog' }).click()
+    const blogResponse = await blogCreation
+    expect(blogResponse.status()).toBe(201)
+    blogCreated = true
     await expect(page).toHaveURL(new RegExp(`/blogs/${blogSlug}$`))
 
     await page.getByRole('button', { name: 'Log out', exact: true }).click()
@@ -251,7 +320,11 @@ test('regular users are denied admin screens and admin APIs; admin can review re
     await page.getByLabel('Title', { exact: true }).fill(problemTitle)
     await page.getByLabel('Slug', { exact: true }).fill(problemSlug)
     await page.getByLabel('Description', { exact: true }).fill(`Disposable administrator E2E problem description ${runId}.`)
+    const problemCreation = page.waitForResponse(response => response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith('/api/v1/coding/problems'))
     await page.getByRole('button', { name: 'Create problem', exact: true }).click()
+    const problemResponse = await problemCreation
+    expect(problemResponse.status()).toBe(201)
+    problemCreated = true
     const problemRow = page.locator('li').filter({ hasText: problemTitle })
     await expect(problemRow).toBeVisible()
     page.once('dialog', dialog => dialog.accept())
@@ -259,17 +332,21 @@ test('regular users are denied admin screens and admin APIs; admin can review re
     await expect(problemRow).toHaveCount(0)
   } finally {
     await login(page, adminEmail, adminPassword)
-    const usersResponse = await page.request.get(`${apiBase}/admin/users?search=${encodeURIComponent(userEmail)}`)
-    if (usersResponse.ok()) {
-      const userResult = await usersResponse.json()
-      const testUser = userResult.data?.find(user => user.email === userEmail)
-      if (testUser && !testUser.isActive) {
-        const restoreResponse = await page.request.patch(`${apiBase}/admin/users/${encodeURIComponent(testUser._id)}/status`, { data: { isActive: true } })
-        expect(restoreResponse.ok(), 'restore the dedicated E2E account after admin status checks').toBe(true)
-      }
-    }
-    await removeAdminProblem(page, problemSlug)
-    await removeOwnedBlog(page, blogSlug)
+    await cleanupAll([
+      async () => {
+        const usersResponse = await page.request.get(`${apiBase}/admin/users?search=${encodeURIComponent(userEmail)}`)
+        expect(usersResponse.status(), 'load the dedicated account before restoring its status').toBe(200)
+        const userResult = await usersResponse.json()
+        const testUser = userResult.data?.find(user => user.email === userEmail)
+        expect(testUser, 'find only the configured dedicated E2E account').toBeTruthy()
+        if (testUser && !testUser.isActive) {
+          const restoreResponse = await page.request.patch(`${apiBase}/admin/users/${encodeURIComponent(testUser._id)}/status`, { data: { isActive: true } })
+          expect(restoreResponse.ok(), 'restore the dedicated E2E account after admin status checks').toBe(true)
+        }
+      },
+      async () => { if (problemCreated) await removeAdminProblem(page, problemSlug) },
+      async () => { if (blogCreated) await removeOwnedBlog(page, blogSlug) },
+    ])
   }
 })
 })
