@@ -1,5 +1,70 @@
 /**
  * @swagger
+ * /api/v1/coding/problems:
+ *   get:
+ *     tags: [Coding]
+ *     summary: List published problems with pagination and filters
+ *     parameters:
+ *       - { in: query, name: page, schema: { type: integer, minimum: 1 } }
+ *       - { in: query, name: limit, schema: { type: integer, minimum: 1, maximum: 50 } }
+ *       - { in: query, name: difficulty, schema: { type: string, enum: [easy, medium, hard] } }
+ *       - { in: query, name: topic, schema: { type: string, maxLength: 40 } }
+ *     responses:
+ *       '200': { description: Published problem page }
+ *   post:
+ *     tags: [Coding]
+ *     summary: Create a problem and its sample cases (administrator only)
+ *     security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+ *     responses:
+ *       '201': { description: Problem created }
+ *       '401': { $ref: '#/components/responses/Unauthorized' }
+ *       '403': { description: Administrator access required }
+ * /api/v1/coding/problems/{slug}:
+ *   get:
+ *     tags: [Coding]
+ *     summary: Get a published problem and sample cases
+ *     parameters:
+ *       - { in: path, name: slug, required: true, schema: { type: string } }
+ *     responses:
+ *       '200': { description: Published problem }
+ *       '404': { description: Problem not found }
+ *   patch:
+ *     tags: [Coding]
+ *     summary: Update problem and sample cases (administrator only)
+ *     security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+ *     parameters:
+ *       - { in: path, name: slug, required: true, schema: { type: string } }
+ *     responses:
+ *       '200': { description: Problem updated }
+ *       '403': { description: Administrator access required }
+ *   delete:
+ *     tags: [Coding]
+ *     summary: Delete a problem (administrator only)
+ *     security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+ *     parameters:
+ *       - { in: path, name: slug, required: true, schema: { type: string } }
+ *     responses:
+ *       '200': { description: Problem deleted }
+ *       '403': { description: Administrator access required }
+ * /api/v1/coding/problems/{slug}/submissions:
+ *   post:
+ *     tags: [Coding]
+ *     summary: Store an authenticated code submission
+ *     description: Source is not executed; verdict remains unavailable until a secure isolated judge is configured.
+ *     security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+ *     parameters:
+ *       - { in: path, name: slug, required: true, schema: { type: string } }
+ *     responses:
+ *       '201': { description: Submission stored with unavailable verdict and executed false }
+ *       '401': { $ref: '#/components/responses/Unauthorized' }
+ * /api/v1/submissions:
+ *   get:
+ *     tags: [Coding]
+ *     summary: List the authenticated user's submissions
+ *     security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+ *     responses:
+ *       '200': { description: User-scoped submission history without source code }
+ *       '401': { $ref: '#/components/responses/Unauthorized' }
  * /api/v1/blogs:
  *   get:
  *     tags: [Blogs]
@@ -651,7 +716,7 @@ const options = {
     tags: [
       { name: "Authentication" }, { name: "Users" }, { name: "Questions" },
       { name: "Answers" }, { name: "Comments" }, { name: "Notifications" },
-      { name: "Rooms" }, { name: "Messages" }, { name: "Blogs" },
+      { name: "Rooms" }, { name: "Messages" }, { name: "Blogs" }, { name: "Coding" },
     ],
   },
   apis: [fileURLToPath(new URL("./openapi.js", import.meta.url))],

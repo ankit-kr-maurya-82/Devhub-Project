@@ -22,6 +22,9 @@ const FeatureUnavailable = lazy(() => import('../pages/FeatureUnavailable.jsx'))
 const Blogs = lazy(() => import('../pages/Blogs.jsx'))
 const BlogDetails = lazy(() => import('../pages/BlogDetails.jsx'))
 const CreateBlog = lazy(() => import('../pages/CreateBlog.jsx'))
+const CodingPractice = lazy(() => import('../pages/CodingPractice.jsx'))
+const ProblemDetails = lazy(() => import('../pages/ProblemDetails.jsx'))
+const Submissions = lazy(() => import('../pages/Submissions.jsx'))
 const Community = lazy(() => import('./pages/Community.jsx'))
 const Notifications = lazy(() => import('./pages/Notifications.jsx'))
 
@@ -46,9 +49,9 @@ function App() {
               <Route path="/blogs/:slug/edit" element={<RequireAuth><CreateBlog /></RequireAuth>} />
               <Route path="/blogs/:slug" element={<BlogDetails />} />
               <Route path="/create-blog" element={<RequireAuth><CreateBlog /></RequireAuth>} />
-              <Route path="/coding" element={<FeatureUnavailable title="Coding practice" description="Problem and submission data are not connected to a persistent API yet." />} />
-              <Route path="/coding/problem/:id" element={<FeatureUnavailable title="Coding problem" description="Problem and submission data are not connected to a persistent API yet." />} />
-              <Route path="/submissions" element={<RequireAuth><FeatureUnavailable title="Submissions" description="Problem submissions are not stored by the backend yet." /></RequireAuth>} />
+              <Route path="/coding" element={<CodingPractice />} />
+              <Route path="/coding/problem/:slug" element={<ProblemDetails />} />
+              <Route path="/submissions" element={<RequireAuth><Submissions /></RequireAuth>} />
               <Route path="/community" element={<RequireAuth><Community /></RequireAuth>} />
               <Route path="/notifications" element={<RequireAuth><Notifications /></RequireAuth>} />
               <Route path="/admin/*" element={<FeatureUnavailable title="Admin workspace" description="Administrative records and moderation actions are not connected to backend APIs yet." />} />

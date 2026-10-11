@@ -53,6 +53,12 @@ export const api = {
     update: (slug, details) => request(`/blogs/${encodeURIComponent(slug)}`, { method: 'PATCH', body: details }),
     remove: slug => request(`/blogs/${encodeURIComponent(slug)}`, { method: 'DELETE' }),
   },
+  coding: {
+    problems: params => request(`/coding/problems${params ? `?${new URLSearchParams(params)}` : ''}`),
+    problem: slug => request(`/coding/problems/${encodeURIComponent(slug)}`),
+    submit: (slug, details) => request(`/coding/problems/${encodeURIComponent(slug)}/submissions`, { method: 'POST', body: details }),
+    submissions: params => request(`/submissions${params ? `?${new URLSearchParams(params)}` : ''}`),
+  },
   comments: {
     questionList: id => request(`/questions/${encodeURIComponent(id)}/comments`),
     addQuestion: (id, content) => request(`/questions/${encodeURIComponent(id)}/comments`, { method: 'POST', body: { content } }),

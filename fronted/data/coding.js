@@ -1,4 +1,4 @@
-// Problem and submission records must come from a persistent API.
+// Problem and submission records are fetched through the shared backend API.
 export const languages = []
 export const codingProblems = []
 export const codingStats = null

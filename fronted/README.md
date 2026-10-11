@@ -7,6 +7,6 @@
 3. Copy `fronted/.env.example` to `fronted/.env` if you want an explicit frontend API setting. The default Vite proxy forwards `/api` to port 4000.
 4. Start the React app from `fronted/` with `npm run dev` (Vite port 5173 by default).
 
-Authentication, account profiles, questions, answers, votes, comments, notifications, public room membership, and room messages use the backend API. There are no bundled sample accounts, posts, questions, messages, statistics, or submissions. Blog publishing, coding exercises, submissions, and administrative moderation stay unavailable until their backend APIs are implemented.
+Authentication, account profiles, questions, answers, votes, comments, notifications, public room membership, and room messages use the backend API. There are no bundled sample accounts, posts, questions, messages, statistics, or submissions. Blog publishing and coding problem management use backend APIs. Code submissions are stored with an unavailable verdict until a trusted isolated judge service is configured; submitted code is never executed by the Express application.
 
 For a separately hosted frontend, set `VITE_API_URL` to the backend API root ending in `/api/v1` and set the backend `CLIENT_ORIGIN` to the frontend's exact origin. Use HTTPS and a same-site frontend/API deployment for the backend's current `SameSite=Lax` authentication cookie.
