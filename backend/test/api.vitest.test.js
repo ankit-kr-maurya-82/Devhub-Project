@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
+import mongoose from "mongoose";
 import { createServer } from "node:http";
 import { app } from "../src/app.js";
 import User from "../src/models/user.model.js";
@@ -9,15 +10,28 @@ import Answer from "../src/models/answer.model.js";
 import Room from "../src/models/room.model.js";
 import Message from "../src/models/message.model.js";
 import Notification from "../src/models/notification.model.js";
+import Blog from "../src/models/blog.model.js";
+import Comment from "../src/models/comment.model.js";
+import CodingProblem from "../src/models/codingProblem.model.js";
+import Submission from "../src/models/submission.model.js";
+import Vote from "../src/models/vote.model.js";
+import Report from "../src/models/report.model.js";
+import ModerationAction from "../src/models/moderationAction.model.js";
 import { validateEnvironment } from "../src/config/env.js";
 
 const secret = "vitest-only-devhub-secret";
+const originalJwtSecret = process.env.JWT_SECRET;
 const userId = "507f1f77bcf86cd799439011";
 const otherId = "507f191e810c19729de860ea";
 const questionId = "507f1f77bcf86cd799439012";
 const answerId = "507f1f77bcf86cd799439013";
 const roomId = "507f1f77bcf86cd799439014";
 const messageId = "507f1f77bcf86cd799439015";
+const blogId = "507f1f77bcf86cd799439016";
+const commentId = "507f1f77bcf86cd799439017";
+const problemId = "507f1f77bcf86cd799439018";
+const submissionId = "507f1f77bcf86cd799439019";
+const reportId = "507f1f77bcf86cd79943901a";
 let server;
 let baseUrl;
 
@@ -57,6 +71,7 @@ const makeQuery = (result) => {
     sort: vi.fn(() => query),
     skip: vi.fn(() => query),
     limit: vi.fn(() => query),
+    session: vi.fn(() => query),
     then: (resolve, reject) => Promise.resolve(result).then(resolve, reject),
   };
   return query;
@@ -119,6 +134,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   vi.restoreAllMocks();
+  vi.spyOn(mongoose, "connect").mockImplementation(() => { throw new Error("HTTP integration tests must not connect to MongoDB"); });
   vi.spyOn(User, "findById").mockImplementation((id) => makeQuery({
     _id: String(id), username: "reader", email: "reader@example.invalid", isActive: true,
   }));
@@ -126,10 +142,16 @@ beforeEach(() => {
 
 afterAll(async () => {
   vi.restoreAllMocks();
-  await new Promise((resolve) => server.close(resolve));
+  if (originalJwtSecret === undefined) delete process.env.JWT_SECRET;
+  else process.env.JWT_SECRET = originalJwtSecret;
+  if (server?.listening) await new Promise((resolve) => server.close(resolve));
 });
 
 describe("HTTP API integration with mocked persistence", () => {
+  it("keeps the HTTP integration suite disconnected from MongoDB", () => {
+    expect(mongoose.connect).not.toHaveBeenCalled();
+  });
+
   it("allows same-origin Swagger requests from the local backend origin", async () => {
     vi.spyOn(User, "findOne").mockResolvedValue(null);
     vi.spyOn(User.prototype, "save").mockImplementation(async function save() {
@@ -290,6 +312,12 @@ describe("HTTP API integration with mocked persistence", () => {
     expect((await jsonRequest("/api/v1/user/profile/" + userId)).status).toBe(401);
   });
 
+  it("accepts the HttpOnly JWT cookie for protected routes", async () => {
+    const token = tokenFor();
+    const response = await fetch(`${baseUrl}/api/v1/user/profile/${userId}`, { headers: { cookie: `token=${token}` } });
+    expect(response.status).toBe(200);
+  });
+
   it("serves Swagger UI and the generated OpenAPI JSON", async () => {
     const ui = await fetch(`${baseUrl}/api-docs`);
     expect(ui.status).toBe(200);
@@ -385,6 +413,32 @@ describe("HTTP API integration with mocked persistence", () => {
     expect(Answer.create).toHaveBeenCalledWith(expect.objectContaining({ author: userId, question: questionId }));
   });
 
+  it("validates vote payloads over HTTP and records a valid question vote through the transaction boundary", async () => {
+    const invalid = await jsonRequest(`/api/v1/questions/${questionId}/vote`, { method: "POST", body: { voteType: "like" } });
+    expect(invalid.status).toBe(400);
+
+    const voter = { _id: userId, isActive: true, username: "reader" };
+    const author = { _id: otherId, reputation: 0, save: vi.fn().mockResolvedValue(undefined) };
+    vi.spyOn(User, "findById").mockImplementation((id) => makeQuery(String(id) === userId ? voter : author));
+    const target = { _id: questionId, author: otherId, votes: 0 };
+    let readCount = 0;
+    vi.spyOn(Question, "findById").mockImplementation(() => makeQuery(readCount++ === 0 ? target : { votes: 1 }));
+    vi.spyOn(Question, "updateOne").mockResolvedValue({ modifiedCount: 1 });
+    vi.spyOn(Vote, "init").mockResolvedValue(undefined);
+    vi.spyOn(Vote, "findOne").mockReturnValue(makeQuery(null));
+    vi.spyOn(Vote.prototype, "save").mockResolvedValue(undefined);
+    vi.spyOn(Notification, "exists").mockResolvedValue(false);
+    vi.spyOn(Notification, "create").mockResolvedValue({});
+    const session = { withTransaction: vi.fn(async callback => callback()), endSession: vi.fn().mockResolvedValue(undefined) };
+    vi.spyOn(mongoose, "startSession").mockResolvedValue(session);
+
+    const response = await jsonRequest(`/api/v1/questions/${questionId}/vote`, { method: "POST", body: { voteType: "upvote" } });
+    expect(response.status).toBe(200);
+    expect((await response.json()).votes).toBe(1);
+    expect(session.endSession).toHaveBeenCalledOnce();
+    expect(Notification.create).toHaveBeenCalledWith(expect.objectContaining({ recipient: otherId, sender: userId, type: "question_upvote" }));
+  });
+
   it("creates a room with its owner/member derived from the authenticated user", async () => {
     const created = { _id: roomId, populate: vi.fn() };
     vi.spyOn(Room, "create").mockResolvedValue(created);
@@ -457,5 +511,121 @@ describe("HTTP API integration with mocked persistence", () => {
   it("returns validation errors for malformed question bodies", async () => {
     const response = await jsonRequest("/api/v1/questions", { method: "POST", body: { title: "short", description: "" } });
     expect(response.status).toBe(400);
+  });
+
+  it("lists only published, visible blogs and returns not found for an unpublished detail", async () => {
+    vi.spyOn(Blog, "find").mockReturnValue(makeQuery([{ _id: blogId, slug: "public-blog", status: "published" }]));
+    vi.spyOn(Blog, "countDocuments").mockResolvedValue(1);
+    const list = await jsonRequest("/api/v1/blogs?tag=mern");
+    expect(list.status).toBe(200);
+    expect(Blog.find).toHaveBeenCalledWith({ status: "published", moderationStatus: { $ne: "hidden" }, tags: "mern" });
+    vi.spyOn(Blog, "findOne").mockResolvedValue(null);
+    const detail = await jsonRequest("/api/v1/blogs/draft-blog");
+    expect(detail.status).toBe(404);
+    expect(Blog.findOne).toHaveBeenCalledWith({ slug: "draft-blog", status: "published", moderationStatus: { $ne: "hidden" } });
+  });
+
+  it("enforces blog author ownership on update and delete", async () => {
+    const blog = { _id: blogId, slug: "other-blog", author: otherId, save: vi.fn(), deleteOne: vi.fn() };
+    vi.spyOn(Blog, "findOne").mockResolvedValue(blog);
+    const edit = await jsonRequest("/api/v1/blogs/other-blog", { method: "PATCH", body: { title: "Updated blog title" } });
+    const remove = await jsonRequest("/api/v1/blogs/other-blog", { method: "DELETE" });
+    expect(edit.status).toBe(403);
+    expect(remove.status).toBe(403);
+    expect(blog.save).not.toHaveBeenCalled();
+    expect(blog.deleteOne).not.toHaveBeenCalled();
+  });
+
+  it("creates comments as the authenticated author and notifies the content owner", async () => {
+    vi.spyOn(Question, "findById").mockReturnValue({ ...makeQuery({ _id: questionId, author: otherId }), select: vi.fn().mockResolvedValue({ _id: questionId, author: otherId }) });
+    const comment = { _id: commentId, populate: vi.fn().mockResolvedValue(undefined) };
+    vi.spyOn(Comment, "create").mockResolvedValue(comment);
+    vi.spyOn(Notification, "create").mockResolvedValue({});
+    const response = await jsonRequest(`/api/v1/questions/${questionId}/comments`, {
+      method: "POST", body: { content: "A useful comment", author: otherId },
+    });
+    expect(response.status).toBe(201);
+    expect(Comment.create).toHaveBeenCalledWith(expect.objectContaining({ content: "A useful comment", author: userId, targetId: questionId }));
+    expect(Notification.create).toHaveBeenCalledWith(expect.objectContaining({ recipient: otherId, sender: userId, relatedComment: commentId }));
+  });
+
+  it("scopes notification listing and read updates to the authenticated recipient", async () => {
+    vi.spyOn(Notification, "find").mockReturnValue(makeQuery([]));
+    vi.spyOn(Notification, "countDocuments").mockResolvedValue(0);
+    const list = await jsonRequest("/api/v1/notifications?unread=true");
+    expect(list.status).toBe(200);
+    expect(Notification.find).toHaveBeenCalledWith({ recipient: userId, isRead: false });
+    const read = vi.spyOn(Notification, "findOneAndUpdate").mockReturnValue({ populate: vi.fn().mockResolvedValue(null) });
+    const foreign = await jsonRequest(`/api/v1/notifications/${messageId}/read`, { method: "PATCH" });
+    expect(foreign.status).toBe(404);
+    expect(read).toHaveBeenCalledWith({ _id: messageId, recipient: userId }, { $set: { isRead: true } }, { new: true, runValidators: true });
+  });
+
+  it("lists only published coding problems and restricts management to admins", async () => {
+    vi.spyOn(CodingProblem, "find").mockReturnValue(makeQuery([]));
+    vi.spyOn(CodingProblem, "countDocuments").mockResolvedValue(0);
+    const publicList = await jsonRequest("/api/v1/coding/problems?difficulty=easy");
+    expect(publicList.status).toBe(200);
+    expect(CodingProblem.find).toHaveBeenCalledWith({ status: "published", difficulty: "easy" });
+    const create = vi.spyOn(CodingProblem, "create");
+    const denied = await jsonRequest("/api/v1/coding/problems", { method: "POST", body: { title: "A valid problem", description: "A sufficiently long problem description.", difficulty: "easy" } });
+    expect(denied.status).toBe(403);
+    expect(create).not.toHaveBeenCalled();
+
+    vi.spyOn(User, "findById").mockImplementation(() => makeQuery({ _id: userId, role: "admin", isActive: true }));
+    const admin = await jsonRequest("/api/v1/coding/problems/manage");
+    expect(admin.status).toBe(200);
+  });
+
+  it("stores submissions without executing code and scopes history to the current user", async () => {
+    vi.spyOn(CodingProblem, "findOne").mockReturnValue({ select: vi.fn().mockResolvedValue({ _id: problemId, supportedLanguages: ["javascript"] }) });
+    vi.spyOn(Submission, "create").mockResolvedValue({ _id: submissionId, language: "javascript", verdict: "unavailable", executionMetadata: { status: "unavailable" }, createdAt: new Date() });
+    const submitted = await jsonRequest("/api/v1/coding/problems/two-sum/submissions", { method: "POST", body: { language: "javascript", sourceCode: "return 2", user: otherId } });
+    expect(submitted.status).toBe(201);
+    expect(Submission.create).toHaveBeenCalledWith(expect.objectContaining({ problem: problemId, user: userId, language: "javascript", verdict: "unavailable" }));
+
+    const historyQuery = makeQuery([]);
+    const historyFind = vi.spyOn(Submission, "find").mockReturnValue(historyQuery);
+    vi.spyOn(Submission, "countDocuments").mockResolvedValue(0);
+    const history = await jsonRequest("/api/v1/submissions");
+    expect(history.status).toBe(200);
+    expect(historyFind).toHaveBeenCalledWith({ user: userId });
+    expect(historyQuery.select).toHaveBeenCalledWith("-sourceCode");
+  });
+
+  it("requires admin authorization for reports and rejects malformed report identifiers", async () => {
+    const reportsFind = vi.spyOn(Report, "find");
+    const denied = await jsonRequest("/api/v1/admin/reports");
+    expect(denied.status).toBe(403);
+    expect(reportsFind).not.toHaveBeenCalled();
+    vi.spyOn(Report, "findById");
+    vi.spyOn(User, "findById").mockImplementation(() => makeQuery({ _id: userId, role: "admin", isActive: true }));
+    const malformed = await jsonRequest("/api/v1/admin/reports/not-an-id", { method: "PATCH", body: { action: "hide" } });
+    expect(malformed.status).toBe(400);
+    expect(Report.findById).not.toHaveBeenCalled();
+  });
+
+  it("returns pending on a failed moderation write and resumes the same journaled action over HTTP", async () => {
+    vi.spyOn(User, "findById").mockImplementation(() => makeQuery({ _id: userId, role: "admin", isActive: true }));
+    const actionId = "507f1f77bcf86cd79943901b";
+    const journal = { _id: actionId, actor: userId, action: "content_hidden", targetType: "blog", targetId: blogId, report: reportId, note: "", previousValue: "open", state: "pending", save: vi.fn().mockResolvedValue(undefined) };
+    const report = { _id: reportId, targetType: "blog", targetId: blogId, status: "open", moderationAction: null, save: vi.fn().mockResolvedValue(undefined) };
+    const target = { _id: blogId, moderationStatus: "visible", save: vi.fn().mockRejectedValueOnce(new Error("temporary write failure")).mockResolvedValue(undefined) };
+    vi.spyOn(Report, "findById").mockResolvedValue(report);
+    vi.spyOn(Report, "findOneAndUpdate").mockResolvedValue(report);
+    vi.spyOn(ModerationAction, "create").mockResolvedValue(journal);
+    vi.spyOn(ModerationAction, "findById").mockResolvedValue(journal);
+    vi.spyOn(Blog, "findById").mockResolvedValue(target);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const failed = await jsonRequest(`/api/v1/admin/reports/${reportId}`, { method: "PATCH", body: { action: "hide" } });
+    expect(failed.status).toBe(503);
+    expect(report.status).toBe("processing");
+    expect(journal.state).toBe("pending");
+    const resumed = await jsonRequest(`/api/v1/admin/reports/${reportId}`, { method: "PATCH", body: { action: "hide" } });
+    expect(resumed.status).toBe(200);
+    expect(report.status).toBe("resolved");
+    expect(journal.state).toBe("completed");
+    expect(ModerationAction.create).toHaveBeenCalledOnce();
   });
 });
