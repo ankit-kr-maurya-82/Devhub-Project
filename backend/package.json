@@ -17,7 +17,8 @@
     "test": "vitest run test/api.vitest.test.js",
     "test:unit": "vitest run test/controllers.unit.test.js test/blogs.unit.test.js test/coding.unit.test.js test/admin-moderation.unit.test.js && node --test test/db-configuration.test.js",
     "test:legacy": "node --test test/security.test.js",
-    "test:socket:integration": "node --test test/integration/socket-multiuser.test.js"
+    "test:socket:integration": "node --test test/integration/socket-multiuser.test.js",
+    "seed:e2e": "node scripts/seed-e2e.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
