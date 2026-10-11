@@ -7,7 +7,8 @@ import MessageList from '../components/community/MessageList.jsx'
 import MessageInput from '../components/community/MessageInput.jsx'
 import OnlineMembers from '../components/community/OnlineMembers.jsx'
 import api from '../lib/api.js'
-import { useMockSession } from '../state/useMockSession.js'
+import { useMockSession } from '../state/useMockSession.js';
+import useSocket from '../hooks/useSocket.js';
 
 function initials(member) {
   return (member?.name || member?.username || '?').slice(0, 1).toUpperCase()
@@ -64,37 +65,65 @@ export default function Community() {
   const [showCreateRoom, setShowCreateRoom] = useState(false)
   const [roomName, setRoomName] = useState('')
   const [roomDescription, setRoomDescription] = useState('')
+  // Socket.IO integration
+  const {
+    connectionStatus: socketConnectionStatus,
+    joinRoom,
+    leaveRoom,
+    sendMessage: socketSendMessage,
+    startTyping,
+    stopTyping,
+    requestRoomUsers,
+  } = useSocket({
+    onMessage: (msg) => setMessages(prev => [...prev, normalizeMessage(msg, currentUserId)]),
+    onMessageUpdated: (msg) => setMessages(prev => prev.map(m => m.id === String(msg._id) ? normalizeMessage(msg, currentUserId) : m)),
+    onMessageDeleted: ({ messageId }) => setMessages(prev => prev.filter(m => m.id !== String(messageId))),
+    onReactionUpdated: ({ messageId, reactions }) => setMessages(prev => prev.map(m => m.id === String(messageId) ? { ...m, reactions } : m)),
+    onRoomUsers: ({ users }) => setMembers(users.map(normalizeMember)),
+    onUserOnline: (payload) => setMembers(prev => prev.map(m => m.id === payload.userId ? { ...m, online: true } : m)),
+    onUserOffline: (payload) => setMembers(prev => prev.map(m => m.id === payload.userId ? { ...m, online: false, lastSeen: payload.lastSeen } : m)),
+    onError: (err) => console.error(err),
+  });
+  // Sync socket connection status with component state
+  useEffect(() => {
+    setConnectionStatus(socketConnectionStatus);
+  }, [socketConnectionStatus]);
 
   const fetchMessages = useCallback(async roomId => {
     const result = await api.rooms.messages(roomId)
     setMessages(result.data.map(message => normalizeMessage(message, currentUserId)))
   }, [currentUserId])
 
-  const openRoom = useCallback(async room => {
-    if (!user) { setError('Log in to join rooms and read messages.'); return }
-    setError('')
-    setLoadingMessages(true)
-    try {
-      const result = await api.rooms.get(room.id)
-      let fullRoom = result.data
-      const roomMembers = fullRoom.members || []
-      const isMember = roomMembers.some(member => String(member?._id || member) === currentUserId)
-      if (!isMember) {
-        const joined = await api.rooms.join(room.id)
-        fullRoom = joined.data
-      }
-      setActiveRoom({ ...room, ...fullRoom, id: String(fullRoom._id || fullRoom.id), memberCount: fullRoom.members?.length || room.memberCount || 0 })
-      setMembers((fullRoom.members || []).map(normalizeMember))
-      await fetchMessages(room.id)
-      setConnectionStatus('Room connected · messages refresh every 4 seconds')
-    } catch (requestError) {
-      setError(requestError.message)
-      setConnectionStatus('Room unavailable')
-    } finally {
-      setLoadingMessages(false)
-      setDrawer(false)
+  const openRoom = useCallback(async (room) => {
+  if (!user) { setError('Log in to join rooms and read messages.'); return; }
+  setError('');
+  setLoadingMessages(true);
+  try {
+    const result = await api.rooms.get(room.id);
+    let fullRoom = result.data;
+    const roomMembers = fullRoom.members || [];
+    const isMember = roomMembers.some((member) => String(member?._id || member) === currentUserId);
+    if (!isMember) {
+      const joined = await api.rooms.join(room.id);
+      fullRoom = joined.data;
     }
-  }, [fetchMessages, currentUserId, user])
+    const roomId = String(fullRoom._id || fullRoom.id);
+    setActiveRoom({ ...room, ...fullRoom, id: roomId, memberCount: fullRoom.members?.length || room.memberCount || 0 });
+    setMembers((fullRoom.members || []).map(normalizeMember));
+    // Join socket room and request current users
+    joinRoom(roomId);
+    requestRoomUsers(roomId);
+    // Load existing messages via API (initial snapshot)
+    await fetchMessages(roomId);
+    setConnectionStatus('Room connected · realtime updates enabled');
+  } catch (requestError) {
+    setError(requestError.message);
+    setConnectionStatus('Room unavailable');
+  } finally {
+    setLoadingMessages(false);
+    setDrawer(false);
+  }
+}, [fetchMessages, currentUserId, user, joinRoom, requestRoomUsers]);
 
   useEffect(() => {
     let active = true
