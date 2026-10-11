@@ -22,6 +22,13 @@ const positive = (value, fallback) => {
   const number = Number(value);
   return Number.isSafeInteger(number) ? number : null;
 };
+const failPending = (res) => sendError(res, 503, "The action is still pending reconciliation. Retry the same request.");
+const completeAction = async (action) => {
+  if (action.state !== "completed") {
+    action.state = "completed";
+    await action.save();
+  }
+};
 
 const getDashboard = async (_req, res) => {
   try {
@@ -33,7 +40,7 @@ const getDashboard = async (_req, res) => {
       Question.countDocuments({}),
       Answer.countDocuments({}),
       Comment.countDocuments({}),
-      Report.countDocuments({ status: { $in: ["open", "reviewing"] } }),
+      Report.countDocuments({ status: { $in: ["open", "reviewing", "processing"] } }),
       ModerationAction.find({}).sort({ createdAt: -1 }).limit(10).populate("actor", "name username"),
     ]);
     return res.status(200).json({ success: true, data: { counts: { totalUsers, activeUsers, suspendedUsers, totalBlogs, totalQuestions, totalAnswers, totalComments, openReports }, recentModerationActivity } });
@@ -78,18 +85,28 @@ const setUserActiveStatus = async (req, res) => {
   try {
     const user = await User.findById(userId).select("name username email role isActive");
     if (!user) return sendError(res, 404, "User not found");
-    if (!req.body.isActive && user.isActive && user.role === "admin") {
-      const activeAdmins = await User.countDocuments({ role: "admin", isActive: true });
-      if (activeAdmins <= 1) return sendError(res, 409, "The last active administrator cannot be suspended");
+    if (!req.body.isActive && user.role === "admin") return sendError(res, 409, "Administrator accounts cannot be suspended through moderation");
+    const desired = req.body.isActive;
+    const actionName = desired ? "user_reactivated" : "user_suspended";
+    if (user.isActive === desired) {
+      const pending = await ModerationAction.findOne({ actor: req.user._id, action: actionName, targetType: "user", targetId: user._id, state: "pending" }).sort({ createdAt: -1 });
+      if (pending && pending.previousValue !== desired) await completeAction(pending);
+      return res.status(200).json({ success: true, data: user });
     }
-    if (user.isActive === req.body.isActive) return res.status(200).json({ success: true, data: user });
-    user.isActive = req.body.isActive;
-    await user.save();
-    await ModerationAction.create({ actor: req.user._id, action: user.isActive ? "user_reactivated" : "user_suspended", targetType: "user", targetId: user._id });
+    const pending = await ModerationAction.findOne({ actor: req.user._id, action: actionName, targetType: "user", targetId: user._id, state: "pending", previousValue: user.isActive }).sort({ createdAt: -1 });
+    const audit = pending || await ModerationAction.create({ actor: req.user._id, action: actionName, targetType: "user", targetId: user._id, state: "pending", previousValue: user.isActive });
+    const updatedUser = await User.findOneAndUpdate({ _id: user._id, isActive: user.isActive }, { $set: { isActive: desired } }, { new: true });
+    if (!updatedUser) {
+      audit.state = "superseded";
+      await audit.save();
+      return sendError(res, 409, "Account status changed concurrently; refresh and retry");
+    }
+    user.isActive = updatedUser.isActive;
+    await completeAction(audit);
     return res.status(200).json({ success: true, message: user.isActive ? "User reactivated" : "User suspended", data: user });
   } catch (error) {
     console.error("Admin User Status Error:", error);
-    return sendError(res, 500, "Internal server error");
+    return failPending(res);
   }
 };
 
@@ -118,7 +135,7 @@ const listReports = async (req, res) => {
   if (!page || !limit || limit > 50 || !Number.isSafeInteger((page - 1) * limit)) return sendError(res, 400, "page and limit must be positive integers; limit must not exceed 50");
   const filter = {};
   if (req.query.status !== undefined) {
-    if (!(["open", "reviewing", "resolved", "dismissed"].includes(req.query.status))) return sendError(res, 400, "Invalid report status");
+    if (!(["open", "reviewing", "processing", "resolved", "dismissed"].includes(req.query.status))) return sendError(res, 400, "Invalid report status");
     filter.status = req.query.status;
   }
   if (req.query.targetType !== undefined) {
@@ -127,7 +144,7 @@ const listReports = async (req, res) => {
   }
   try {
     const [reports, total] = await Promise.all([
-      Report.find(filter).populate("reporter", "name username").populate("moderatedBy", "name username").sort({ createdAt: -1, _id: -1 }).skip((page - 1) * limit).limit(limit),
+      Report.find(filter).populate("reporter", "name username").populate("moderatedBy", "name username").populate("moderationAction", "action state note").sort({ createdAt: -1, _id: -1 }).skip((page - 1) * limit).limit(limit),
       Report.countDocuments(filter),
     ]);
     const data = await Promise.all(reports.map(async report => {
@@ -152,41 +169,64 @@ const moderateReport = async (req, res) => {
   try {
     const report = await Report.findById(reportId);
     if (!report) return sendError(res, 404, "Report not found");
-    if (["resolved", "dismissed"].includes(report.status)) return sendError(res, 409, "This report has already been closed");
     const { action } = body;
-    const targetModel = targetModels[report.targetType];
-    if (["hide", "restore", "suspend", "reactivate"].includes(action)) {
-      if (["suspend", "reactivate"].includes(action) && report.targetType !== "user") return sendError(res, 400, "Action does not match report target type");
-      if (["hide", "restore"].includes(action) && report.targetType === "user") return sendError(res, 400, "Action does not match report target type");
-      const target = await targetModel.findById(report.targetId);
-      if (!target) return sendError(res, 404, "Reported target not found");
-      if (report.targetType === "user") {
-        if (String(target._id) === String(req.user._id)) return sendError(res, 400, "You cannot change your own account status");
-        if (action === "suspend" && target.role === "admin" && target.isActive && await User.countDocuments({ role: "admin", isActive: true }) <= 1) return sendError(res, 409, "The last active administrator cannot be suspended");
-        target.isActive = action === "reactivate";
-      } else {
-        target.moderationStatus = action === "hide" ? "hidden" : "visible";
+    if (["suspend", "reactivate"].includes(action) && report.targetType !== "user") return sendError(res, 400, "Action does not match report target type");
+    if (["hide", "restore"].includes(action) && report.targetType === "user") return sendError(res, 400, "Action does not match report target type");
+    let journal;
+    let previousStatus;
+    if (report.moderationAction) {
+      journal = await ModerationAction.findById(report.moderationAction);
+      if (journal?.state === "completed") {
+        const requestedAction = action === "review" ? "report_reviewed" : action === "dismiss" ? "report_dismissed" : action === "hide" ? "content_hidden" : action === "restore" ? "content_restored" : action === "suspend" ? "user_suspended" : "user_reactivated";
+        if (report.status !== "reviewing" || journal.action === requestedAction) return sendError(res, 409, "This report action has already been completed");
+        report.moderationAction = null;
+        await report.save();
+        journal = null;
       }
-      await target.save();
-    } else if (action === "review") {
-      report.status = "reviewing";
-      report.moderatedBy = req.user._id;
-      report.moderatedAt = new Date();
-      await report.save();
-      await ModerationAction.create({ actor: req.user._id, action: "report_reviewed", targetType: report.targetType, targetId: report.targetId, report: report._id, note: body.note || "" });
-      return res.status(200).json({ success: true, data: report });
+      if (journal && (journal.state !== "pending" || journal.action !== (action === "review" ? "report_reviewed" : action === "dismiss" ? "report_dismissed" : action === "hide" ? "content_hidden" : action === "restore" ? "content_restored" : action === "suspend" ? "user_suspended" : "user_reactivated") || journal.note !== (body.note || ""))) return sendError(res, 409, "A different moderation action is already pending for this report");
+      if (journal) previousStatus = journal.previousValue;
     }
-    report.status = action === "dismiss" ? "dismissed" : "resolved";
-    report.outcome = body.note?.trim() || action;
-    report.moderatedBy = req.user._id;
+    let actionTarget;
+    if (["hide", "restore", "suspend", "reactivate"].includes(action)) {
+      actionTarget = await targetModels[report.targetType].findById(report.targetId);
+      if (!actionTarget) return sendError(res, 404, "Reported target not found");
+      if (report.targetType === "user") {
+        if (String(actionTarget._id) === String(req.user._id)) return sendError(res, 400, "You cannot change your own account status");
+        if (action === "suspend" && actionTarget.role === "admin") return sendError(res, 409, "Administrator accounts cannot be suspended through moderation");
+      }
+    }
+    if (!journal) {
+      if (["resolved", "dismissed", "processing"].includes(report.status)) return sendError(res, 409, "This report is already closed or being moderated");
+      previousStatus = report.status;
+      const auditAction = action === "review" ? "report_reviewed" : action === "dismiss" ? "report_dismissed" : action === "hide" ? "content_hidden" : action === "restore" ? "content_restored" : action === "suspend" ? "user_suspended" : "user_reactivated";
+      journal = await ModerationAction.create({ actor: req.user._id, action: auditAction, targetType: report.targetType, targetId: report.targetId, report: report._id, note: body.note || "", state: "pending", previousValue: previousStatus });
+      const claimed = await Report.findOneAndUpdate({ _id: report._id, status: previousStatus, moderationAction: null }, { $set: { status: "processing", moderationAction: journal._id } }, { new: true });
+      if (!claimed) {
+        journal.state = "superseded";
+        await journal.save();
+        return sendError(res, 409, "Another moderator has already started this report");
+      }
+      report.status = "processing";
+      report.moderationAction = journal._id;
+    }
+    if (["hide", "restore", "suspend", "reactivate"].includes(action)) {
+      if (report.targetType === "user") {
+        actionTarget.isActive = action === "reactivate";
+      } else {
+        actionTarget.moderationStatus = action === "hide" ? "hidden" : "visible";
+      }
+      await actionTarget.save();
+    }
+    report.status = action === "review" ? "reviewing" : action === "dismiss" ? "dismissed" : "resolved";
+    report.outcome = action === "review" ? report.outcome : body.note?.trim() || action;
+    report.moderatedBy = journal.actor;
     report.moderatedAt = new Date();
     await report.save();
-    const auditAction = action === "dismiss" ? "report_dismissed" : action === "hide" ? "content_hidden" : action === "restore" ? "content_restored" : action === "suspend" ? "user_suspended" : action === "reactivate" ? "user_reactivated" : "report_reviewed";
-    await ModerationAction.create({ actor: req.user._id, action: auditAction, targetType: report.targetType, targetId: report.targetId, report: report._id, note: body.note || "" });
+    await completeAction(journal);
     return res.status(200).json({ success: true, message: "Moderation action recorded", data: report });
   } catch (error) {
     console.error("Moderate Report Error:", error);
-    return sendError(res, 500, "Internal server error");
+    return failPending(res);
   }
 };
 

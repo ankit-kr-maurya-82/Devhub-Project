@@ -7,6 +7,8 @@ const moderationActionSchema = new mongoose.Schema({
   targetId: { type: mongoose.Schema.Types.ObjectId, required: true },
   report: { type: mongoose.Schema.Types.ObjectId, ref: "Report", default: null },
   note: { type: String, default: "", maxlength: 1000 },
+  state: { type: String, enum: ["pending", "completed", "failed", "superseded"], default: "completed", index: true },
+  previousValue: { type: mongoose.Schema.Types.Mixed, default: null },
 }, { timestamps: true });
 
 moderationActionSchema.index({ createdAt: -1 });

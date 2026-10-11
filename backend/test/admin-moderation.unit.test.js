@@ -46,6 +46,16 @@ describe("admin moderation unit checks", () => {
     expect(find).not.toHaveBeenCalled();
   });
 
+  it("prevents suspending any administrator so the last admin cannot be lost in a concurrent update", async () => {
+    const user = { _id: targetId, role: "admin", isActive: true };
+    vi.spyOn(User, "findById").mockReturnValue({ select: vi.fn().mockResolvedValue(user) });
+    const update = vi.spyOn(User, "findOneAndUpdate");
+    const res = response();
+    await setUserActiveStatus(request({ params: { userId: targetId }, body: { isActive: false } }), res);
+    expect(res.statusCode).toBe(409);
+    expect(update).not.toHaveBeenCalled();
+  });
+
   it("rejects invalid reports before persistence and verifies target existence", async () => {
     const create = vi.spyOn(Report, "create");
     const res = response();
@@ -72,18 +82,21 @@ describe("admin moderation unit checks", () => {
   it("hides reported content reversibly and records moderator and outcome", async () => {
     const target = { _id: targetId, moderationStatus: "visible", save: vi.fn().mockResolvedValue(undefined) };
     vi.spyOn(Blog, "findById").mockResolvedValue(target);
-    const report = { _id: reportId, targetType: "blog", targetId, status: "open", save: vi.fn().mockResolvedValue(undefined) };
+    const report = { _id: reportId, targetType: "blog", targetId, status: "open", moderationAction: null, save: vi.fn().mockResolvedValue(undefined) };
     vi.spyOn(Report, "findById").mockResolvedValue(report);
-    const audit = vi.spyOn(ModerationAction, "create").mockResolvedValue({});
+    vi.spyOn(Report, "findOneAndUpdate").mockResolvedValue(report);
+    const journal = { _id: "507f191e810c19729de860ee", actor: actorId, state: "pending", action: "content_hidden", note: "Confirmed policy violation", previousValue: "open", save: vi.fn().mockResolvedValue(undefined) };
+    const audit = vi.spyOn(ModerationAction, "create").mockResolvedValue(journal);
     const res = response();
     await moderateReport(request({ params: { reportId }, body: { action: "hide", note: "Confirmed policy violation" } }), res);
     expect(target.moderationStatus).toBe("hidden");
     expect(report.status).toBe("resolved");
     expect(report.moderatedBy).toBe(actorId);
     expect(report.moderatedAt).toBeInstanceOf(Date);
-    expect(audit).toHaveBeenCalledWith(expect.objectContaining({ actor: actorId, action: "content_hidden", targetType: "blog", targetId, report: reportId }));
+    expect(audit).toHaveBeenCalledWith(expect.objectContaining({ actor: actorId, action: "content_hidden", targetType: "blog", targetId, report: reportId, state: "pending" }));
 
     report.status = "reviewing";
+    report.moderationAction = null;
     target.moderationStatus = "hidden";
     const restoreResponse = response();
     await moderateReport(request({ params: { reportId }, body: { action: "restore" } }), restoreResponse);
@@ -94,11 +107,56 @@ describe("admin moderation unit checks", () => {
   it("allows reports about users to be dismissed without a content action", async () => {
     const report = { _id: reportId, targetType: "user", targetId, status: "open", save: vi.fn().mockResolvedValue(undefined) };
     vi.spyOn(Report, "findById").mockResolvedValue(report);
-    const audit = vi.spyOn(ModerationAction, "create").mockResolvedValue({});
+    const journal = { _id: "507f191e810c19729de860ee", actor: actorId, state: "pending", action: "report_dismissed", note: "No policy issue found", previousValue: "open", save: vi.fn().mockResolvedValue(undefined) };
+    vi.spyOn(Report, "findOneAndUpdate").mockResolvedValue(report);
+    const audit = vi.spyOn(ModerationAction, "create").mockResolvedValue(journal);
     const res = response();
     await moderateReport(request({ params: { reportId }, body: { action: "dismiss", note: "No policy issue found" } }), res);
     expect(res.statusCode).toBe(200);
     expect(report.status).toBe("dismissed");
     expect(audit).toHaveBeenCalledWith(expect.objectContaining({ action: "report_dismissed", targetType: "user" }));
+  });
+
+  it("keeps a report claimed and its audit journal pending after a target write failure", async () => {
+    const journal = { _id: "507f191e810c19729de860ee", actor: actorId, state: "pending", action: "content_hidden", note: "", previousValue: "open", save: vi.fn().mockResolvedValue(undefined) };
+    const report = { _id: reportId, targetType: "blog", targetId, status: "open", moderationAction: null, save: vi.fn().mockResolvedValue(undefined) };
+    const target = { _id: targetId, moderationStatus: "visible", save: vi.fn().mockRejectedValueOnce(new Error("write failed")) };
+    vi.spyOn(Report, "findById").mockResolvedValue(report);
+    vi.spyOn(Report, "findOneAndUpdate").mockResolvedValue(report);
+    vi.spyOn(ModerationAction, "create").mockResolvedValue(journal);
+    vi.spyOn(Blog, "findById").mockResolvedValue(target);
+    const res = response();
+    await moderateReport(request({ params: { reportId }, body: { action: "hide" } }), res);
+    expect(res.statusCode).toBe(503);
+    expect(report.status).toBe("processing");
+    expect(journal.state).toBe("pending");
+  });
+
+  it("rejects repeated completed moderation actions without another audit write", async () => {
+    const report = { _id: reportId, targetType: "blog", targetId, status: "resolved", moderationAction: "507f191e810c19729de860ee" };
+    vi.spyOn(Report, "findById").mockResolvedValue(report);
+    vi.spyOn(ModerationAction, "findById").mockResolvedValue({ state: "completed", action: "content_hidden" });
+    const create = vi.spyOn(ModerationAction, "create");
+    const res = response();
+    await moderateReport(request({ params: { reportId }, body: { action: "hide" } }), res);
+    expect(res.statusCode).toBe(409);
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("resumes a pending report action and completes its existing journal entry", async () => {
+    const actionId = "507f191e810c19729de860ee";
+    const journal = { _id: actionId, actor: actorId, state: "pending", action: "content_hidden", note: "", previousValue: "open", save: vi.fn().mockResolvedValue(undefined) };
+    const report = { _id: reportId, targetType: "blog", targetId, status: "processing", moderationAction: actionId, save: vi.fn().mockResolvedValue(undefined) };
+    const target = { _id: targetId, moderationStatus: "visible", save: vi.fn().mockResolvedValue(undefined) };
+    vi.spyOn(Report, "findById").mockResolvedValue(report);
+    vi.spyOn(ModerationAction, "findById").mockResolvedValue(journal);
+    vi.spyOn(Blog, "findById").mockResolvedValue(target);
+    const create = vi.spyOn(ModerationAction, "create");
+    const res = response();
+    await moderateReport(request({ params: { reportId }, body: { action: "hide" } }), res);
+    expect(res.statusCode).toBe(200);
+    expect(report.status).toBe("resolved");
+    expect(journal.state).toBe("completed");
+    expect(create).not.toHaveBeenCalled();
   });
 });

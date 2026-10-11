@@ -38,7 +38,8 @@
  *       '200': { description: Account status changed and action audited }
  *       '400': { description: Invalid request or self status change }
  *       '403': { description: Administrator access required }
- *       '409': { description: Last active admin cannot be suspended }
+ *       '409': { description: Concurrent update or administrator suspension is restricted }
+ *       '503': { description: The account update is pending audit reconciliation }
  * /api/v1/reports:
  *   post:
  *     tags: [Moderation]
@@ -60,10 +61,10 @@
  *     parameters:
  *       - { in: query, name: page, schema: { type: integer, minimum: 1 } }
  *       - { in: query, name: limit, schema: { type: integer, minimum: 1, maximum: 50 } }
- *       - { in: query, name: status, schema: { type: string, enum: [open, reviewing, resolved, dismissed] } }
+ *       - { in: query, name: status, schema: { type: string, enum: [open, reviewing, processing, resolved, dismissed] } }
  *       - { in: query, name: targetType, schema: { type: string, enum: [blog, question, answer, comment, user] } }
  *     responses:
- *       '200': { description: Reports with sanitized target previews }
+ *       '200': { description: Reports with sanitized target previews and pending action recovery details }
  *       '403': { description: Administrator access required }
  * /api/v1/admin/reports/{reportId}:
  *   patch:
@@ -80,7 +81,8 @@
  *     responses:
  *       '200': { description: Report and audit trail updated }
  *       '403': { description: Administrator access required }
- *       '409': { description: Report closed or last administrator protected }
+ *       '409': { description: Report closed, concurrent moderation, or administrator suspension restricted }
+ *       '503': { description: Operation remains pending; retry the identical action to reconcile it }
  *
  * /api/v1/coding/problems/manage:
  *   get:
