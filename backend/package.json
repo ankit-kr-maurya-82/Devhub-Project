@@ -15,6 +15,7 @@
     "start": "node src/index.js",
     "vercel-start": "node src/index.js",
     "test": "vitest run test/api.vitest.test.js",
+    "test:unit": "vitest run test/controllers.unit.test.js && node --test test/db-configuration.test.js",
     "test:legacy": "node --test test/security.test.js",
     "test:socket:integration": "node --test test/integration/socket-multiuser.test.js"
   },
