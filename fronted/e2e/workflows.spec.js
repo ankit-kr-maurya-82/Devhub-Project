@@ -81,7 +81,7 @@ test('registration and login validation; login persists in an HttpOnly cookie an
   await expect(page.getByText('Enter your email address.')).toBeVisible()
   await login(page)
 
-  const cookies = await context.cookies(process.env.E2E_API_URL)
+  const cookies = await context.cookies([process.env.E2E_BASE_URL, process.env.E2E_API_URL])
   const sessionCookie = cookies.find(cookie => cookie.name === 'token')
   expect(sessionCookie, 'login should establish the token cookie').toBeTruthy()
   expect(sessionCookie.httpOnly).toBe(true)
@@ -130,6 +130,7 @@ test('question owner can create a question and manage their comment while anothe
 
     await page.getByRole('button', { name: 'Log out', exact: true }).click()
     await login(page, adminEmail, adminPassword)
+    await page.goto(`/questions/${questionId}`)
     const voteResponse = page.waitForResponse(response => response.request().method() === 'POST' && /\/vote$/.test(response.url()))
     await page.getByRole('button', { name: 'Upvote question' }).click()
     const voteResult = await voteResponse
@@ -138,6 +139,7 @@ test('question owner can create a question and manage their comment while anothe
 
     await page.getByRole('button', { name: 'Log out', exact: true }).click()
     await login(page)
+    await page.goto(`/questions/${questionId}`)
 
     const comment = `E2E comment ${runId}`
     const commentResponse = page.waitForResponse(response => response.request().method() === 'POST' && new RegExp(`/questions/${questionId}/comments$`).test(new URL(response.url()).pathname))
@@ -295,12 +297,13 @@ test('regular users are denied admin screens and admin APIs; admin can review re
     await login(page, adminEmail, adminPassword)
     await page.goto('/admin/reports')
     await expect(page.getByRole('heading', { name: 'Reports and moderation' })).toBeVisible()
+    await page.getByLabel('Status').selectOption('')
     const reportCard = page.locator('article').filter({ hasText: blogTitle })
     await expect(reportCard).toBeVisible()
     await reportCard.getByRole('button', { name: 'Review', exact: true }).click()
-    await expect(reportCard.getByRole('button', { name: 'Dismiss', exact: true })).toBeVisible()
+    await expect(reportCard.getByRole('button', { name: 'Dismiss report', exact: true })).toBeVisible()
     page.once('dialog', dialog => dialog.accept())
-    await reportCard.getByRole('button', { name: 'Dismiss', exact: true }).click()
+    await reportCard.getByRole('button', { name: 'Dismiss report', exact: true }).click()
     await expect(reportCard.getByText('dismissed', { exact: true })).toBeVisible()
 
     await page.goto('/admin/users')
