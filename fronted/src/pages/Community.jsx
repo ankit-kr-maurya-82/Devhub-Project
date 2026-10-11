@@ -148,17 +148,17 @@ export default function Community() {
     return () => window.clearInterval(timer)
   }, [activeRoom, fetchMessages, user])
 
-  async function sendMessage({ text = '', code }) {
-    const cleanText = text.trim()
-    const content = [cleanText, code?.content.trim() ? `\n\n\`\`\`${code.language || 'text'}\n${code.content.trimEnd()}\n\`\`\`` : ''].filter(Boolean).join('')
-    if (!content || !activeRoom) return false
-    try {
-      await api.rooms.sendMessage(activeRoom.id, { content })
-      await fetchMessages(activeRoom.id)
-      setError('')
-    } catch (requestError) { setError(requestError.message) }
-    return true
-  }
+  function sendMessage({ text = '', code }) {
+  const cleanText = text.trim()
+  const content = [cleanText, code?.content.trim()
+    ? `\n\n\`\`\`${code.language || 'text'}\n${code.content.trimEnd()}\n\`\`\``
+    : ''].filter(Boolean).join('')
+  if (!content || !activeRoom) return false
+  // Use socket to send message; real-time updates will handle UI state
+  socketSendMessage(activeRoom.id, { content })
+  setError('')
+  return true
+}
 
   async function toggleReaction(messageId, emoji) {
     try {
