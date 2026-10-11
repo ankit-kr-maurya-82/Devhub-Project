@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../src/lib/api.js'
+import ReportButton from './ReportButton.jsx'
 import { useMockSession } from '../src/state/useMockSession.js'
 
 export default function CommentThread({ targetType, targetId }) {
@@ -64,6 +65,7 @@ export default function CommentThread({ targetType, targetId }) {
       const authorId = String(comment.author?._id || comment.author?.id || '')
       return <article key={id} className="border-b border-[var(--border)] py-3 last:border-b-0">
         {editingId === id ? <div className="space-y-2"><textarea maxLength={1000} value={editingContent} onChange={event => setEditingContent(event.target.value)} className="w-full rounded-lg border border-[var(--border)] bg-[var(--page)] p-2 text-sm" /><div className="flex gap-2"><button type="button" onClick={() => saveEdit(id)} className="text-xs font-semibold text-[var(--accent)]">Save</button><button type="button" onClick={() => setEditingId('')} className="text-xs text-[var(--muted)]">Cancel</button></div></div> : <><p className="whitespace-pre-wrap break-words text-sm leading-6">{comment.content}</p><div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--muted)]"><span>{comment.author?.username || comment.author?.name || 'DevHub member'}</span><time dateTime={comment.createdAt}>{new Date(comment.createdAt).toLocaleString()}</time>{authorId === currentUserId && <><button type="button" onClick={() => { setEditingId(id); setEditingContent(comment.content) }} className="text-[var(--accent)]">Edit</button><button type="button" onClick={() => deleteComment(id)} className="text-[var(--danger)]">Delete</button></>}</div></>}
+        {authorId !== currentUserId && <div className="mt-1"><ReportButton targetType="comment" targetId={id} /></div>}
       </article>
     })}
     {!loading && !comments.length && <p className="mt-2 text-xs text-[var(--muted)]">No comments yet.</p>}

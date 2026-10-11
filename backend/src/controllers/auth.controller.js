@@ -105,7 +105,7 @@ const loginUser = async(req,res) => {
 
         // check if the user exists
         const user = await User.findOne({email}).select("+password");
-        if(!user){
+        if(!user || !user.isActive){
             return res
                 .status(400)
                 .json({message: "Invalid email or password."});

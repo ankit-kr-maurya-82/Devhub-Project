@@ -1,43 +1,53 @@
-import { useState } from 'react'
-import ReportCard from '../../components/admin/ReportCard.jsx'
-import { AdminPageHeader, DetailDialog, DetailField, EmptyState, Feedback, StatusBadge, TableToolbar } from '../../components/admin/AdminUI.jsx'
-import { formatDate } from '../../components/admin/adminUtils.js'
-import { useAdmin } from '../../state/useAdmin.js'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import api from '../../lib/api.js'
+
+const typeTitle = report => report.target?.title || report.target?.name || report.target?.username || `${report.targetType} unavailable`
+const closed = report => ['resolved', 'dismissed'].includes(report.status)
 
 export default function Reports() {
-  const { reports, updateReportStatus, removeReportedContent } = useAdmin()
-  const [query, setQuery] = useState('')
-  const [status, setStatus] = useState('all')
-  const [type, setType] = useState('all')
-  const [selectedId, setSelectedId] = useState(null)
-  const [feedback, setFeedback] = useState('')
-  const search = query.trim().toLowerCase()
-  const filtered = reports.filter(report => (status === 'all' || report.status === status) && (type === 'all' || report.targetType === type) && `${report.targetTitle} ${report.reporter} ${report.reason} ${report.details}`.toLowerCase().includes(search))
-  const selected = reports.find(report => report.id === selectedId)
+  const [status, setStatus] = useState('open')
+  const [params, setParams] = useSearchParams()
+  const targetType = params.get('targetType') || ''
+  const [page, setPage] = useState(1)
+  const [refresh, setRefresh] = useState(0)
+  const [result, setResult] = useState({ data: [], pagination: null })
+  const [loadedKey, setLoadedKey] = useState('')
+  const [error, setError] = useState(null)
+  const [busy, setBusy] = useState('')
+  const key = `${page}|${status}|${targetType}|${refresh}`
+  const loading = loadedKey !== key && error?.key !== key
 
-  function reviewReport(id) {
-    const report = reports.find(item => item.id === id)
-    if (!report) return
-    if (report.status === 'pending') {
-      updateReportStatus(id, 'reviewing')
-      setFeedback(`Report for “${report.targetTitle}” is under review.`)
-    }
-    setSelectedId(id)
+  useEffect(() => {
+    let active = true
+    api.admin.reports({ page: String(page), limit: '20', ...(status && { status }), ...(targetType && { targetType }) })
+      .then(payload => { if (active) { setResult(payload); setLoadedKey(key); setError(null) } })
+      .catch(reason => { if (active) setError({ key, message: reason.message || 'Could not load reports.' }) })
+    return () => { active = false }
+  }, [key, page, status, targetType])
+
+  async function moderate(report, action) {
+    if (closed(report) || busy) return
+    const confirmText = { hide: 'Hide this content from public views?', restore: 'Restore this content to public views?', suspend: 'Suspend this account?', reactivate: 'Reactivate this account?', dismiss: 'Dismiss this report?', review: 'Mark this report as under review?' }[action]
+    if (action !== 'review' && !window.confirm(confirmText)) return
+    setBusy(String(report._id))
+    try { await api.admin.moderateReport(report._id, { action }); setRefresh(value => value + 1) }
+    catch (reason) { setError({ key, message: reason.message || 'Could not apply moderation action.' }) }
+    finally { setBusy('') }
   }
 
-  function dismissReport(id) {
-    const report = reports.find(item => item.id === id)
-    if (!report || ['dismissed', 'removed'].includes(report.status)) return
-    updateReportStatus(id, 'dismissed')
-    setFeedback(`Report for “${report.targetTitle}” was dismissed.`)
-  }
-
-  function removeContent(id) {
-    const report = reports.find(item => item.id === id)
-    if (!report || report.targetType === 'user' || ['dismissed', 'removed'].includes(report.status)) return
-    removeReportedContent(id)
-    setFeedback(`“${report.targetTitle}” was removed and its open reports were resolved.`)
-  }
-
-  return <div className="min-w-0"><AdminPageHeader title="Content reports" description="Review reported posts and decide what happens next." count={reports.length} /><Feedback message={feedback} /><TableToolbar query={query} onQueryChange={setQuery} queryLabel="Search reports" status={status} onStatusChange={setStatus} statuses={['pending', 'reviewing', 'dismissed', 'removed']} resultCount={filtered.length}><label className="flex items-center gap-2 text-sm text-[var(--muted)]"><span>Content type</span><select value={type} onChange={event => setType(event.target.value)} className="h-10 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text)]"><option value="all">All content</option>{['question', 'blog', 'message', 'user'].map(value => <option key={value} value={value}>{value.charAt(0).toUpperCase() + value.slice(1)}</option>)}</select></label></TableToolbar>{filtered.length ? <div className="grid min-w-0 gap-4 xl:grid-cols-2">{filtered.map(report => <ReportCard key={report.id} report={report} onReview={reviewReport} onDismiss={dismissReport} onRemove={removeContent} />)}</div> : <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)]"><EmptyState title="No reports found" /></div>}{selected && <DetailDialog title="Report details" onClose={() => setSelectedId(null)}><div className="flex items-start justify-between gap-3"><h3 className="text-base font-semibold leading-7">{selected.targetTitle}</h3><StatusBadge status={selected.status} /></div><dl className="grid gap-5 sm:grid-cols-2"><DetailField label="Reported by">{selected.reporter}</DetailField><DetailField label="Reported on">{formatDate(selected.date)}</DetailField><DetailField label="Content type"><span className="capitalize">{selected.targetType}</span></DetailField><DetailField label="Reason">{selected.reason}</DetailField></dl><div><h4 className="mb-2 text-xs font-semibold  text-[var(--subtle)]">Report details</h4><p className="whitespace-pre-wrap rounded-xl border border-[var(--border)] bg-[var(--surface-raised)] p-4 text-sm leading-7 text-[var(--muted)]">{selected.details}</p></div></DetailDialog>}</div>
+  return <div className="space-y-5"><header><h1 className="text-2xl font-bold">Reports and moderation</h1><p className="mt-2 text-sm text-[var(--muted)]">Review reports and apply reversible moderation actions. Each action is recorded in the audit trail.</p></header>
+    <div className="flex flex-wrap gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4"><label className="text-sm">Status<select value={status} onChange={event => { setStatus(event.target.value); setPage(1) }} className="mt-1 block rounded-lg border border-[var(--border)] bg-[var(--page)] px-3 py-2"><option value="open">Open</option><option value="reviewing">Reviewing</option><option value="resolved">Resolved</option><option value="dismissed">Dismissed</option><option value="">All</option></select></label><label className="text-sm">Target type<select value={targetType} onChange={event => { setParams(current => { const next = new URLSearchParams(current); event.target.value ? next.set('targetType', event.target.value) : next.delete('targetType'); return next }); setPage(1) }} className="mt-1 block rounded-lg border border-[var(--border)] bg-[var(--page)] px-3 py-2"><option value="">All targets</option>{['blog', 'question', 'answer', 'comment', 'user'].map(type => <option key={type} value={type}>{type}</option>)}</select></label></div>
+    {loading && <p role="status" className="p-6 text-center text-sm text-[var(--muted)]">Loading reports…</p>}
+    {!loading && error?.key === key && <p role="alert" className="rounded-xl border border-red-300 p-4 text-sm text-red-700">{error.message} <button onClick={() => setRefresh(value => value + 1)} className="ml-2 underline">Retry</button></p>}
+    {!loading && error?.key !== key && <><section className="grid gap-4 xl:grid-cols-2">{result.data.map(report => {
+      const target = report.target
+      const isHidden = target?.moderationStatus === 'hidden'
+      return <article key={report._id} className="space-y-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5"><div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold">{typeTitle(report)} <span className="font-normal capitalize text-[var(--muted)]">· {report.targetType}</span></h2><span className="rounded-full bg-[var(--surface-raised)] px-3 py-1 text-xs capitalize">{report.status}</span></div><p className="text-sm"><strong>Reason:</strong> {report.reason}</p>{report.details && <p className="whitespace-pre-wrap text-sm text-[var(--muted)]">{report.details}</p>}<p className="text-xs text-[var(--muted)]">Reported by {report.reporter?.username || 'Unknown'} · {new Date(report.createdAt).toLocaleString()}</p>{report.outcome && <p className="text-xs text-[var(--muted)]">Outcome: {report.outcome} · {report.moderatedBy?.username || 'Admin'} · {report.moderatedAt ? new Date(report.moderatedAt).toLocaleString() : ''}</p>}
+        {!closed(report) && <div className="flex flex-wrap gap-2 border-t border-[var(--border)] pt-3">{report.status === 'open' && <Action busy={busy === String(report._id)} onClick={() => moderate(report, 'review')}>Review</Action>}{report.targetType === 'user' ? <>{target?.isActive && <Action busy={busy === String(report._id)} onClick={() => moderate(report, 'suspend')}>Suspend account</Action>}{target && !target.isActive && <Action busy={busy === String(report._id)} onClick={() => moderate(report, 'reactivate')}>Reactivate account</Action>}</> : target && <Action busy={busy === String(report._id)} onClick={() => moderate(report, isHidden ? 'restore' : 'hide')}>{isHidden ? 'Restore content' : 'Hide content'}</Action>}<Action busy={busy === String(report._id)} onClick={() => moderate(report, 'dismiss')}>Dismiss report</Action></div>}
+      </article>
+    })}</section>{!result.data.length && <p className="rounded-xl border border-dashed border-[var(--border)] p-10 text-center text-sm text-[var(--muted)]">No reports in this view.</p>}<nav aria-label="Report pages" className="flex items-center justify-center gap-4"><button disabled={!result.pagination?.hasPrevPage} onClick={() => setPage(value => value - 1)} className="rounded-lg border border-[var(--border)] px-4 py-2 disabled:opacity-40">Previous</button><span className="text-sm text-[var(--muted)]">Page {result.pagination?.page || 1} of {Math.max(1, result.pagination?.totalPages || 1)}</span><button disabled={!result.pagination?.hasNextPage} onClick={() => setPage(value => value + 1)} className="rounded-lg border border-[var(--border)] px-4 py-2 disabled:opacity-40">Next</button></nav></>}
+  </div>
 }
+
+function Action({ busy, onClick, children }) { return <button disabled={busy} onClick={onClick} className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm disabled:opacity-50">{busy ? 'Saving…' : children}</button> }

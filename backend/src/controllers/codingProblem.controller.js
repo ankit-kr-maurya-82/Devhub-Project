@@ -74,6 +74,35 @@ const getPublishedProblem = async (req, res) => {
   }
 };
 
+const listAdminProblems = async (req, res) => {
+  const page = parsePositive(req.query.page, 1);
+  const limit = parsePositive(req.query.limit, 20);
+  if (!page || !limit || limit > 50 || !Number.isSafeInteger((page - 1) * limit)) return sendError(res, 400, "page and limit must be positive integers; limit must not exceed 50");
+  try {
+    const [problems, total] = await Promise.all([
+      CodingProblem.find({}).sort({ updatedAt: -1, _id: -1 }).skip((page - 1) * limit).limit(limit),
+      CodingProblem.countDocuments({}),
+    ]);
+    const totalPages = Math.ceil(total / limit);
+    return res.status(200).json({ success: true, data: problems, pagination: { page, limit, total, totalPages, hasNextPage: page < totalPages, hasPrevPage: page > 1 } });
+  } catch (error) {
+    console.error("Admin Coding Problems List Error:", error);
+    return sendError(res, 500, "Internal server error");
+  }
+};
+
+const getAdminProblem = async (req, res) => {
+  if (!slugPattern.test(req.params.slug)) return sendError(res, 400, "Invalid problem slug");
+  try {
+    const problem = await CodingProblem.findOne({ slug: req.params.slug });
+    if (!problem) return sendError(res, 404, "Problem not found");
+    return res.status(200).json({ success: true, data: problem });
+  } catch (error) {
+    console.error("Admin Coding Problem Get Error:", error);
+    return sendError(res, 500, "Internal server error");
+  }
+};
+
 const createProblem = async (req, res) => {
   const validationError = validateProblem(req.body, true);
   if (validationError) return sendError(res, 400, validationError);
@@ -120,4 +149,4 @@ const deleteProblem = async (req, res) => {
   }
 };
 
-export { listPublishedProblems, getPublishedProblem, createProblem, updateProblem, deleteProblem, validateProblem };
+export { listPublishedProblems, getPublishedProblem, listAdminProblems, getAdminProblem, createProblem, updateProblem, deleteProblem, validateProblem };

@@ -70,7 +70,7 @@ describe("blog controller unit checks", () => {
     const findOne = vi.spyOn(Blog, "findOne").mockReturnValue(populated(null));
     const res = response();
     await getPublishedBlog(request({ params: { slug: "still-draft" } }), res);
-    expect(findOne).toHaveBeenCalledWith({ slug: "still-draft", status: "published" });
+    expect(findOne).toHaveBeenCalledWith({ slug: "still-draft", status: "published", moderationStatus: { $ne: "hidden" } });
     expect(res.statusCode).toBe(404);
   });
 

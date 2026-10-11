@@ -4,8 +4,11 @@ import Icon from '../../../components/Icon.jsx'
 const links = [
   { to: '/admin', label: 'Overview', icon: 'grid' },
   { to: '/admin/users', label: 'Users', icon: 'users' },
-  { to: '/admin/questions', label: 'Questions', icon: 'message' },
-  { to: '/admin/blogs', label: 'Blogs', icon: 'book' },
+  { to: '/admin/reports?targetType=question', label: 'Questions', icon: 'message' },
+  { to: '/admin/reports?targetType=answer', label: 'Answers', icon: 'message' },
+  { to: '/admin/reports?targetType=comment', label: 'Comments', icon: 'message' },
+  { to: '/admin/reports?targetType=blog', label: 'Blogs', icon: 'book' },
+  { to: '/admin/coding', label: 'Coding problems', icon: 'code' },
   { to: '/admin/reports', label: 'Reports', icon: 'shield' },
 ]
 

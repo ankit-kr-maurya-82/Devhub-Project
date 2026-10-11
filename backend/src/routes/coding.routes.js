@@ -3,6 +3,8 @@ import {
   createProblem,
   deleteProblem,
   getPublishedProblem,
+  getAdminProblem,
+  listAdminProblems,
   listPublishedProblems,
   updateProblem,
 } from "../controllers/codingProblem.controller.js";
@@ -12,6 +14,8 @@ import { authMiddleware } from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
+router.get("/manage", authMiddleware, adminMiddleware, listAdminProblems);
+router.get("/manage/:slug", authMiddleware, adminMiddleware, getAdminProblem);
 router.get("/", listPublishedProblems);
 router.get("/:slug", getPublishedProblem);
 router.post("/:slug/submissions", authMiddleware, createSubmission);

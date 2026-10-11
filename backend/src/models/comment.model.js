@@ -23,6 +23,7 @@ const commentSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       required: true,
     },
+    moderationStatus: { type: String, enum: ["visible", "hidden"], default: "visible", index: true },
   },
   { timestamps: true }
 );

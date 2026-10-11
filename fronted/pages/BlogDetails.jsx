@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import BlogContent from '../components/BlogContent.jsx'
+import ReportButton from '../components/ReportButton.jsx'
 import BlogCover from '../components/BlogCover.jsx'
 import { formatBlogDate, readingTime } from '../data/blogs.js'
 import { useMockSession } from '../src/state/useMockSession.js'
@@ -46,6 +47,7 @@ export default function BlogDetails() {
         <div className="flex flex-wrap gap-2">{blog.tags.map(item => <Link key={item} to={`/blogs?tag=${encodeURIComponent(item)}`} className="rounded-md bg-[var(--surface-raised)] px-2.5 py-1 text-xs text-[var(--muted)]">{item}</Link>)}</div>
         <h1 className="mt-4 break-words text-3xl font-bold tracking-tight sm:text-4xl">{blog.title}</h1>
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-[var(--muted)]"><span>By {blog.author}</span><span>{readingTime(blog.content)} · <time dateTime={blog.publishedAt}>{formatBlogDate(blog.publishedAt)}</time></span></div>
+        {!owner && <div className="mt-4"><ReportButton targetType="blog" targetId={blog._id} /></div>}
         {owner && <div className="mt-5 flex gap-3"><Link to={`/blogs/${encodeURIComponent(blog.slug)}/edit`} className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm">Edit</Link><button onClick={() => setConfirmDelete(true)} className="rounded-lg border border-red-300 px-4 py-2 text-sm text-red-700">Delete</button></div>}
       </header>
       {error?.slug === slug && blog?.slug === slug && <p role="alert" className="mb-4 text-sm text-red-700">{error.message}</p>}

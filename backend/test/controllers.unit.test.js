@@ -129,6 +129,7 @@ describe("controller and middleware unit checks", () => {
       email: "reader@example.test",
       password: passwordHash,
       role: "user",
+      isActive: true,
     };
     const select = vi.fn().mockResolvedValue(user);
     vi.spyOn(User, "findOne").mockReturnValue({ select });
@@ -143,6 +144,18 @@ describe("controller and middleware unit checks", () => {
     const [, token, cookieOptions] = response.cookie.mock.calls[0];
     expect(jwt.verify(token, secret).userId).toBe(userId);
     expect(cookieOptions).toMatchObject({ httpOnly: true, secure: true, sameSite: "lax" });
+  });
+
+  it("rejects login for a suspended account without issuing a token", async () => {
+    const user = { _id: userId, email: "reader@example.test", password: await bcrypt.hash("correct-password", 4), isActive: false };
+    vi.spyOn(User, "findOne").mockReturnValue({ select: vi.fn().mockResolvedValue(user) });
+    const response = makeResponse();
+
+    await loginUser(makeRequest({ body: { email: user.email, password: "correct-password" } }), response);
+
+    expect(response.statusCode).toBe(400);
+    expect(response.body.message).toMatch(/Invalid email or password/);
+    expect(response.cookie).not.toHaveBeenCalled();
   });
 
   it("rejects requests without a JWT and clears the stale cookie", async () => {
@@ -170,6 +183,19 @@ describe("controller and middleware unit checks", () => {
     expect(query.select).toHaveBeenCalledWith("-password");
     expect(req.user).toBe(user);
     expect(next).toHaveBeenCalledOnce();
+  });
+
+  it("rejects authenticated requests for suspended accounts", async () => {
+    const suspendedUser = { _id: userId, isActive: false };
+    vi.spyOn(User, "findById").mockReturnValue({ select: vi.fn().mockResolvedValue(suspendedUser) });
+    const response = makeResponse();
+    const next = vi.fn();
+
+    await authMiddleware(makeRequest({ token: jwt.sign({ userId }, secret) }), response, next);
+
+    expect(response.statusCode).toBe(401);
+    expect(response.clearCookie).toHaveBeenCalledWith("token");
+    expect(next).not.toHaveBeenCalled();
   });
 
   it("rejects malformed and expired JWTs without querying for a user", async () => {

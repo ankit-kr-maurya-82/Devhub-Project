@@ -80,7 +80,7 @@ const getAnswersByQuestion = async (req, res) => {
       });
     }
 
-    const questionExists = await Question.exists({ _id: questionId });
+    const questionExists = await Question.exists({ _id: questionId, moderationStatus: { $ne: "hidden" } });
     if (!questionExists) {
       return res.status(404).json({
         success: false,
@@ -88,7 +88,7 @@ const getAnswersByQuestion = async (req, res) => {
       });
     }
 
-    const answers = await Answer.find({ question: questionId })
+    const answers = await Answer.find({ question: questionId, moderationStatus: { $ne: "hidden" } })
       .populate("author", authorFields)
       .sort({ createdAt: -1 });
 

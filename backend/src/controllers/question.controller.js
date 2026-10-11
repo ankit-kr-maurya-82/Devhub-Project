@@ -83,7 +83,7 @@ const getAllQuestions = async (req, res) => {
     if (!Number.isSafeInteger((page - 1) * limit)) {
       return res.status(400).json({ success: false, message: "page is too large" });
     }
-    const filter = {};
+    const filter = { moderationStatus: { $ne: "hidden" } };
     if (typeof search === "string" && search.trim()) {
       const searchRegex = new RegExp(escapeRegex(search.trim()), "i");
       filter.$or = [{ title: searchRegex }, { description: searchRegex }];
@@ -136,7 +136,7 @@ const getQuestionById = async (req, res) => {
             });
         }
 
-        const question = await Question.findByIdAndUpdate(questionId,
+        const question = await Question.findOneAndUpdate({ _id: questionId, moderationStatus: { $ne: "hidden" } },
             {
                 $inc: {views: 1}
             },

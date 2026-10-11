@@ -24,3 +24,4 @@ router.post(["/forgot-password", "/forget-password"], resetLimiter, forgetPasswo
 router.post("/reset-password/:token", resetLimiter, resetPassword);
 
 export default router;
+

@@ -56,8 +56,23 @@ export const api = {
   coding: {
     problems: params => request(`/coding/problems${params ? `?${new URLSearchParams(params)}` : ''}`),
     problem: slug => request(`/coding/problems/${encodeURIComponent(slug)}`),
+    adminProblems: params => request(`/coding/problems/manage${params ? `?${new URLSearchParams(params)}` : ''}`),
+    adminProblem: slug => request(`/coding/problems/manage/${encodeURIComponent(slug)}`),
+    createProblem: details => request('/coding/problems', { method: 'POST', body: details }),
+    updateProblem: (slug, details) => request(`/coding/problems/${encodeURIComponent(slug)}`, { method: 'PATCH', body: details }),
+    removeProblem: slug => request(`/coding/problems/${encodeURIComponent(slug)}`, { method: 'DELETE' }),
     submit: (slug, details) => request(`/coding/problems/${encodeURIComponent(slug)}/submissions`, { method: 'POST', body: details }),
     submissions: params => request(`/submissions${params ? `?${new URLSearchParams(params)}` : ''}`),
+  },
+  reports: {
+    create: details => request('/reports', { method: 'POST', body: details }),
+  },
+  admin: {
+    dashboard: () => request('/admin/dashboard'),
+    users: params => request(`/admin/users${params ? `?${new URLSearchParams(params)}` : ''}`),
+    setUserActive: (id, isActive) => request(`/admin/users/${encodeURIComponent(id)}/status`, { method: 'PATCH', body: { isActive } }),
+    reports: params => request(`/admin/reports${params ? `?${new URLSearchParams(params)}` : ''}`),
+    moderateReport: (id, details) => request(`/admin/reports/${encodeURIComponent(id)}`, { method: 'PATCH', body: details }),
   },
   comments: {
     questionList: id => request(`/questions/${encodeURIComponent(id)}/comments`),

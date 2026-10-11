@@ -47,6 +47,8 @@ const questionSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+
+    moderationStatus: { type: String, enum: ["visible", "hidden"], default: "visible", index: true },
   },
   {
     timestamps: true,

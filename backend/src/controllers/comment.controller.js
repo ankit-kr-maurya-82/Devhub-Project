@@ -20,8 +20,8 @@ const addComment = async (req, res, targetType, TargetModel, idParam) => {
     if (!validateContent(req.body?.content)) {
       return res.status(400).json({ success: false, message: "Content must be between 1 and 1000 characters" });
     }
-    const target = await TargetModel.findById(targetId).select("_id author question");
-    if (!target) {
+    const target = await TargetModel.findById(targetId).select("_id author question moderationStatus");
+    if (!target || target.moderationStatus === "hidden") {
       return res.status(404).json({ success: false, message: `${targetType} not found` });
     }
     const comment = await Comment.create({
@@ -54,11 +54,11 @@ const getComments = async (req, res, targetType, TargetModel, idParam) => {
     if (invalidId(targetId)) {
       return res.status(400).json({ success: false, message: `Invalid ${idParam}` });
     }
-    const target = await TargetModel.exists({ _id: targetId });
+    const target = await TargetModel.exists({ _id: targetId, moderationStatus: { $ne: "hidden" } });
     if (!target) {
       return res.status(404).json({ success: false, message: `${targetType} not found` });
     }
-    const comments = await Comment.find({ targetType, targetId })
+    const comments = await Comment.find({ targetType, targetId, moderationStatus: { $ne: "hidden" } })
       .populate("author", authorFields)
       .sort({ createdAt: 1 });
     return res.status(200).json({ success: true, count: comments.length, data: comments });

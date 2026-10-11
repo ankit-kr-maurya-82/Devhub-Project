@@ -77,7 +77,7 @@ const getPublishedBlogs = async (req, res) => {
     return sendError(res, 400, "tag must be a non-empty string of at most 30 characters");
   }
 
-  const filter = { status: "published" };
+  const filter = { status: "published", moderationStatus: { $ne: "hidden" } };
   const search = req.query.search?.trim();
   if (search) {
     const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -124,7 +124,7 @@ const getMyBlogs = async (req, res) => {
 const getPublishedBlog = async (req, res) => {
   if (!validSlug(req.params.slug)) return sendError(res, 400, "Invalid blog slug");
   try {
-    const blog = await Blog.findOne({ slug: req.params.slug, status: "published" }).populate("author", authorFields);
+    const blog = await Blog.findOne({ slug: req.params.slug, status: "published", moderationStatus: { $ne: "hidden" } }).populate("author", authorFields);
     if (!blog) return sendError(res, 404, "Blog not found");
     return res.status(200).json({ success: true, data: blog });
   } catch (error) {

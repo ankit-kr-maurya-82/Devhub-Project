@@ -1,146 +1,27 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Icon from '../../../components/Icon.jsx'
-import AdminStatCard from '../../components/admin/AdminStatCard.jsx'
-import { AdminPageHeader, StatusBadge } from '../../components/admin/AdminUI.jsx'
-import { formatDate } from '../../components/admin/adminUtils.js'
-import { useAdmin } from '../../state/useAdmin.js'
+import api from '../../lib/api.js'
 
 const metrics = [
-  {
-    key: 'totalUsers',
-    label: 'Total users',
-    icon: 'users',
-    description: 'Community accounts'
-  },
-  {
-    key: 'totalQuestions',
-    label: 'Questions',
-    icon: 'message',
-    description: 'Questions from members'
-  },
-  {
-    key: 'totalBlogs',
-    label: 'Blogs',
-    icon: 'book',
-    description: 'Articles from members'
-  },
-  {
-    key: 'reportedContent',
-    label: 'Open reports',
-    icon: 'shield',
-    description: 'Reports to review',
-    tone: 'warning'
-  },
+  ['totalUsers', 'Users', 'users'], ['activeUsers', 'Active accounts', 'check'], ['openReports', 'Open reports', 'shield'],
+  ['totalBlogs', 'Blogs', 'book'], ['totalQuestions', 'Questions', 'message'], ['totalAnswers', 'Answers', 'message'],
+  ['totalComments', 'Comments', 'message'], ['suspendedUsers', 'Suspended', 'shield'],
 ]
+const actionLabel = action => action.replaceAll('_', ' ').replace(/\b\w/g, char => char.toUpperCase())
 
 export default function AdminDashboard() {
-  const { users, questions, blogs, reports, stats } = useAdmin()
-  const recent = [
-    {
-      title: 'Recent users',
-      to: '/admin/users',
-      icon: 'users',
-      items: users.map(user => ({
-        id: user.id,
-        title: user.name,
-        description: `@${user.username}`,
-        date: user.joinedAt,
-        status: user.status
-      }))
-    },
-    {
-      title: 'Recent questions',
-      to: '/admin/questions',
-      icon: 'message',
-      items: questions.map(item => (
-        {
-          ...item,
-          description: item.author
-        }
-      ))
-    },
-    {
-      title: 'Recent blogs',
-      to: '/admin/blogs',
-      icon: 'book',
-      items: blogs.map(item => (
-        {
-          ...item,
-          description: item.author
-        }
-      ))
-    },
-    {
-      title: 'Recent reports',
-      to: '/admin/reports',
-      icon: 'shield',
-      items: reports.map(item => (
-        {
-          ...item,
-          title: item.targetTitle,
-          description: item.reason
-        }
-      ))
-    },
-  ]
-  return <div
-    className="min-w-0"
-  >
-    <AdminPageHeader
-      title="Community overview" description="See recent activity and review what needs your attention." /
-    >
-    <div
-      className="grid grid-cols-1 gap-3 min-[400px]:grid-cols-2 sm:gap-4 xl:grid-cols-4">
-      {metrics.map((
-        { key, ...metric }) => <AdminStatCard key={key} {...metric} value={stats[key]} />)}
-    </div>
-
-    <div
-      className="mt-7 grid min-w-0 gap-5 xl:grid-cols-2">
-      {recent.map(section => <section key={section.to}
-        className="min-w-0 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
-        <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] px-5 py-4">
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--text)]">
-            <Icon name={section.icon} className="size-4 text-[var(--accent)]" />
-            {section.title}
-          </h2>
-          <Link to={section.to}
-            className="shrink-0 text-sm font-medium text-[var(--accent)] hover:underline" aria-label={`View all ${section.title.toLowerCase()}`}
-          >
-            View all
-          </Link>
-        </div>
-        <ul
-          className="divide-y divide-[var(--border)]">
-          {[...section.items]
-            .sort((a, b) => new Date(b.date) - new Date(a.date))
-            .slice(0, 3)
-            .map(item =>
-              <li
-                key={item.id}
-                className="flex items-start justify-between gap-3 px-5 py-4">
-                <div
-                  className="min-w-0">
-                  <p className="truncate text-sm font-medium text-[var(--text)]">
-                    {item.title}
-                  </p>
-                  <p
-                    className="mt-1.5 truncate text-xs text-[var(--subtle)]">
-                    {item.description} · {formatDate(item.date)}
-                  </p>
-                </div>
-                <span className="shrink-0">
-                  <StatusBadge status={item.status} />
-                </span>
-              </li>)}
-        </ul>
-        {section.items.length === 0 &&
-          <p className="px-5 py-8 text-sm text-[var(--muted)]">
-            No recent activity.
-          </p>
-        }
-      </section>
-      )}
-    </div>
+  const [dashboard, setDashboard] = useState(null)
+  const [error, setError] = useState('')
+  useEffect(() => {
+    let active = true
+    api.admin.dashboard().then(({ data }) => { if (active) setDashboard(data) }).catch(reason => { if (active) setError(reason.message || 'Could not load admin dashboard.') })
+    return () => { active = false }
+  }, [])
+  if (!dashboard && !error) return <p role="status" className="p-8 text-sm text-[var(--muted)]">Loading admin dashboard…</p>
+  return <div className="space-y-7"><header><h1 className="text-2xl font-bold">Admin dashboard</h1><p className="mt-2 text-sm text-[var(--muted)]">Account, content, and moderation activity.</p></header>
+    {error && <p role="alert" className="rounded-xl border border-red-300 p-4 text-sm text-red-700">{error}</p>}
+    {dashboard && <><section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{metrics.map(([key, label, icon]) => <article key={key} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5"><div className="flex items-center justify-between"><span className="text-sm text-[var(--muted)]">{label}</span><Icon name={icon} className="size-4 text-[var(--accent)]" /></div><p className="mt-3 text-2xl font-semibold">{dashboard.counts[key]}</p></article>)}</section>
+      <section className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]"><div className="flex items-center justify-between border-b border-[var(--border)] p-4"><h2 className="font-semibold">Recent moderation activity</h2><Link to="/admin/reports" className="text-sm text-[var(--accent)]">Reports</Link></div>{dashboard.recentModerationActivity.length ? <ul className="divide-y divide-[var(--border)]">{dashboard.recentModerationActivity.map(item => <li key={item._id} className="flex flex-wrap justify-between gap-2 p-4 text-sm"><span>{actionLabel(item.action)} · {item.targetType}</span><span className="text-[var(--muted)]">{item.actor?.username || 'Admin'} · {new Date(item.createdAt).toLocaleString()}</span></li>)}</ul> : <p className="p-8 text-center text-sm text-[var(--muted)]">No moderation activity yet.</p>}</section></>}
   </div>
 }

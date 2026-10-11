@@ -18,7 +18,6 @@ const Profile = lazy(() => import('../pages/Profile.jsx'))
 const Questions = lazy(() => import('../pages/Questions.jsx'))
 const QuestionDetails = lazy(() => import('../pages/QuestionDetails.jsx'))
 const AskQuestion = lazy(() => import('../pages/AskQuestion.jsx'))
-const FeatureUnavailable = lazy(() => import('../pages/FeatureUnavailable.jsx'))
 const Blogs = lazy(() => import('../pages/Blogs.jsx'))
 const BlogDetails = lazy(() => import('../pages/BlogDetails.jsx'))
 const CreateBlog = lazy(() => import('../pages/CreateBlog.jsx'))
@@ -27,6 +26,11 @@ const ProblemDetails = lazy(() => import('../pages/ProblemDetails.jsx'))
 const Submissions = lazy(() => import('../pages/Submissions.jsx'))
 const Community = lazy(() => import('./pages/Community.jsx'))
 const Notifications = lazy(() => import('./pages/Notifications.jsx'))
+const AdminLayout = lazy(() => import('./layouts/AdminLayout.jsx'))
+const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard.jsx'))
+const ManageUsers = lazy(() => import('./pages/admin/ManageUsers.jsx'))
+const Reports = lazy(() => import('./pages/admin/Reports.jsx'))
+const ManageCodingProblems = lazy(() => import('./pages/admin/ManageCodingProblems.jsx'))
 
 function App() {
   return (
@@ -54,7 +58,12 @@ function App() {
               <Route path="/submissions" element={<RequireAuth><Submissions /></RequireAuth>} />
               <Route path="/community" element={<RequireAuth><Community /></RequireAuth>} />
               <Route path="/notifications" element={<RequireAuth><Notifications /></RequireAuth>} />
-              <Route path="/admin/*" element={<FeatureUnavailable title="Admin workspace" description="Administrative records and moderation actions are not connected to backend APIs yet." />} />
+              <Route path="/admin" element={<RequireAuth><AdminLayout /></RequireAuth>}>
+                <Route index element={<AdminDashboard />} />
+                <Route path="users" element={<ManageUsers />} />
+                <Route path="reports" element={<Reports />} />
+                <Route path="coding" element={<ManageCodingProblems />} />
+              </Route>
               <Route path="/tags" element={<ComingSoon title="Tags" description="Explore the technologies and topics that interest you." />} />
               <Route path="*" element={<NotFound />} />
             </Route>

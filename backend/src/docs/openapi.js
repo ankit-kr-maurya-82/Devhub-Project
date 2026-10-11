@@ -1,5 +1,109 @@
 /**
  * @swagger
+ * /api/v1/admin/dashboard:
+ *   get:
+ *     tags: [Administration]
+ *     summary: Read admin counts and recent moderation activity
+ *     security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+ *     responses:
+ *       '200': { description: Aggregate counts and audit activity }
+ *       '401': { $ref: '#/components/responses/Unauthorized' }
+ *       '403': { description: Administrator access required }
+ * /api/v1/admin/users:
+ *   get:
+ *     tags: [Administration]
+ *     summary: Search and paginate users without secret fields
+ *     security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+ *     parameters:
+ *       - { in: query, name: page, schema: { type: integer, minimum: 1 } }
+ *       - { in: query, name: limit, schema: { type: integer, minimum: 1, maximum: 50 } }
+ *       - { in: query, name: search, schema: { type: string, maxLength: 100 } }
+ *       - { in: query, name: status, schema: { type: string, enum: [active, suspended] } }
+ *     responses:
+ *       '200': { description: Sanitized user page }
+ *       '403': { description: Administrator access required }
+ * /api/v1/admin/users/{userId}/status:
+ *   patch:
+ *     tags: [Administration]
+ *     summary: Suspend or reactivate an account (administrator only)
+ *     security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+ *     parameters:
+ *       - { $ref: '#/components/parameters/ObjectId' }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { type: object, required: [isActive], additionalProperties: false, properties: { isActive: { type: boolean } } }
+ *     responses:
+ *       '200': { description: Account status changed and action audited }
+ *       '400': { description: Invalid request or self status change }
+ *       '403': { description: Administrator access required }
+ *       '409': { description: Last active admin cannot be suspended }
+ * /api/v1/reports:
+ *   post:
+ *     tags: [Moderation]
+ *     summary: Submit a report for supported content or an account
+ *     security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { type: object, required: [targetType, targetId, reason], additionalProperties: false, properties: { targetType: { type: string, enum: [blog, question, answer, comment, user] }, targetId: { type: string }, reason: { type: string, maxLength: 100 }, details: { type: string, maxLength: 2000 } } }
+ *     responses:
+ *       '201': { description: Report queued for admin review }
+ *       '401': { $ref: '#/components/responses/Unauthorized' }
+ * /api/v1/admin/reports:
+ *   get:
+ *     tags: [Moderation]
+ *     summary: Paginate reports (administrator only)
+ *     security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+ *     parameters:
+ *       - { in: query, name: page, schema: { type: integer, minimum: 1 } }
+ *       - { in: query, name: limit, schema: { type: integer, minimum: 1, maximum: 50 } }
+ *       - { in: query, name: status, schema: { type: string, enum: [open, reviewing, resolved, dismissed] } }
+ *       - { in: query, name: targetType, schema: { type: string, enum: [blog, question, answer, comment, user] } }
+ *     responses:
+ *       '200': { description: Reports with sanitized target previews }
+ *       '403': { description: Administrator access required }
+ * /api/v1/admin/reports/{reportId}:
+ *   patch:
+ *     tags: [Moderation]
+ *     summary: Review, dismiss, hide, restore, suspend, or reactivate a reported target
+ *     security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+ *     parameters:
+ *       - { in: path, name: reportId, required: true, schema: { type: string } }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { type: object, required: [action], additionalProperties: false, properties: { action: { type: string, enum: [review, dismiss, hide, restore, suspend, reactivate] }, note: { type: string, maxLength: 1000 } } }
+ *     responses:
+ *       '200': { description: Report and audit trail updated }
+ *       '403': { description: Administrator access required }
+ *       '409': { description: Report closed or last administrator protected }
+ *
+ * /api/v1/coding/problems/manage:
+ *   get:
+ *     tags: [Coding]
+ *     summary: List all problems including drafts (administrator only)
+ *     security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+ *     parameters:
+ *       - { in: query, name: page, schema: { type: integer, minimum: 1 } }
+ *       - { in: query, name: limit, schema: { type: integer, minimum: 1, maximum: 50 } }
+ *     responses:
+ *       '200': { description: Admin problem page }
+ *       '403': { description: Administrator access required }
+ * /api/v1/coding/problems/manage/{slug}:
+ *   get:
+ *     tags: [Coding]
+ *     summary: Get a draft or published problem for editing (administrator only)
+ *     security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+ *     parameters:
+ *       - { in: path, name: slug, required: true, schema: { type: string } }
+ *     responses:
+ *       '200': { description: Problem details }
+ *       '403': { description: Administrator access required }
+ *       '404': { description: Problem not found }
  * /api/v1/coding/problems:
  *   get:
  *     tags: [Coding]
@@ -716,7 +820,7 @@ const options = {
     tags: [
       { name: "Authentication" }, { name: "Users" }, { name: "Questions" },
       { name: "Answers" }, { name: "Comments" }, { name: "Notifications" },
-      { name: "Rooms" }, { name: "Messages" }, { name: "Blogs" }, { name: "Coding" },
+      { name: "Rooms" }, { name: "Messages" }, { name: "Blogs" }, { name: "Coding" }, { name: "Administration" }, { name: "Moderation" },
     ],
   },
   apis: [fileURLToPath(new URL("./openapi.js", import.meta.url))],

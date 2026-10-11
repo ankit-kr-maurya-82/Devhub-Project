@@ -15,6 +15,7 @@ const blogSchema = new mongoose.Schema({
   author: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
   tags: { type: [{ type: String, trim: true, lowercase: true, maxlength: 30 }], default: [] },
   status: { type: String, enum: ["draft", "published"], default: "draft", index: true },
+  moderationStatus: { type: String, enum: ["visible", "hidden"], default: "visible", index: true },
   publishedAt: { type: Date, default: null },
 }, { timestamps: true });
 
