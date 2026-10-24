@@ -71,8 +71,8 @@ export default function MainLayout() {
         if (event.target !== event.currentTarget) return
         const bounds = event.currentTarget.getBoundingClientRect()
         if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) closeMenu()
-      }} className="fixed inset-y-0 left-0 m-0 h-dvh max-h-dvh w-80 max-w-[88vw] overflow-y-auto border-r border-[var(--border)] bg-[var(--surface)] text-[var(--text)] shadow-2xl backdrop:bg-black/70 backdrop:backdrop-blur-sm">
-        <div className="flex items-center justify-between border-b border-[var(--border)] px-7 py-5"><span className="font-semibold">DevHub navigation</span><button type="button" onClick={closeMenu} aria-label="Close navigation" className="rounded-lg p-2 text-[var(--muted)] hover:bg-[var(--surface-raised)]"><Icon name="close" /></button></div>
+      }} className="fixed inset-y-0 left-0 m-0 h-dvh max-h-dvh w-80 max-w-[88vw] overflow-y-auto border-r border-[var(--border)] bg-[var(--surface)] text-[var(--text)] shadow-lg backdrop:bg-black/50">
+        <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-4"><span className="font-semibold">DevHub navigation</span><button type="button" onClick={closeMenu} aria-label="Close navigation" className="rounded-lg p-2 text-[var(--muted)] hover:bg-[var(--surface-raised)]"><Icon name="close" /></button></div>
         <Sidebar compact onNavigate={closeMenu} />
         <div className="flex gap-3 border-t border-[var(--border)] p-5">{user ? <><Link to="/profile" onClick={closeMenu} className="ui-button-secondary flex-1">My profile</Link><button type="button" onClick={async () => { try { await logout(); closeMenu() } catch { /* Keep the session visible if logout fails. */ } }} className="ui-button flex-1">Log out</button></> : <><Link to="/login" onClick={closeMenu} className="ui-button-secondary flex-1">Log in</Link><Link to="/register" onClick={closeMenu} className="ui-button flex-1">Create account</Link></>}</div>
       </dialog>

@@ -23,13 +23,13 @@ export default function Questions() {
   const topics = [...new Set([...questions.flatMap(question => question.tags), ...(tag ? [tag] : [])])].sort()
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
-      <header className="flex flex-wrap items-start justify-between gap-4">
+    <div className="mx-auto max-w-5xl space-y-5 sm:space-y-6">
+      <header className="ui-page-header">
         <div><h1>Questions</h1><p className="mt-2 text-sm text-[var(--muted)]">Find an answer or ask the community for help.</p></div>
         <Link to="/ask-question" className="ui-button"><Icon name="plus" className="size-4" />Ask a question</Link>
       </header>
       <section aria-label="Search and filter questions" className="ui-card space-y-4 p-4 sm:p-5">
-        <label className="flex items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--page)] px-4 py-3 focus-within:border-[var(--accent)]">
+        <label className="flex min-h-11 items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--page)] px-3 focus-within:border-[var(--accent)] sm:px-4">
           <Icon name="search" className="size-5 shrink-0 text-[var(--muted)]" />
           <span className="sr-only">Search questions</span>
           <input type="search" value={query} onChange={event => update('q', event.target.value)} placeholder="Search questions…" className="min-w-0 flex-1 bg-transparent text-sm outline-none" />
@@ -43,12 +43,12 @@ export default function Questions() {
       <section className="space-y-4" aria-label="Question list">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p role="status" className="min-w-0 break-words text-sm text-[var(--muted)]">{visible.length} {visible.length === 1 ? 'question' : 'questions'}{tag && ` about ${tag}`}</p>
-          <div role="group" className="flex flex-wrap gap-1 rounded-lg bg-[var(--surface-raised)] p-1" aria-label="Filter questions">
+          <div role="group" className="flex max-w-full flex-wrap gap-1 rounded-lg bg-[var(--surface-raised)] p-1" aria-label="Filter questions">
             {['Newest', 'Active', 'Unanswered'].map(value => <button key={value} type="button" aria-pressed={filter === value} onClick={() => update('filter', value)} className={`rounded-md px-3 py-2 text-xs font-medium ${filter === value ? 'bg-[var(--surface)] text-[var(--accent)] shadow-sm' : 'text-[var(--muted)] hover:text-[var(--text)]'}`}>{value === 'Active' ? 'Recently active' : value}</button>)}
           </div>
         </div>
-        {loading && !questions.length && <p role="status" className="ui-card p-6 text-sm text-[var(--muted)]">Loading questions…</p>}
-        {error && <p role="alert" className="ui-card p-6 text-sm text-[var(--danger)]">Could not load questions: {error}</p>}
+        {loading && !questions.length && <p role="status" aria-live="polite" className="ui-card p-5 text-sm text-[var(--muted)]">Loading questions…</p>}
+        {error && <p role="alert" className="ui-card border-[var(--danger)] p-5 text-sm text-[var(--danger)]">Could not load questions: {error}</p>}
         {visible.map(question => <QuestionCard key={question.id} question={question} selectedTag={tag} onTagSelect={selectTag} />)}
         {!loading && !error && !visible.length && <div className="ui-card p-8 text-center"><h2 className="font-semibold">No questions found</h2><p className="mt-2 text-sm text-[var(--muted)]">Try a different search or clear the filters.</p><button type="button" onClick={() => setParams({})} className="ui-button-secondary mt-4">Clear filters</button></div>}
       </section>

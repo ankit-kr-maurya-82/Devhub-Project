@@ -95,7 +95,7 @@ function parseBlocks(content) {
 
 export default function BlogContent({ content = '' }) {
   return (
-    <div className="min-w-0 space-y-5 break-words text-[15px] leading-8 text-[var(--text)]">
+    <div className="min-w-0 space-y-5 break-words text-[15px] leading-7 text-[var(--text)] sm:leading-8">
       {parseBlocks(content).map((block, index) => {
         switch (block.type) {
           case 'h2':
@@ -105,7 +105,7 @@ export default function BlogContent({ content = '' }) {
           case 'code':
             return (
               <div key={index} className="min-w-0 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--page)]">
-                {block.language && <div className="border-b border-[var(--border)] px-4 py-1.5 font-mono text-xs text-[var(--muted)]">{block.language}</div>}
+                {block.language && <div className="break-words border-b border-[var(--border)] px-4 py-1.5 font-mono text-xs text-[var(--muted)]">{block.language}</div>}
                 <pre tabIndex={0} aria-label="Code sample" className="overflow-x-auto p-4 text-[13px] leading-6 text-[var(--text)]"><code>{block.text}</code></pre>
               </div>
             )

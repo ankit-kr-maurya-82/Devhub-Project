@@ -1,6 +1,8 @@
 export const navigation = [
   { label: 'Home', to: '/', icon: 'home', group: 'Explore' },
   { label: 'Questions', to: '/questions', icon: 'message', group: 'Explore' },
+  { label: 'Blogs', to: '/blogs', icon: 'book', group: 'Explore' },
+  { label: 'Coding Practice', to: '/coding', icon: 'code', group: 'Explore' },
   { label: 'Community', to: '/community', icon: 'users', group: 'Explore' },
   { label: 'My dashboard', to: '/dashboard', icon: 'grid', group: 'Your space' },
   { label: 'Notifications', to: '/notifications', icon: 'bell', group: 'Your space' },

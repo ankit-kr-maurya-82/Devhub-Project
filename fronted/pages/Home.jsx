@@ -25,12 +25,17 @@ export default function Home() {
   const clearFilters = () => { setQuery(''); setSelectedTag('') }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-9">
-      <section aria-labelledby="hero-title" className="ui-card p-6 sm:p-8">
-        <p className="mb-2 text-sm font-medium text-[var(--accent)]">Welcome to DevHub</p>
-        <h1 id="hero-title">What would you like to learn?</h1>
-        <p className="mt-3 max-w-2xl text-base leading-7 text-[var(--muted)]">Find an answer or get help from the community.</p>
-        <div className="mt-6">
+    <div className="mx-auto max-w-6xl space-y-7 sm:space-y-9">
+      <section aria-labelledby="hero-title" className="ui-card p-5 sm:p-7">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div className="min-w-0">
+            <p className="mb-1.5 text-sm font-medium text-[var(--accent)]">Welcome to DevHub</p>
+            <h1 id="hero-title">What would you like to learn?</h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">Find an answer or get help from the community.</p>
+          </div>
+          <Link to="/ask-question" className="ui-button"><Icon name="plus" className="size-4" />Ask a question</Link>
+        </div>
+        <div className="mt-5 border-t border-[var(--border)] pt-5">
           <label htmlFor="developer-search" className="mb-2 block text-sm font-semibold">Search questions</label>
           <div className="flex min-h-13 items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--page)] px-4 focus-within:border-[var(--accent)]"><Icon name="search" className="size-5 shrink-0 text-[var(--subtle)]" /><input id="developer-search" type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Search questions or topics…" className="min-w-0 flex-1 bg-transparent py-3 text-sm outline-none" /></div>
           {tags.length > 0 && <div className="mt-3 flex flex-wrap items-center gap-2"><span className="mr-1 text-xs text-[var(--muted)]">Topics</span>{tags.slice(0, 8).map(tag => <TagBadge key={tag} tag={tag} selected={selectedTag === tag} onSelect={selectTag} />)}</div>}
@@ -38,16 +43,16 @@ export default function Home() {
         </div>
       </section>
 
-      <section aria-label="Get started" className="grid gap-3 md:grid-cols-2">
+      <section aria-label="Get started" className="grid gap-3 sm:grid-cols-2">
         {shortcuts.map(item => <Link key={item.to} to={item.to} className="ui-card group flex items-start gap-3 p-5 transition-colors hover:border-[var(--accent)]"><span className="rounded-lg bg-[var(--accent-soft)] p-2.5 text-[var(--accent)]"><Icon name={item.icon} /></span><div className="min-w-0"><h2 className="text-sm font-semibold group-hover:text-[var(--accent)]">{item.title} <span aria-hidden="true">→</span></h2><p className="mt-1 text-sm leading-6 text-[var(--muted)]">{item.description}</p></div></Link>)}
       </section>
 
       <section aria-labelledby="questions-title">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><h2 id="questions-title" className="text-xl font-semibold tracking-tight">{hasFilters ? 'Matching questions' : 'Recent questions'}</h2><Link to="/questions" className="rounded py-2 text-sm font-medium text-[var(--accent)]">All questions →</Link></div>
-        {loading && !questions.length && <p role="status" className="ui-card p-6 text-sm text-[var(--muted)]">Loading questions…</p>}
-        {error && <p role="alert" className="ui-card p-6 text-sm text-[var(--danger)]">Could not load questions: {error}</p>}
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><h2 id="questions-title" className="text-lg font-semibold tracking-tight sm:text-xl">{hasFilters ? 'Matching questions' : 'Recent questions'}</h2><Link to="/questions" className="rounded py-2 text-sm font-medium text-[var(--accent)] focus-visible:outline">All questions →</Link></div>
+        {loading && !questions.length && <p role="status" aria-live="polite" className="ui-card p-5 text-sm text-[var(--muted)]">Loading questions…</p>}
+        {error && <p role="alert" className="ui-card border-[var(--danger)] p-5 text-sm text-[var(--danger)]">Could not load questions: {error}</p>}
         <div className="space-y-3">{visibleQuestions.map(question => <QuestionCard key={question.id} question={question} selectedTag={selectedTag} onTagSelect={selectTag} />)}</div>
-        {!loading && !error && !visibleQuestions.length && <div className="ui-card p-8 text-center"><p className="text-sm text-[var(--muted)]">No questions have been posted yet.</p>{hasFilters && <button type="button" onClick={clearFilters} className="mt-3 rounded text-sm font-medium text-[var(--accent)]">Clear filters</button>}</div>}
+        {!loading && !error && !visibleQuestions.length && <div className="ui-card p-6 text-center sm:p-8"><h3 className="font-semibold">{hasFilters ? 'No matching questions' : 'No questions yet'}</h3><p className="mt-1 text-sm text-[var(--muted)]">{hasFilters ? 'Try another search or topic.' : 'Be the first to ask the community.'}</p>{hasFilters ? <button type="button" onClick={clearFilters} className="ui-button-secondary mt-4">Clear filters</button> : <Link to="/ask-question" className="ui-button mt-4">Ask a question</Link>}</div>}
       </section>
     </div>
   )

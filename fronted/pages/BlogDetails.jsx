@@ -36,23 +36,23 @@ export default function BlogDetails() {
     finally { setDeleting(false) }
   }
 
-  if (loading) return <main role="status" className="mx-auto max-w-4xl px-4 py-16 text-center text-[var(--muted)]">Loading blog…</main>
-  if (error?.slug === slug && !blog) return <main className="mx-auto max-w-4xl px-4 py-16"><p role="alert" className="text-red-700">{error.message}</p><Link to="/blogs" className="mt-4 inline-block underline">Back to blogs</Link></main>
+  if (loading) return <main role="status" aria-live="polite" aria-busy="true" className="mx-auto max-w-4xl px-4 py-16 text-center text-sm text-[var(--muted)]">Loading blog…</main>
+  if (error?.slug === slug && !blog) return <main className="mx-auto max-w-4xl px-4 py-10 sm:px-6"><p role="alert" className="ui-card border-[var(--danger)] p-5 text-sm text-[var(--danger)]">{error.message}</p><Link to="/blogs" className="ui-button-secondary mt-4">Back to blogs</Link></main>
   if (!blog) return null
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-4 py-10 sm:px-6">
-      <Link to="/blogs" className="text-sm text-[var(--muted)] hover:text-[var(--accent)]">← All blogs</Link>
-      <div className="mt-6"><BlogCover category={blog.category} icon="code" large /></div>
-      <header className="py-8">
-        <div className="flex flex-wrap gap-2">{blog.tags.map(item => <Link key={item} to={`/blogs?tag=${encodeURIComponent(item)}`} className="rounded-md bg-[var(--surface-raised)] px-2.5 py-1 text-xs text-[var(--muted)]">{item}</Link>)}</div>
+    <main className="mx-auto w-full max-w-5xl px-4 py-7 sm:px-6 sm:py-10">
+      <Link to="/blogs" className="text-sm font-medium text-[var(--muted)] hover:text-[var(--accent)]">← All blogs</Link>
+      <div className="mt-5"><BlogCover category={blog.category} icon="code" large /></div>
+      <header className="mx-auto max-w-3xl border-b border-[var(--border)] py-6 sm:py-8">
+        {!!blog.tags.length && <div className="flex flex-wrap gap-2">{blog.tags.map(item => <Link key={item} to={`/blogs?tag=${encodeURIComponent(item)}`} className="max-w-full break-words rounded-md border border-[var(--border)] bg-[var(--surface-raised)] px-2.5 py-1.5 text-xs text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]">{item}</Link>)}</div>}
         <h1 className="mt-4 break-words text-3xl font-bold tracking-tight sm:text-4xl">{blog.title}</h1>
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-[var(--muted)]"><span>By {blog.author}</span><span>{readingTime(blog.content)} · <time dateTime={blog.publishedAt}>{formatBlogDate(blog.publishedAt)}</time></span></div>
+        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-[var(--muted)]"><span className="break-words">By <strong className="font-medium text-[var(--text)]">{blog.author}</strong></span><span>{readingTime(blog.content)} <span aria-hidden="true">·</span> <time dateTime={blog.publishedAt}>{formatBlogDate(blog.publishedAt)}</time></span></div>
         {!owner && <div className="mt-4"><ReportButton targetType="blog" targetId={blog._id} /></div>}
-        {owner && <div className="mt-5 flex gap-3"><Link to={`/blogs/${encodeURIComponent(blog.slug)}/edit`} className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm">Edit</Link><button onClick={() => setConfirmDelete(true)} className="rounded-lg border border-red-300 px-4 py-2 text-sm text-red-700">Delete</button></div>}
+        {owner && <div className="mt-5 flex flex-wrap gap-2"><Link to={`/blogs/${encodeURIComponent(blog.slug)}/edit`} className="ui-button-secondary">Edit</Link><button type="button" onClick={() => setConfirmDelete(true)} className="ui-button-secondary text-[var(--danger)]">Delete</button></div>}
       </header>
-      {error?.slug === slug && blog?.slug === slug && <p role="alert" className="mb-4 text-sm text-red-700">{error.message}</p>}
-      <article className="border-t border-[var(--border)] py-8"><BlogContent content={blog.content} /></article>
+      {error?.slug === slug && blog?.slug === slug && <p role="alert" className="mx-auto mt-5 max-w-3xl rounded-lg border border-[var(--danger)] p-3 text-sm text-[var(--danger)]">{error.message}</p>}
+      <article className="mx-auto max-w-3xl py-6 sm:py-8"><BlogContent content={blog.content} /></article>
       {confirmDelete && <ConfirmDialog title="Delete this blog?" description="This action cannot be undone." busy={deleting} confirmLabel="Delete blog" busyLabel="Deleting…" onConfirm={deleteBlog} onCancel={() => setConfirmDelete(false)} />}
     </main>
   )
