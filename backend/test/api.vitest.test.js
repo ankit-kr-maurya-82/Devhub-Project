@@ -148,10 +148,21 @@ afterAll(async () => {
 });
 
 describe("HTTP API integration with mocked persistence", () => {
-  it("serves a minimal deployment health response", async () => {
-    const response = await fetch(`${baseUrl}/healthz`);
-    expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ status: "ok" });
+  it("reports database readiness without exposing connection details", async () => {
+    const originalReadyState = mongoose.connection.readyState;
+    try {
+      mongoose.connection.readyState = 1;
+      const readyResponse = await fetch(`${baseUrl}/healthz`);
+      expect(readyResponse.status).toBe(200);
+      expect(await readyResponse.json()).toEqual({ status: "ok" });
+
+      mongoose.connection.readyState = 0;
+      const unavailableResponse = await fetch(`${baseUrl}/healthz`);
+      expect(unavailableResponse.status).toBe(503);
+      expect(await unavailableResponse.json()).toEqual({ status: "unavailable" });
+    } finally {
+      mongoose.connection.readyState = originalReadyState;
+    }
   });
 
   it("keeps the HTTP integration suite disconnected from MongoDB", () => {

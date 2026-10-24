@@ -1,3 +1,5 @@
+import { resolveSocketOrigin } from './socketConfig.js'
+
 const configuredApiBase = import.meta.env.VITE_API_URL?.trim()
 if (import.meta.env.PROD && !configuredApiBase) {
   throw new Error('VITE_API_URL must be set to the production API root ending in /api/v1.')
@@ -12,7 +14,7 @@ if (import.meta.env.PROD) {
   }
 }
 const apiBase = (configuredApiBase || '/api/v1').replace(/\/$/, '')
-export const socketOrigin = /^https?:\/\//i.test(apiBase) ? new URL(apiBase).origin : undefined
+export const socketOrigin = resolveSocketOrigin(apiBase)
 
 async function request(path, { method = 'GET', body, ...options } = {}) {
   const response = await fetch(`${apiBase}${path}`, {

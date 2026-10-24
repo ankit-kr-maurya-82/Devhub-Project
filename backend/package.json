@@ -15,9 +15,10 @@
     "start": "node src/index.js",
     "vercel-start": "node src/index.js",
     "test": "vitest run test/api.vitest.test.js",
-    "test:unit": "vitest run test/controllers.unit.test.js test/blogs.unit.test.js test/coding.unit.test.js test/admin-moderation.unit.test.js && node --test test/db-configuration.test.js",
+    "test:unit": "vitest run test/controllers.unit.test.js test/blogs.unit.test.js test/coding.unit.test.js test/admin-moderation.unit.test.js && node --test test/db-configuration.test.js test/index-checker.test.js",
     "test:legacy": "node --test test/security.test.js",
     "test:socket:integration": "node --test test/integration/socket-multiuser.test.js",
+    "db:indexes:check": "node scripts/check-indexes.js",
     "admin:promote": "node scripts/promote-admin.js",
     "seed:e2e": "node scripts/seed-e2e.js"
   },

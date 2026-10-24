@@ -4,6 +4,7 @@ import { fileURLToPath } from "url";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import cors from "cors";
+import mongoose from "mongoose";
 import { handleJsonParseError, handleError } from "./middlewares/error.middleware.js";
 import swaggerUi from "swagger-ui-express";
 import openapiSpecification from "./docs/openapi.js";
@@ -59,8 +60,11 @@ app.use(
   express.static(path.join(__dirname, "../public"))
 );
 
-// Database readiness is established before the listener starts in src/index.js.
-app.get("/healthz", (_req, res) => res.status(200).json({ status: "ok" }));
+// Startup waits for MongoDB; this endpoint also reports later disconnects.
+app.get("/healthz", (_req, res) => {
+  const ready = mongoose.connection.readyState === 1;
+  return res.status(ready ? 200 : 503).json({ status: ready ? "ok" : "unavailable" });
+});
 
 app.get("/api-docs.json", (req, res) => res.json(openapiSpecification));
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(openapiSpecification, {

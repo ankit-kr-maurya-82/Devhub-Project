@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { io } from 'socket.io-client'
+import { createSocketClient } from '../lib/socketConfig.js'
+import { socketOrigin } from '../lib/api.js'
 import { NotificationContext } from './useNotifications.js'
 import { useMockSession } from './useMockSession.js'
 import api from '../lib/api.js'
@@ -142,7 +143,7 @@ export default function NotificationProvider({ children }) {
 
   useEffect(() => {
     if (!currentUserId) return undefined
-    const socket = io({ path: '/socket.io', withCredentials: true })
+    const socket = createSocketClient(socketOrigin)
     socket.on('connect', () => {
       setRealtimeStatus('Connected')
       if (loadedOwnerId.current === currentUserId) void refresh({ showLoading: false })

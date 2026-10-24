@@ -262,30 +262,35 @@ describe("password reset", { concurrency: false }, () => {
     assert.equal(await bcrypt.compare(newPassword, storedUser.password), true);
   });
 
-  it("does not expose reset tokens or URLs in production responses or logs", async () => {
+  it("fails closed with the same production response for known and unknown accounts", async () => {
     process.env.NODE_ENV = "production";
-    const response = await request("/api/v1/auth/forgot-password", {
+    const knownResponse = await request("/api/v1/auth/forgot-password", {
       method: "POST", body: { email },
     });
-    assert.equal(response.status, 200);
-    const body = await response.json();
-    assert.equal(body.resetToken, undefined);
-    assert.equal(body.resetUrl, undefined);
-    assert.match(storedUser.resetPasswordToken, /^[a-f0-9]{64}$/);
+    const unknownResponse = await request("/api/v1/auth/forgot-password", {
+      method: "POST", body: { email: "unknown@example.com" },
+    });
+    assert.equal(knownResponse.status, 503);
+    assert.equal(unknownResponse.status, 503);
+    assert.deepEqual(await knownResponse.json(), await unknownResponse.json());
+    assert.equal(modelCalls.finds, 0);
+    assert.equal(modelCalls.saves, 0);
+    assert.equal(storedUser.resetPasswordToken, null);
+    assert.equal(storedUser.resetPasswordExpires, null);
     assert.ok(!logLines.some((line) => /Password Reset Link:|\/reset-password\//.test(line)));
   });
 
-  it("does not enable development reset-link delivery when NODE_ENV is unset", async () => {
+  it("does not create reset tokens when NODE_ENV is unset", async () => {
     delete process.env.NODE_ENV;
     const response = await request("/api/v1/auth/forgot-password", {
       method: "POST", body: { email },
     });
-    assert.equal(response.status, 200);
-    const body = await response.json();
-    assert.equal(body.resetToken, undefined);
-    assert.equal(body.resetUrl, undefined);
+    assert.equal(response.status, 503);
+    assert.equal(modelCalls.finds, 0);
+    assert.equal(modelCalls.saves, 0);
     assert.ok(!logLines.some((line) => /Password Reset Link:|\/reset-password\//.test(line)));
-    assert.match(storedUser.resetPasswordToken, /^[a-f0-9]{64}$/);
+    assert.equal(storedUser.resetPasswordToken, null);
+    assert.equal(storedUser.resetPasswordExpires, null);
   });
 
   it("rejects malformed JSON before model access and forwards unrelated errors", async () => {

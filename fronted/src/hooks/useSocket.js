@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { io } from 'socket.io-client';
+import { createSocketClient } from '../lib/socketConfig.js';
 import { socketOrigin } from '../lib/api.js';
 
 /**
@@ -31,10 +31,7 @@ export default function useSocket({ onMessage, onMessageUpdated, onMessageDelete
   // Initialise socket once on mount
   useEffect(() => {
     const timers = typingTimers.current;
-    const socket = io(socketOrigin, {
-      path: '/socket.io', // default path used by backend Server
-      withCredentials: true,
-    });
+    const socket = createSocketClient(socketOrigin);
     socketRef.current = socket;
 
     socket.on('connect', () => {

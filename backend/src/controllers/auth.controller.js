@@ -197,6 +197,13 @@ const forgetPassword = async (req, res) => {
             return sendPasswordMessage(res, 400, "Email is required.");
         }
 
+        // Reset links are delivered only in development, where the link is
+        // intentionally written to the local server log. Never create a token
+        // that cannot be delivered, and keep this response account-agnostic.
+        if (process.env.NODE_ENV !== "development") {
+            return sendPasswordMessage(res, 503, "Password reset is currently unavailable. Please try again later.");
+        }
+
         const user = await User.findOne({ email: email.trim().toLowerCase() });
         if (!user) {
             return sendPasswordMessage(res, 200, "If an account exists for that email, password reset instructions will be available shortly.");
@@ -208,21 +215,13 @@ const forgetPassword = async (req, res) => {
         user.resetPasswordExpires = new Date(Date.now() + 60 * 60 * 1000);
         await user.save();
 
-        const isDevelopment = process.env.NODE_ENV === "development";
         const frontendOrigin = process.env.CLIENT_ORIGIN?.split(",")[0]?.trim() || "http://localhost:5173";
         const resetUrl = new URL(`/reset-password/${resetToken}`, frontendOrigin).href;
 
-        // Development delivery only; production email delivery is not configured.
-        if (isDevelopment) {
-            console.log(`Password Reset Link: ${resetUrl}`);
-        }
-
-        const message = isDevelopment
-            ? "Password reset link generated. Check the server terminal."
-            : "Password reset requested.";
+        console.log(`Password Reset Link: ${resetUrl}`);
 
         return res.status(200).json({
-            message,
+            message: "Password reset link generated. Check the server terminal.",
         });
     } catch {
         console.error("Password reset request failed.");
