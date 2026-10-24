@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import Room, { roomCategories } from "../models/room.model.js";
 import { leaveUserRoomSockets } from "../socket/notificationDelivery.js";
+import { withRoomMembershipLock } from "../socket/roomMembership.js";
 
 const parsePositive = (value, fallback) => {
   if (value === undefined) return fallback;
@@ -85,16 +86,18 @@ const joinRoom = async (req, res) => {
   try {
     const { roomId } = req.params;
     if (!mongoose.isValidObjectId(roomId)) return res.status(400).json({ success: false, message: "Invalid room ID" });
-    const room = await Room.findById(roomId);
-    if (!room) return res.status(404).json({ success: false, message: "Room not found" });
-    if (room.members.some((member) => member.equals(req.user._id))) return res.status(400).json({ success: false, message: "You are already a member of this room" });
-    if (room.members.length >= room.maxMembers) return res.status(400).json({ success: false, message: "Room is full" });
-    if (!room.isPublic) return res.status(403).json({ success: false, message: "This room is private" });
-    room.members.push(req.user._id);
-    await room.save();
-    await room.populate("owner", "name username avatar");
-    await room.populate("members", "name username avatar");
-    return res.status(200).json({ success: true, message: "Joined room successfully", data: room });
+    return await withRoomMembershipLock(req.user._id, roomId, async () => {
+      const room = await Room.findById(roomId);
+      if (!room) return res.status(404).json({ success: false, message: "Room not found" });
+      if (room.members.some((member) => member.equals(req.user._id))) return res.status(400).json({ success: false, message: "You are already a member of this room" });
+      if (room.members.length >= room.maxMembers) return res.status(400).json({ success: false, message: "Room is full" });
+      if (!room.isPublic) return res.status(403).json({ success: false, message: "This room is private" });
+      room.members.push(req.user._id);
+      await room.save();
+      await room.populate("owner", "name username avatar");
+      await room.populate("members", "name username avatar");
+      return res.status(200).json({ success: true, message: "Joined room successfully", data: room });
+    });
   } catch (error) {
     console.error("Join Room Error:", error);
     return res.status(500).json({ success: false, message: "Internal server error" });
@@ -105,15 +108,17 @@ const leaveRoom = async (req, res) => {
   try {
     const { roomId } = req.params;
     if (!mongoose.isValidObjectId(roomId)) return res.status(400).json({ success: false, message: "Invalid room ID" });
-    const room = await Room.findById(roomId);
-    if (!room) return res.status(404).json({ success: false, message: "Room not found" });
-    if (room.owner.equals(req.user._id)) return res.status(400).json({ success: false, message: "The room owner cannot leave their own room" });
-    const index = room.members.findIndex((member) => member.equals(req.user._id));
-    if (index === -1) return res.status(400).json({ success: false, message: "You are not a member of this room" });
-    room.members.splice(index, 1);
-    await room.save();
-    leaveUserRoomSockets(req.user._id, room._id);
-    return res.status(200).json({ success: true, message: "Left room successfully", data: room });
+    return await withRoomMembershipLock(req.user._id, roomId, async () => {
+      const room = await Room.findById(roomId);
+      if (!room) return res.status(404).json({ success: false, message: "Room not found" });
+      if (room.owner.equals(req.user._id)) return res.status(400).json({ success: false, message: "The room owner cannot leave their own room" });
+      const index = room.members.findIndex((member) => member.equals(req.user._id));
+      if (index === -1) return res.status(400).json({ success: false, message: "You are not a member of this room" });
+      room.members.splice(index, 1);
+      await room.save();
+      leaveUserRoomSockets(req.user._id, room._id);
+      return res.status(200).json({ success: true, message: "Left room successfully", data: room });
+    });
   } catch (error) {
     console.error("Leave Room Error:", error);
     return res.status(500).json({ success: false, message: "Internal server error" });

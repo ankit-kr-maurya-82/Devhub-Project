@@ -13,10 +13,10 @@ import { validateEnvironment } from "../src/config/env.js";
 import { createQuestion, updateQuestion } from "../src/controllers/question.controller.js";
 import { createAnswer, acceptAnswer } from "../src/controllers/answer.controller.js";
 import { updateComment } from "../src/controllers/comment.controller.js";
-import { leaveRoom } from "../src/controllers/room.controller.js";
+import { joinRoom, leaveRoom } from "../src/controllers/room.controller.js";
 import createNotification from "../src/utils/createNotification.js";
 import { disconnectUserSockets, setNotificationSocketServer } from "../src/socket/notificationDelivery.js";
-import { joinRoomAndRecheckMembership } from "../src/socket/roomMembership.js";
+import { joinRoomAndRecheckMembership, withRoomMembershipLock } from "../src/socket/roomMembership.js";
 import {
   deleteNotification,
   getNotifications,
@@ -28,6 +28,7 @@ import {
 const secret = "controller-unit-test-secret";
 const userId = "507f1f77bcf86cd799439011";
 const otherUserId = "507f191e810c19729de860ea";
+const roomId = "507f1f77bcf86cd799439016";
 const questionId = "507f1f77bcf86cd799439012";
 const answerId = "507f1f77bcf86cd799439013";
 const commentId = "507f1f77bcf86cd799439014";
@@ -400,6 +401,26 @@ describe("controller and middleware unit checks", () => {
     expect(socketsLeave).not.toHaveBeenCalled();
   });
 
+  it("allows a former member to rejoin a public room through HTTP", async () => {
+    const member = { equals: (id) => id === otherUserId };
+    const room = {
+      members: [member],
+      maxMembers: 3,
+      isPublic: true,
+      save: vi.fn(),
+      populate: vi.fn().mockResolvedValue(undefined),
+    };
+    vi.spyOn(Room, "findById").mockResolvedValue(room);
+    const response = makeResponse();
+
+    await joinRoom(makeRequest({ params: { roomId } }), response);
+
+    expect(response.statusCode).toBe(200);
+    expect(room.members).toHaveLength(2);
+    expect(room.members[1]).toBe(userId);
+    expect(room.save).toHaveBeenCalledOnce();
+  });
+
   it("leaves a socket room when membership is revoked while the socket is joining", async () => {
     const events = [];
     const roomId = "507f1f77bcf86cd799439016";
@@ -417,6 +438,20 @@ describe("controller and middleware unit checks", () => {
     expect(events).toEqual([`joined:${roomId}`, `left:${roomId}`]);
   });
 
+  it("keeps a room subscription when membership is confirmed after joining", async () => {
+    const roomId = "507f1f77bcf86cd799439016";
+    const socket = { join: vi.fn(), leave: vi.fn() };
+    vi.spyOn(Room, "findById").mockReturnValue({
+      select: vi.fn().mockResolvedValue({ members: [{ equals: (id) => id === userId }] }),
+    });
+
+    const joined = await joinRoomAndRecheckMembership(socket, roomId, userId);
+
+    expect(joined).toBe(true);
+    expect(socket.join).toHaveBeenCalledWith(roomId);
+    expect(socket.leave).not.toHaveBeenCalled();
+  });
+
   it("leaves a socket room when the post-join membership check fails", async () => {
     const roomId = "507f1f77bcf86cd799439016";
     const socket = { join: vi.fn(), leave: vi.fn() };
@@ -428,6 +463,56 @@ describe("controller and middleware unit checks", () => {
       .rejects.toThrow("membership lookup failed");
 
     expect(socket.leave).toHaveBeenCalledWith(roomId);
+  });
+
+  it("disconnects the socket if failed membership verification cannot remove its room subscription", async () => {
+    const roomId = "507f1f77bcf86cd799439016";
+    const socket = {
+      join: vi.fn(),
+      leave: vi.fn().mockRejectedValue(new Error("leave failed")),
+      disconnect: vi.fn(),
+    };
+    vi.spyOn(Room, "findById").mockReturnValue({
+      select: vi.fn().mockRejectedValue(new Error("membership lookup failed")),
+    });
+
+    await expect(joinRoomAndRecheckMembership(socket, roomId, userId))
+      .rejects.toThrow("membership lookup failed");
+
+    expect(socket.disconnect).toHaveBeenCalledWith(true);
+  });
+
+  it("attempts room cleanup when the socket join operation rejects", async () => {
+    const roomId = "507f1f77bcf86cd799439016";
+    const socket = {
+      join: vi.fn().mockRejectedValue(new Error("join failed")),
+      leave: vi.fn(),
+    };
+
+    await expect(joinRoomAndRecheckMembership(socket, roomId, userId))
+      .rejects.toThrow("join failed");
+
+    expect(socket.leave).toHaveBeenCalledWith(roomId);
+  });
+
+  it("serializes membership operations for equivalent user and room IDs", async () => {
+    const events = [];
+    let releaseFirst;
+    const firstOperation = withRoomMembershipLock(userId.toUpperCase(), roomId.toUpperCase(), async () => {
+      events.push("first-start");
+      await new Promise((resolve) => { releaseFirst = resolve; });
+      events.push("first-end");
+    });
+    const secondOperation = withRoomMembershipLock(userId, roomId, async () => {
+      events.push("second");
+    });
+
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(events).toEqual(["first-start"]);
+    releaseFirst();
+    await Promise.all([firstOperation, secondOperation]);
+
+    expect(events).toEqual(["first-start", "first-end", "second"]);
   });
 
   it("lists only the authenticated recipient's notifications using validated pagination", async () => {
