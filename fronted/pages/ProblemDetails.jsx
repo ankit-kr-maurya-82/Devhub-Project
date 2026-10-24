@@ -41,10 +41,10 @@ export default function ProblemDetails() {
   }
 
   if (loading) return <p role="status" aria-live="polite" aria-busy="true" className="mx-auto max-w-5xl py-12 text-center text-sm text-[var(--muted)]">Loading problem…</p>
-  if (!problem) return <main className="ui-card mx-auto max-w-5xl p-5 sm:p-6"><h1>Problem unavailable</h1><p role="alert" className="mt-3 text-sm text-[var(--danger)]">{loadError?.message || 'This problem could not be found.'}</p><Link to="/coding" className="ui-button-secondary mt-4">Back to problems</Link></main>
+  if (!problem) return <div className="ui-card mx-auto max-w-5xl p-5 sm:p-6"><h1>Problem unavailable</h1><p role="alert" className="mt-3 text-sm text-[var(--danger)]">{loadError?.message || 'This problem could not be found.'}</p><Link to="/coding" className="ui-button-secondary mt-4">Back to problems</Link></div>
 
   return (
-    <main className="mx-auto w-full max-w-7xl space-y-5 sm:space-y-6">
+    <div className="mx-auto w-full max-w-7xl space-y-5 sm:space-y-6">
       <Link to="/coding" className="inline-flex min-h-10 items-center text-sm font-medium text-[var(--muted)] hover:text-[var(--accent)]">← Coding problems</Link>
       <header className="space-y-3 border-b border-[var(--border)] pb-5"><div className="flex flex-wrap items-center gap-3"><h1 className="min-w-0 break-words">{problem.title}</h1><DifficultyBadge difficulty={problem.difficulty} /></div><div className="flex flex-wrap gap-2">{problem.topics.map(topic => <Link key={topic} to={`/coding?topic=${encodeURIComponent(topic)}`} className="max-w-full break-words rounded-md border border-[var(--border)] bg-[var(--surface-raised)] px-2.5 py-1.5 text-xs text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]">{topic}</Link>)}</div></header>
       <div className="grid min-w-0 items-start gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] xl:gap-6">
@@ -53,6 +53,6 @@ export default function ProblemDetails() {
           {feedback && <section role="status" aria-live="polite" className="rounded-xl border border-[var(--info)] bg-[var(--info-soft)] p-4"><h2 className="font-semibold">Submission stored · Not executed</h2><p className="mt-2 break-words text-sm leading-6 text-[var(--muted)]">{feedback.executionMetadata?.message || 'A secure judge service is not configured. No verdict was produced.'}</p><Link to="/submissions" className="mt-3 inline-flex min-h-10 items-center text-sm font-medium text-[var(--accent)]">View submission history</Link></section>}
         </section>
       </div>
-    </main>
+    </div>
   )
 }

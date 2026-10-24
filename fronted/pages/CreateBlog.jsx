@@ -74,10 +74,10 @@ export default function CreateBlog() {
     finally { setSaving(false) }
   }
 
-  if (loading) return <main role="status" aria-live="polite" aria-busy="true" className="mx-auto max-w-5xl px-4 py-16 text-center text-sm text-[var(--muted)]">Loading your blog…</main>
+  if (loading) return <div role="status" aria-live="polite" aria-busy="true" className="mx-auto max-w-5xl px-4 py-16 text-center text-sm text-[var(--muted)]">Loading your blog…</div>
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-7 sm:px-6 sm:py-10">
+    <div className="mx-auto w-full max-w-6xl px-4 py-7 sm:px-6 sm:py-10">
       <header className="mb-6 sm:mb-8"><Link to="/blogs" className="text-sm font-medium text-[var(--muted)] hover:text-[var(--accent)]">← All blogs</Link><h1 className="mt-3">{editing ? 'Edit blog' : 'Write a blog'}</h1><p className="mt-2 text-sm text-[var(--muted)]">Drafts are private until you publish them.</p></header>
       {error && <p role="alert" className="ui-card mb-5 border-[var(--danger)] p-3 text-sm text-[var(--danger)]">{error}</p>}
       <div className="grid min-w-0 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.8fr)] lg:gap-8">
@@ -95,6 +95,6 @@ export default function CreateBlog() {
         </aside>
       </div>
       {confirmDelete && <ConfirmDialog title="Delete this blog?" description="This action cannot be undone." busy={saving} confirmLabel="Delete blog" busyLabel="Deleting…" onConfirm={remove} onCancel={() => setConfirmDelete(false)} />}
-    </main>
+    </div>
   )
 }

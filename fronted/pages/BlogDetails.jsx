@@ -36,12 +36,12 @@ export default function BlogDetails() {
     finally { setDeleting(false) }
   }
 
-  if (loading) return <main role="status" aria-live="polite" aria-busy="true" className="mx-auto max-w-4xl px-4 py-16 text-center text-sm text-[var(--muted)]">Loading blog…</main>
-  if (error?.slug === slug && !blog) return <main className="mx-auto max-w-4xl px-4 py-10 sm:px-6"><p role="alert" className="ui-card border-[var(--danger)] p-5 text-sm text-[var(--danger)]">{error.message}</p><Link to="/blogs" className="ui-button-secondary mt-4">Back to blogs</Link></main>
+  if (loading) return <div role="status" aria-live="polite" aria-busy="true" className="mx-auto max-w-4xl px-4 py-16 text-center text-sm text-[var(--muted)]">Loading blog…</div>
+  if (error?.slug === slug && !blog) return <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6"><p role="alert" className="ui-card border-[var(--danger)] p-5 text-sm text-[var(--danger)]">{error.message}</p><Link to="/blogs" className="ui-button-secondary mt-4">Back to blogs</Link></div>
   if (!blog) return null
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-4 py-7 sm:px-6 sm:py-10">
+    <div className="mx-auto w-full max-w-5xl px-4 py-7 sm:px-6 sm:py-10">
       <Link to="/blogs" className="text-sm font-medium text-[var(--muted)] hover:text-[var(--accent)]">← All blogs</Link>
       <div className="mt-5"><BlogCover category={blog.category} icon="code" large /></div>
       <header className="mx-auto max-w-3xl border-b border-[var(--border)] py-6 sm:py-8">
@@ -54,6 +54,6 @@ export default function BlogDetails() {
       {error?.slug === slug && blog?.slug === slug && <p role="alert" className="mx-auto mt-5 max-w-3xl rounded-lg border border-[var(--danger)] p-3 text-sm text-[var(--danger)]">{error.message}</p>}
       <article className="mx-auto max-w-3xl py-6 sm:py-8"><BlogContent content={blog.content} /></article>
       {confirmDelete && <ConfirmDialog title="Delete this blog?" description="This action cannot be undone." busy={deleting} confirmLabel="Delete blog" busyLabel="Deleting…" onConfirm={deleteBlog} onCancel={() => setConfirmDelete(false)} />}
-    </main>
+    </div>
   )
 }

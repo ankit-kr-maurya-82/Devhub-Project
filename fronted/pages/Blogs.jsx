@@ -35,7 +35,7 @@ export default function Blogs() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-7 sm:px-6 sm:py-10">
+    <div className="mx-auto w-full max-w-6xl px-4 py-7 sm:px-6 sm:py-10">
       <header className="ui-page-header mb-6 sm:mb-8">
         <div className="min-w-0"><p className="text-sm font-medium text-[var(--accent)]">DevHub writing</p><h1 className="mt-1">Blogs</h1><p className="mt-2 text-sm text-[var(--muted)]">Ideas, guides, and notes from the community.</p></div>
         <Link to="/create-blog" className="ui-button">Write a blog</Link>
@@ -58,6 +58,6 @@ export default function Blogs() {
           <button disabled={!result.pagination?.hasNextPage} onClick={() => updateParams({ page: String(Number(page) + 1) })} className="ui-button-secondary">Next</button>
         </nav>
       </>}
-    </main>
+    </div>
   )
 }

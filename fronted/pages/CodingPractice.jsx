@@ -34,7 +34,7 @@ export default function CodingPractice() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-5xl space-y-5 sm:space-y-6">
+    <div className="mx-auto w-full max-w-5xl space-y-5 sm:space-y-6">
       <header className="ui-page-header"><div className="min-w-0"><p className="text-sm font-medium text-[var(--accent)]">Practice</p><h1 className="mt-1">Coding problems</h1><p className="mt-2 text-sm text-[var(--muted)]">Solve community-curated programming challenges.</p></div><Link to="/submissions" className="ui-button-secondary">My submissions</Link></header>
       <section aria-label="Problem filters" className="flex flex-wrap items-end gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 sm:p-4">
         <label className="min-w-36 flex-1 text-sm font-medium sm:flex-none">Difficulty<select value={difficulty} onChange={event => update({ difficulty: event.target.value })} className="ui-input mt-1"><option value="">All difficulties</option><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select></label>
@@ -48,6 +48,6 @@ export default function CodingPractice() {
         <section aria-label="Published problems" className="space-y-4">{result.data.map(problem => <ProblemCard key={problem._id} problem={problem} />)}</section>
         <nav aria-label="Problem pages" className="flex flex-wrap items-center justify-center gap-3"><button disabled={!result.pagination?.hasPrevPage} onClick={() => update({ page: String(Number(page) - 1) })} className="ui-button-secondary">Previous</button><span aria-live="polite" className="text-sm text-[var(--muted)]">Page {result.pagination?.page || 1} of {Math.max(1, result.pagination?.totalPages || 1)}</span><button disabled={!result.pagination?.hasNextPage} onClick={() => update({ page: String(Number(page) + 1) })} className="ui-button-secondary">Next</button></nav>
       </>}
-    </main>
+    </div>
   )
 }
