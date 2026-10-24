@@ -16,6 +16,7 @@ import { updateComment } from "../src/controllers/comment.controller.js";
 import { leaveRoom } from "../src/controllers/room.controller.js";
 import createNotification from "../src/utils/createNotification.js";
 import { disconnectUserSockets, setNotificationSocketServer } from "../src/socket/notificationDelivery.js";
+import { joinRoomAndRecheckMembership } from "../src/socket/roomMembership.js";
 import {
   deleteNotification,
   getNotifications,
@@ -397,6 +398,36 @@ describe("controller and middleware unit checks", () => {
 
     expect(response.statusCode).toBe(500);
     expect(socketsLeave).not.toHaveBeenCalled();
+  });
+
+  it("leaves a socket room when membership is revoked while the socket is joining", async () => {
+    const events = [];
+    const roomId = "507f1f77bcf86cd799439016";
+    const socket = {
+      join: vi.fn(async (id) => { events.push(`joined:${id}`); }),
+      leave: vi.fn(async (id) => { events.push(`left:${id}`); }),
+    };
+    vi.spyOn(Room, "findById").mockReturnValue({
+      select: vi.fn().mockResolvedValue({ members: [{ equals: () => false }] }),
+    });
+
+    const joined = await joinRoomAndRecheckMembership(socket, roomId, userId);
+
+    expect(joined).toBe(false);
+    expect(events).toEqual([`joined:${roomId}`, `left:${roomId}`]);
+  });
+
+  it("leaves a socket room when the post-join membership check fails", async () => {
+    const roomId = "507f1f77bcf86cd799439016";
+    const socket = { join: vi.fn(), leave: vi.fn() };
+    vi.spyOn(Room, "findById").mockReturnValue({
+      select: vi.fn().mockRejectedValue(new Error("membership lookup failed")),
+    });
+
+    await expect(joinRoomAndRecheckMembership(socket, roomId, userId))
+      .rejects.toThrow("membership lookup failed");
+
+    expect(socket.leave).toHaveBeenCalledWith(roomId);
   });
 
   it("lists only the authenticated recipient's notifications using validated pagination", async () => {

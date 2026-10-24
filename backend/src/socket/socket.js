@@ -5,6 +5,7 @@ import User from "../models/user.model.js";
 import Room from "../models/room.model.js";
 import Message from "../models/message.model.js";
 import { addUserSocket, removeUserSocket, isUserOnline } from "./presence.js";
+import { joinRoomAndRecheckMembership } from "./roomMembership.js";
 import { setNotificationSocketServer } from "./notificationDelivery.js";
 import createNotification from "../utils/createNotification.js";
 
@@ -146,7 +147,9 @@ const initializeSocket = (httpServer, configuredOrigins) => {
       if (result.error) return emitSocketError(socket, result.error, acknowledge);
       const roomId = result.room._id.toString();
       const alreadyJoined = socket.rooms.has(roomId);
-      await socket.join(roomId);
+      if (!await joinRoomAndRecheckMembership(socket, roomId, socket.user._id)) {
+        return emitSocketError(socket, "You are not a member of this room", acknowledge);
+      }
       socket.emit("roomJoined", { roomId });
       if (!alreadyJoined) socket.to(roomId).emit("userJoinedRoom", { roomId, user: { _id: socket.user._id, name: socket.user.name, username: socket.user.username, avatar: socket.user.avatar } });
       socket.emit("roomUsers", { roomId, users: await getRoomUsers(roomId) });
