@@ -15,6 +15,9 @@ function parseMongoTarget(uri, variableName) {
 export function resolveIndexCheckTarget(env) {
   const uri = env.TEST_MONGODB_URI;
   if (!uri) throw new Error("Set TEST_MONGODB_URI to a dedicated test or disposable database.");
+  if (env.TEST_MONGODB_ISOLATED !== "true") {
+    throw new Error("Set TEST_MONGODB_ISOLATED=true only after verifying the instance and credentials are dedicated to disposable test data.");
+  }
 
   const target = parseMongoTarget(uri, "TEST_MONGODB_URI");
   if (!target.databaseName || !/(test|disposable)/i.test(target.databaseName) ||
@@ -44,4 +47,40 @@ export async function compareDeclaredIndexes(models) {
     results.push({ modelName: Model.modelName, toCreate, toDrop });
   }
   return { hasDrift, results };
+}
+
+export async function runIndexCheck({ mongoose, models, target, logger = console }) {
+  let connected = false;
+  let exitCode = 0;
+  mongoose.set("autoIndex", false);
+
+  try {
+    await mongoose.connect(target.uri, { autoIndex: false, serverSelectionTimeoutMS: 10_000 });
+    connected = true;
+    logger.log(`Read-only index comparison for test database '${target.databaseName}'.`);
+    const { hasDrift, results } = await compareDeclaredIndexes(models);
+    for (const { modelName, toCreate, toDrop } of results) {
+      logger.log(`${modelName}: ${JSON.stringify({ toCreate, toDrop })}`);
+    }
+    if (hasDrift) {
+      logger.error("Index differences found. This command did not create or drop indexes.");
+      exitCode = 1;
+    } else {
+      logger.log("Declared and database indexes match. No indexes were changed.");
+    }
+  } catch {
+    logger.error("Index comparison failed. No index changes were attempted.");
+    exitCode = 1;
+  }
+
+  if (connected) {
+    try {
+      await mongoose.disconnect();
+    } catch {
+      logger.error("Index comparison cleanup failed while disconnecting.");
+      exitCode = 1;
+    }
+  }
+
+  return exitCode;
 }

@@ -14,13 +14,12 @@ import Notification from "../../src/models/notification.model.js";
 import createNotification from "../../src/utils/createNotification.js";
 import { app } from "../../src/app.js";
 import initializeSocket from "../../src/socket/socket.js";
+import { resolveIndexCheckTarget } from "../../src/db/index-checker.js";
 import "../../src/db/index.js"; // Apply the backend's configured DNS resolver.
 
 const TEST_JWT_SECRET = "devhub-isolated-socket-test-secret";
 const TIMEOUT_MS = 8_000;
 const idOf = (value) => String(value?._id ?? value);
-
-const databaseName = (uri) => decodeURIComponent(new URL(uri).pathname.slice(1));
 
 const waitForEvent = (socket, eventName, { rejectOnSocketError = true } = {}) => new Promise((resolve, reject) => {
   const cleanup = () => {
@@ -89,15 +88,11 @@ describe("multi-user Socket.IO chat integration", { concurrency: false }, () => 
   const testContents = [];
 
   before(async () => {
-    const testMongoUri = process.env.TEST_MONGODB_URI;
-    assert.ok(testMongoUri, "Set TEST_MONGODB_URI to a dedicated database such as mongodb://127.0.0.1:27017/devhub_test");
-    const testDbName = databaseName(testMongoUri);
+    const { uri: testMongoUri, databaseName: testDbName } = resolveIndexCheckTarget(process.env);
     assert.match(testDbName, /test/i, "Refusing to use a MongoDB database whose name does not include 'test'");
-    if (process.env.MONGODB_URI) {
-      assert.notEqual(testDbName, databaseName(process.env.MONGODB_URI), "TEST_MONGODB_URI must not target the normal MONGODB_URI database");
-    }
     process.env.JWT_SECRET = TEST_JWT_SECRET;
-    await mongoose.connect(testMongoUri, { serverSelectionTimeoutMS: TIMEOUT_MS });
+    mongoose.set("autoIndex", false);
+    await mongoose.connect(testMongoUri, { autoIndex: false, serverSelectionTimeoutMS: TIMEOUT_MS });
     connectedToDatabase = true;
 
     httpServer = createServer(app);

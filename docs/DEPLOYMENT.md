@@ -38,11 +38,12 @@ Provision a production database and a least-privilege application user. Restrict
 
 ```sh
 cd backend
-# Set TEST_MONGODB_URI privately to a dedicated database named with "test" or "disposable".
+# Set TEST_MONGODB_URI privately, then set TEST_MONGODB_ISOLATED=true only after verifying
+# the MongoDB instance is dedicated and the credentials cannot access application/production data.
 npm run db:indexes:check
 ```
 
-The checker requires `TEST_MONGODB_URI`, refuses database names without `test` or `disposable`, refuses production-like names and the same host/database target as `MONGODB_URI` or `MONGO_URI`, disables automatic index creation, and only calls Mongoose `diffIndexes()`. It reports indexes that would be created or dropped and never applies either operation. Review the production database's index state with the database administrator before release; the disposable database is a schema comparison, not proof of production state. If an index needs creation, use a reviewed, backed-up migration or database operation that only creates the specific missing indexes. Do not use `syncIndexes()` on production: it may drop indexes absent from the current schema. Unique indexes can fail when existing data contains duplicates.
+The checker requires both `TEST_MONGODB_URI` and the explicit `TEST_MONGODB_ISOLATED=true` acknowledgement. A test-like database name is only a secondary guard: independently verify the host/cluster and use credentials scoped to the dedicated disposable database. The checker also refuses production-like names and the same host/database target as `MONGODB_URI` or `MONGO_URI`, disables automatic index creation, and only calls Mongoose `diffIndexes()`. It reports indexes that would be created or dropped and never applies either operation. Review the production database's index state with the database administrator before release; the disposable database is a schema comparison, not proof of production state. If an index needs creation, use a reviewed, backed-up migration or database operation that only creates the specific missing indexes. Do not use `syncIndexes()` on production: it may drop indexes absent from the current schema. Unique indexes can fail when existing data contains duplicates.
 
 ## Local verification and production commands
 
@@ -53,7 +54,7 @@ cd backend && npm ci
 npm test
 npm run test:unit
 npm run test:legacy
-npm run test:socket:integration # requires TEST_MONGODB_URI for a separate database whose name includes "test"
+npm run test:socket:integration # requires a verified isolated TEST_MONGODB_URI and TEST_MONGODB_ISOLATED=true
 cd ../fronted && npm ci
 npm run lint
 VITE_API_URL=https://api.example.com/api/v1 npm run build

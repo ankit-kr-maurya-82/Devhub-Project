@@ -1,6 +1,6 @@
 import "dotenv/config";
 import mongoose from "mongoose";
-import { compareDeclaredIndexes, resolveIndexCheckTarget } from "../src/db/index-checker.js";
+import { resolveIndexCheckTarget, runIndexCheck } from "../src/db/index-checker.js";
 import User from "../src/models/user.model.js";
 import Question from "../src/models/question.model.js";
 import Answer from "../src/models/answer.model.js";
@@ -22,25 +22,4 @@ const models = [
 
 const testTarget = resolveIndexCheckTarget(process.env);
 
-mongoose.set("autoIndex", false);
-let connected = false;
-try {
-  await mongoose.connect(testTarget.uri, { autoIndex: false, serverSelectionTimeoutMS: 10_000 });
-  connected = true;
-  console.log(`Read-only index comparison for test database '${testTarget.databaseName}'.`);
-  const { hasDrift, results } = await compareDeclaredIndexes(models);
-  for (const { modelName, toCreate, toDrop } of results) {
-    console.log(`${modelName}: ${JSON.stringify({ toCreate, toDrop })}`);
-  }
-  if (hasDrift) {
-    console.error("Index differences found. This command did not create or drop indexes.");
-    process.exitCode = 1;
-  } else {
-    console.log("Declared and database indexes match. No indexes were changed.");
-  }
-} catch {
-  console.error("Index comparison failed. No index changes were attempted.");
-  process.exitCode = 1;
-} finally {
-  if (connected) await mongoose.disconnect();
-}
+process.exitCode = await runIndexCheck({ mongoose, models, target: testTarget });
