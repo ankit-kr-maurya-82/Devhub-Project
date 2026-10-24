@@ -1,3 +1,4 @@
+import { logSafeError } from "../utils/logSafeError.js";
 import mongoose from "mongoose";
 import Answer from "../models/answer.model.js";
 import Question from "../models/question.model.js";
@@ -183,7 +184,7 @@ const voteQuestion = async (req, res) => {
       idParam: "questionId",
     });
   } catch (error) {
-    console.error("Vote Question Error:", error);
+    logSafeError("Vote Question Error:", error);
     return res.status(500).json({
       success: false,
       message: "Internal server error",
@@ -201,7 +202,7 @@ const voteAnswer = async (req, res) => {
       idParam: "answerId",
     });
   } catch (error) {
-    console.error("Vote Answer Error:", error);
+    logSafeError("Vote Answer Error:", error);
     return res.status(500).json({
       success: false,
       message: "Internal server error",

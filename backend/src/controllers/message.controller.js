@@ -1,3 +1,4 @@
+import { logSafeError } from "../utils/logSafeError.js";
 import mongoose from "mongoose";
 import Room from "../models/room.model.js";
 import Message from "../models/message.model.js";
@@ -40,7 +41,7 @@ const createMessage = async (req, res) => {
     redactDeletedReply(message.replyTo);
     return res.status(201).json({ success: true, message: "Message sent successfully", data: message });
   } catch (error) {
-    console.error("Create Message Error:", error);
+    logSafeError("Create Message Error:", error);
     return res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
@@ -74,7 +75,7 @@ const getRoomMessages = async (req, res) => {
     });
     return res.status(200).json({ success: true, data: visibleMessages, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } });
   } catch (error) {
-    console.error("Get Room Messages Error:", error);
+    logSafeError("Get Room Messages Error:", error);
     return res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
@@ -100,7 +101,7 @@ const editMessage = async (req, res) => {
     redactDeletedReply(message.replyTo);
     return res.status(200).json({ success: true, message: "Message updated successfully", data: message });
   } catch (error) {
-    console.error("Edit Message Error:", error);
+    logSafeError("Edit Message Error:", error);
     return res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
@@ -123,7 +124,7 @@ const deleteMessage = async (req, res) => {
     }
     return res.status(200).json({ success: true, message: "Message deleted successfully", data: { messageId: message._id, roomId: message.room, isDeleted: true, deletedAt: message.deletedAt } });
   } catch (error) {
-    console.error("Delete Message Error:", error);
+    logSafeError("Delete Message Error:", error);
     return res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
@@ -153,7 +154,7 @@ const toggleMessageReaction = async (req, res) => {
       data: { messageId: message._id, reactions: message.reactions },
     });
   } catch (error) {
-    console.error("Toggle Message Reaction Error:", error);
+    logSafeError("Toggle Message Reaction Error:", error);
     return res.status(500).json({ success: false, message: "Internal server error" });
   }
 };

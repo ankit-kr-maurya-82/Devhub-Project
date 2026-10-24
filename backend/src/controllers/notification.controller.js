@@ -1,3 +1,4 @@
+import { logSafeError } from "../utils/logSafeError.js";
 import mongoose from "mongoose";
 import Notification from "../models/notification.model.js";
 
@@ -38,7 +39,7 @@ const getNotifications = async (req, res) => {
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     });
   } catch (error) {
-    console.error("Get Notifications Error:", error);
+    logSafeError("Get Notifications Error:", error);
     return res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
@@ -51,7 +52,7 @@ const getUnreadNotificationCount = async (req, res) => {
     });
     return res.status(200).json({ success: true, unreadCount });
   } catch (error) {
-    console.error("Get Unread Notification Count Error:", error);
+    logSafeError("Get Unread Notification Count Error:", error);
     return res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
@@ -70,7 +71,7 @@ const markNotificationRead = async (req, res) => {
     if (!notification) return res.status(404).json({ success: false, message: "Notification not found" });
     return res.status(200).json({ success: true, message: "Notification marked as read", data: notification });
   } catch (error) {
-    console.error("Mark Notification Read Error:", error);
+    logSafeError("Mark Notification Read Error:", error);
     return res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
@@ -83,7 +84,7 @@ const markAllNotificationsRead = async (req, res) => {
     );
     return res.status(200).json({ success: true, message: "All notifications marked as read" });
   } catch (error) {
-    console.error("Mark All Notifications Read Error:", error);
+    logSafeError("Mark All Notifications Read Error:", error);
     return res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
@@ -101,7 +102,7 @@ const deleteNotification = async (req, res) => {
     if (!notification) return res.status(404).json({ success: false, message: "Notification not found" });
     return res.status(200).json({ success: true, message: "Notification deleted successfully" });
   } catch (error) {
-    console.error("Delete Notification Error:", error);
+    logSafeError("Delete Notification Error:", error);
     return res.status(500).json({ success: false, message: "Internal server error" });
   }
 };

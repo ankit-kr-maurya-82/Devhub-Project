@@ -1,3 +1,4 @@
+import { logSafeError } from "../utils/logSafeError.js";
 import mongoose from "mongoose";
 import Answer from "../models/answer.model.js";
 import Comment from "../models/comment.model.js";
@@ -43,7 +44,7 @@ const addComment = async (req, res, targetType, TargetModel, idParam) => {
     await comment.populate("author", authorFields);
     return res.status(201).json({ success: true, message: "Comment added successfully", data: comment });
   } catch (error) {
-    console.error(`Add ${targetType} Comment Error:`, error);
+    logSafeError(`Add ${targetType} Comment Error:`, error);
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
@@ -63,7 +64,7 @@ const getComments = async (req, res, targetType, TargetModel, idParam) => {
       .sort({ createdAt: 1 });
     return res.status(200).json({ success: true, count: comments.length, data: comments });
   } catch (error) {
-    console.error(`Get ${targetType} Comments Error:`, error);
+    logSafeError(`Get ${targetType} Comments Error:`, error);
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
@@ -97,7 +98,7 @@ const updateComment = async (req, res) => {
     await comment.populate("author", authorFields);
     return res.status(200).json({ success: true, message: "Comment updated successfully", data: comment });
   } catch (error) {
-    console.error("Update Comment Error:", error);
+    logSafeError("Update Comment Error:", error);
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
@@ -118,7 +119,7 @@ const deleteComment = async (req, res) => {
     await comment.deleteOne();
     return res.status(200).json({ success: true, message: "Comment deleted successfully" });
   } catch (error) {
-    console.error("Delete Comment Error:", error);
+    logSafeError("Delete Comment Error:", error);
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };

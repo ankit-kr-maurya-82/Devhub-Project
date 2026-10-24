@@ -1,3 +1,4 @@
+import { logSafeError } from "../utils/logSafeError.js";
 import mongoose from "mongoose";
 import Room, { roomCategories } from "../models/room.model.js";
 import { leaveUserRoomSockets } from "../socket/notificationDelivery.js";
@@ -33,7 +34,7 @@ const createRoom = async (req, res) => {
     await room.populate("owner", "name username avatar");
     return res.status(201).json({ success: true, message: "Room created successfully", data: room });
   } catch (error) {
-    console.error("Create Room Error:", error);
+    logSafeError("Create Room Error:", error);
     return res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
@@ -63,7 +64,7 @@ const getRooms = async (req, res) => {
     ]);
     return res.status(200).json({ success: true, data: rooms, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } });
   } catch (error) {
-    console.error("Get Rooms Error:", error);
+    logSafeError("Get Rooms Error:", error);
     return res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
@@ -77,7 +78,7 @@ const getRoomById = async (req, res) => {
     if (!room.isPublic && !room.members.some((member) => member._id.equals(req.user._id))) return res.status(403).json({ success: false, message: "You are not a member of this room" });
     return res.status(200).json({ success: true, data: { ...room.toObject(), memberCount: room.members.length } });
   } catch (error) {
-    console.error("Get Room Error:", error);
+    logSafeError("Get Room Error:", error);
     return res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
@@ -99,7 +100,7 @@ const joinRoom = async (req, res) => {
       return res.status(200).json({ success: true, message: "Joined room successfully", data: room });
     });
   } catch (error) {
-    console.error("Join Room Error:", error);
+    logSafeError("Join Room Error:", error);
     return res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
@@ -120,7 +121,7 @@ const leaveRoom = async (req, res) => {
       return res.status(200).json({ success: true, message: "Left room successfully", data: room });
     });
   } catch (error) {
-    console.error("Leave Room Error:", error);
+    logSafeError("Leave Room Error:", error);
     return res.status(500).json({ success: false, message: "Internal server error" });
   }
 };

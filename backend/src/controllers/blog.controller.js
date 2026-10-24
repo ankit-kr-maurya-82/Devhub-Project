@@ -1,3 +1,4 @@
+import { logSafeError } from "../utils/logSafeError.js";
 import mongoose from "mongoose";
 import Blog from "../models/blog.model.js";
 
@@ -59,7 +60,7 @@ const createBlog = async (req, res) => {
     return res.status(201).json({ success: true, message: "Blog created successfully", data: blog });
   } catch (error) {
     if (duplicateSlug(error)) return sendError(res, 409, "A blog with this slug already exists");
-    console.error("Create Blog Error:", error);
+    logSafeError("Create Blog Error:", error);
     return sendError(res, 500, "Internal server error");
   }
 };
@@ -97,7 +98,7 @@ const getPublishedBlogs = async (req, res) => {
       pagination: { page, limit, total, totalPages, hasNextPage: page < totalPages, hasPrevPage: page > 1 },
     });
   } catch (error) {
-    console.error("List Blogs Error:", error);
+    logSafeError("List Blogs Error:", error);
     return sendError(res, 500, "Internal server error");
   }
 };
@@ -116,7 +117,7 @@ const getMyBlogs = async (req, res) => {
     ]);
     return res.status(200).json({ success: true, data: blogs, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } });
   } catch (error) {
-    console.error("List Own Blogs Error:", error);
+    logSafeError("List Own Blogs Error:", error);
     return sendError(res, 500, "Internal server error");
   }
 };
@@ -128,7 +129,7 @@ const getPublishedBlog = async (req, res) => {
     if (!blog) return sendError(res, 404, "Blog not found");
     return res.status(200).json({ success: true, data: blog });
   } catch (error) {
-    console.error("Get Blog Error:", error);
+    logSafeError("Get Blog Error:", error);
     return sendError(res, 500, "Internal server error");
   }
 };
@@ -140,7 +141,7 @@ const getMyBlog = async (req, res) => {
     if (!blog) return sendError(res, 404, "Blog not found");
     return res.status(200).json({ success: true, data: blog });
   } catch (error) {
-    console.error("Get Own Blog Error:", error);
+    logSafeError("Get Own Blog Error:", error);
     return sendError(res, 500, "Internal server error");
   }
 };
@@ -171,7 +172,7 @@ const updateBlog = async (req, res) => {
   } catch (error) {
     if (duplicateSlug(error)) return sendError(res, 409, "A blog with this slug already exists");
     if (error instanceof mongoose.Error.ValidationError) return sendError(res, 400, "Blog fields failed validation");
-    console.error("Update Blog Error:", error);
+    logSafeError("Update Blog Error:", error);
     return sendError(res, 500, "Internal server error");
   }
 };
@@ -185,7 +186,7 @@ const deleteBlog = async (req, res) => {
     await blog.deleteOne();
     return res.status(200).json({ success: true, message: "Blog deleted successfully" });
   } catch (error) {
-    console.error("Delete Blog Error:", error);
+    logSafeError("Delete Blog Error:", error);
     return sendError(res, 500, "Internal server error");
   }
 };

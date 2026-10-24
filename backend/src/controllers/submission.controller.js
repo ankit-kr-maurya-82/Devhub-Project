@@ -1,3 +1,4 @@
+import { logSafeError } from "../utils/logSafeError.js";
 import CodingProblem from "../models/codingProblem.model.js";
 import Submission from "../models/submission.model.js";
 import judgeService from "../services/judge.service.js";
@@ -43,7 +44,7 @@ const createSubmission = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Create Submission Error:", error);
+    logSafeError("Create Submission Error:", error);
     return sendError(res, 500, "Internal server error");
   }
 };
@@ -61,7 +62,7 @@ const listMySubmissions = async (req, res) => {
     const totalPages = Math.ceil(total / limit);
     return res.status(200).json({ success: true, data: submissions, pagination: { page, limit, total, totalPages, hasNextPage: page < totalPages, hasPrevPage: page > 1 } });
   } catch (error) {
-    console.error("List Submissions Error:", error);
+    logSafeError("List Submissions Error:", error);
     return sendError(res, 500, "Internal server error");
   }
 };

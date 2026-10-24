@@ -1,3 +1,4 @@
+import { logSafeError } from "../utils/logSafeError.js";
 import mongoose from "mongoose";
 import User from "../models/user.model.js";
 import Blog from "../models/blog.model.js";
@@ -74,7 +75,7 @@ const getDashboard = async (_req, res) => {
       },
     });
   } catch (error) {
-    console.error("Admin Dashboard Error:", error);
+    logSafeError("Admin Dashboard Error:", error);
     return sendError(res, 500, "Internal server error");
   }
 };
@@ -101,7 +102,7 @@ const listUsers = async (req, res) => {
     const totalPages = Math.ceil(total / limit);
     return res.status(200).json({ success: true, data: users, pagination: { page, limit, total, totalPages, hasNextPage: page < totalPages, hasPrevPage: page > 1 } });
   } catch (error) {
-    console.error("Admin User List Error:", error);
+    logSafeError("Admin User List Error:", error);
     return sendError(res, 500, "Internal server error");
   }
 };
@@ -136,7 +137,7 @@ const setUserActiveStatus = async (req, res) => {
     if (!desired) disconnectUserSockets(user._id);
     return res.status(200).json({ success: true, message: user.isActive ? "User reactivated" : "User suspended", data: user });
   } catch (error) {
-    console.error("Admin User Status Error:", error);
+    logSafeError("Admin User Status Error:", error);
     return failPending(res);
   }
 };
@@ -155,7 +156,7 @@ const createReport = async (req, res) => {
     const report = await Report.create({ reporter: req.user._id, targetType: body.targetType, targetId: body.targetId, reason: body.reason.trim(), details: (body.details || "").trim() });
     return res.status(201).json({ success: true, message: "Report submitted", data: { _id: report._id, status: report.status, createdAt: report.createdAt } });
   } catch (error) {
-    console.error("Create Report Error:", error);
+    logSafeError("Create Report Error:", error);
     return sendError(res, 500, "Internal server error");
   }
 };
@@ -185,7 +186,7 @@ const listReports = async (req, res) => {
     const totalPages = Math.ceil(total / limit);
     return res.status(200).json({ success: true, data, pagination: { page, limit, total, totalPages, hasNextPage: page < totalPages, hasPrevPage: page > 1 } });
   } catch (error) {
-    console.error("Admin Reports List Error:", error);
+    logSafeError("Admin Reports List Error:", error);
     return sendError(res, 500, "Internal server error");
   }
 };
@@ -257,7 +258,7 @@ const moderateReport = async (req, res) => {
     if (report.targetType === "user" && action === "suspend") disconnectUserSockets(actionTarget._id);
     return res.status(200).json({ success: true, message: "Moderation action recorded", data: report });
   } catch (error) {
-    console.error("Moderate Report Error:", error);
+    logSafeError("Moderate Report Error:", error);
     return failPending(res);
   }
 };

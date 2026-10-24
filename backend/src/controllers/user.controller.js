@@ -1,3 +1,4 @@
+import { logSafeError } from "../utils/logSafeError.js";
 import User from "../models/user.model.js";
 import mongoose from "mongoose";
 
@@ -21,7 +22,7 @@ const getProfile = async (req, res) => {
         });
 
     } catch (error) {
-        console.error("Get Profile Error:", error);
+        logSafeError("Get Profile Error:", error);
 
         return res.status(500).json({
             success: false,
@@ -71,7 +72,7 @@ const updateProfile = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Update Profile Error:", error);
+    logSafeError("Update Profile Error:", error);
 
     return res.status(500).json({
       success: false,

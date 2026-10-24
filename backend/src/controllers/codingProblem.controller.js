@@ -1,3 +1,4 @@
+import { logSafeError } from "../utils/logSafeError.js";
 import mongoose from "mongoose";
 import CodingProblem from "../models/codingProblem.model.js";
 
@@ -57,7 +58,7 @@ const listPublishedProblems = async (req, res) => {
     const totalPages = Math.ceil(total / limit);
     return res.status(200).json({ success: true, data: problems, pagination: { page, limit, total, totalPages, hasNextPage: page < totalPages, hasPrevPage: page > 1 } });
   } catch (error) {
-    console.error("List Coding Problems Error:", error);
+    logSafeError("List Coding Problems Error:", error);
     return sendError(res, 500, "Internal server error");
   }
 };
@@ -69,7 +70,7 @@ const getPublishedProblem = async (req, res) => {
     if (!problem) return sendError(res, 404, "Problem not found");
     return res.status(200).json({ success: true, data: problem });
   } catch (error) {
-    console.error("Get Coding Problem Error:", error);
+    logSafeError("Get Coding Problem Error:", error);
     return sendError(res, 500, "Internal server error");
   }
 };
@@ -86,7 +87,7 @@ const listAdminProblems = async (req, res) => {
     const totalPages = Math.ceil(total / limit);
     return res.status(200).json({ success: true, data: problems, pagination: { page, limit, total, totalPages, hasNextPage: page < totalPages, hasPrevPage: page > 1 } });
   } catch (error) {
-    console.error("Admin Coding Problems List Error:", error);
+    logSafeError("Admin Coding Problems List Error:", error);
     return sendError(res, 500, "Internal server error");
   }
 };
@@ -98,7 +99,7 @@ const getAdminProblem = async (req, res) => {
     if (!problem) return sendError(res, 404, "Problem not found");
     return res.status(200).json({ success: true, data: problem });
   } catch (error) {
-    console.error("Admin Coding Problem Get Error:", error);
+    logSafeError("Admin Coding Problem Get Error:", error);
     return sendError(res, 500, "Internal server error");
   }
 };
@@ -112,7 +113,7 @@ const createProblem = async (req, res) => {
   } catch (error) {
     if (duplicateSlug(error)) return sendError(res, 409, "A problem with this slug already exists");
     if (error instanceof mongoose.Error.ValidationError) return sendError(res, 400, "Problem fields failed validation");
-    console.error("Create Coding Problem Error:", error);
+    logSafeError("Create Coding Problem Error:", error);
     return sendError(res, 500, "Internal server error");
   }
 };
@@ -131,7 +132,7 @@ const updateProblem = async (req, res) => {
   } catch (error) {
     if (duplicateSlug(error)) return sendError(res, 409, "A problem with this slug already exists");
     if (error instanceof mongoose.Error.ValidationError) return sendError(res, 400, "Problem fields failed validation");
-    console.error("Update Coding Problem Error:", error);
+    logSafeError("Update Coding Problem Error:", error);
     return sendError(res, 500, "Internal server error");
   }
 };
@@ -144,7 +145,7 @@ const deleteProblem = async (req, res) => {
     await problem.deleteOne();
     return res.status(200).json({ success: true, message: "Problem deleted successfully" });
   } catch (error) {
-    console.error("Delete Coding Problem Error:", error);
+    logSafeError("Delete Coding Problem Error:", error);
     return sendError(res, 500, "Internal server error");
   }
 };

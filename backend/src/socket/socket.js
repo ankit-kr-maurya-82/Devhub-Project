@@ -1,3 +1,4 @@
+import { logSafeError } from "../utils/logSafeError.js";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 import { Server } from "socket.io";
@@ -59,7 +60,7 @@ const initializeSocket = (httpServer, configuredOrigins) => {
       } else {
         io.emit("userOffline", { userId, username: user.username, isOnline: false, lastSeen: user.lastSeen });
       }
-    }).catch((error) => console.error("Socket presence update error:", error));
+    }).catch((error) => logSafeError("Socket presence update error:", error));
     presenceUpdates.set(userId, update);
     void update.finally(() => {
       if (presenceUpdates.get(userId) === update) presenceUpdates.delete(userId);
@@ -137,7 +138,7 @@ const initializeSocket = (httpServer, configuredOrigins) => {
         await handler(payload, acknowledge);
       }
       catch (error) {
-        console.error("Socket event error:", error);
+        logSafeError("Socket event error:", error);
         emitSocketError(socket, "Unable to complete socket event", acknowledge);
       }
     };
@@ -197,7 +198,7 @@ const initializeSocket = (httpServer, configuredOrigins) => {
           type: "community_message",
           message: "You have a new message in Community.",
         }).catch((error) => {
-          console.error("Community message notification error:", error);
+          logSafeError("Community message notification error:", error);
         })));
       io.to(result.room._id.toString()).emit("newMessage", message);
       if (typeof acknowledge === "function") acknowledge({ success: true, message });

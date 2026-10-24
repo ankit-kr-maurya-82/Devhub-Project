@@ -1,3 +1,4 @@
+import { logSafeError } from "../utils/logSafeError.js";
 import jwt from "jsonwebtoken";
 import User from "../models/user.model.js";
 
@@ -48,7 +49,7 @@ const authMiddleware = async(req,res,next)=>{
             return rejectAuthentication();
         }
 
-        console.error(error);
+        logSafeError("Authentication middleware error", error);
         if (isApiRequest) {
             return res.status(500).json({
                 success: false,

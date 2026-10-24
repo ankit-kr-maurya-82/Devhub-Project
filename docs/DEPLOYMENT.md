@@ -4,7 +4,7 @@
 
 DevHub has two independently built services. `fronted/` is a Vite and React single-page application; `backend/` is an Express API with Socket.IO. MongoDB stores application data. The backend also serves the existing Pug pages and API documentation, but it does not serve the React build. Deploy the frontend as a static site and the backend as a long-running Node web service with WebSocket support.
 
-Use Node.js 22.13+ within the 22.x line, or 24+ for both frontend builds and the backend. These versions satisfy the current locked Vite and Mongoose runtime requirements and match the Node 22 CI configuration.
+Use Node.js 22.13+ within the 22.x line, or 24.x for both frontend builds and the backend. The lockfiles resolve Vite 8.3.5, which requires `^20.19.0 || >=22.12.0`, and Mongoose 9.11.4, which requires `>=20.19.0`; both documented choices satisfy those engines. CI selects the Node 22 major line. Pin a compatible Node major in each hosting project rather than relying on a provider's changing default.
 
 ## Environment variables
 
@@ -90,7 +90,20 @@ cd backend
 npm run db:indexes:check
 ```
 
-The checker requires both `TEST_MONGODB_URI` and the explicit `TEST_MONGODB_ISOLATED=true` acknowledgement. A test-like database name is only a secondary guard: independently verify the host/cluster and use credentials scoped to the dedicated disposable database. The checker also refuses production-like names and the same host/database target as `MONGODB_URI` or `MONGO_URI`, disables automatic index creation, and only calls Mongoose `diffIndexes()`. It reports indexes that would be created or dropped and never applies either operation. Review the production database's index state with the database administrator before release; the disposable database is a schema comparison, not proof of production state. If an index needs creation, use a reviewed, backed-up migration or database operation that only creates the specific missing indexes. Do not use `syncIndexes()` on production: it may drop indexes absent from the current schema. Unique indexes can fail when existing data contains duplicates.
+The checker requires both `TEST_MONGODB_URI` and the explicit `TEST_MONGODB_ISOLATED=true` acknowledgement. A test-like database name is only a secondary guard: independently verify the host/cluster and use credentials scoped to the dedicated disposable database. The checker also refuses production-like names and the same host/database target as `MONGODB_URI` or `MONGO_URI`, disables automatic index creation, and only calls Mongoose `diffIndexes()`. It reports indexes that would be created or dropped and never applies either operation. It intentionally refuses the application database, so it does not initialize or verify the staging application's indexes.
+
+### Reviewed staging index initialization
+
+The production-mode backend used for staging disables Mongoose automatic index creation. After the database and collections are provisioned, but before feature smoke tests:
+
+1. Take or verify a restorable staging snapshot. Use only staging data and credentials; never copy production data into staging.
+2. Run `db:indexes:check` only against a separately verified disposable database with the same checked-out schema. Save the reported comparison as review input; it is not a check of the staging database.
+3. Have a reviewer compare the staging collections' existing indexes with the model declarations in `backend/src/models/`. Inspect indexes read-only first. Do not run `syncIndexes()` or apply every reported difference blindly.
+4. Check for duplicate values before any unique index is proposed. Resolve data conflicts through a separately reviewed staging data change, not as part of index creation.
+5. Prepare and review a one-time staging-only migration that creates only specifically approved missing indexes with their declared keys and options. It must not drop or alter existing indexes. Use an operator identity scoped to the staging database with only the index and read privileges needed; keep it separate from the application secret where possible.
+6. Apply that migration only after approval, then inspect the resulting indexes read-only and run focused staging smoke tests. Record the migration and rollback considerations. Do not execute this procedure from the app startup command.
+
+No index migration is currently provided by the repository, and this procedure was not run. Do not use `syncIndexes()` on production: it may drop indexes absent from the current schema. Unique indexes can fail when existing data contains duplicates.
 
 ## Local verification and production commands
 

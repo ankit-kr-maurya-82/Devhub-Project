@@ -1,3 +1,4 @@
+import { logSafeError } from "../utils/logSafeError.js";
 import mongoose from "mongoose";
 import Answer from "../models/answer.model.js";
 import Question from "../models/question.model.js";
@@ -61,7 +62,7 @@ const createAnswer = async (req, res) => {
       data: answer,
     });
   } catch (error) {
-    console.error("Create Answer Error:", error);
+    logSafeError("Create Answer Error:", error);
     return res.status(500).json({
       success: false,
       message: "Internal server error",
@@ -98,7 +99,7 @@ const getAnswersByQuestion = async (req, res) => {
       data: answers,
     });
   } catch (error) {
-    console.error("Get Answers Error:", error);
+    logSafeError("Get Answers Error:", error);
     return res.status(500).json({
       success: false,
       message: "Internal server error",
@@ -190,7 +191,7 @@ const acceptAnswer = async (req, res) => {
       data: answer,
     });
   } catch (error) {
-    console.error("Accept Answer Error:", error);
+    logSafeError("Accept Answer Error:", error);
     return res.status(500).json({
       success: false,
       message: "Internal server error",

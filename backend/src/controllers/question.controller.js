@@ -1,3 +1,4 @@
+import { logSafeError } from "../utils/logSafeError.js";
 import mongoose from "mongoose";
 import Question from "../models/question.model.js";
 
@@ -35,7 +36,7 @@ const createQuestion = async (req, res) => {
       data: question,
     });
   } catch (error) {
-    console.error("Create Question Error:", error);
+    logSafeError("Create Question Error:", error);
 
     return res.status(500).json({
       success: false,
@@ -116,7 +117,7 @@ const getAllQuestions = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Get Questions Error:", error);
+    logSafeError("Get Questions Error:", error);
 
     return res.status(500).json({
       success: false,
@@ -161,7 +162,7 @@ const getQuestionById = async (req, res) => {
         }
 
     } catch(error){
-        console.error("Get Question By ID Error:", error);
+        logSafeError("Get Question By ID Error:", error);
 
         return res.status(500).json({
             success: false,
@@ -224,7 +225,7 @@ const updateQuestion = async(req,res)=>{
         }
 
     } catch(error){
-        console.error("Update Question Error:", error);
+        logSafeError("Update Question Error:", error);
 
         return res.status(500).json({
             success: false,
@@ -267,7 +268,7 @@ const deleteQuestion = async (req, res) => {
       message: "Question deleted successfully",
     });
   } catch (error) {
-    console.error("Delete Question Error:", error);
+    logSafeError("Delete Question Error:", error);
 
     return res.status(500).json({
       success: false,

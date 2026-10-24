@@ -1,3 +1,4 @@
+import { logSafeError } from "../utils/logSafeError.js";
 import bcrypt from "bcrypt";
 import { randomBytes, createHash } from "node:crypto";
 import jwt from "jsonwebtoken";
@@ -16,7 +17,7 @@ import {
       user,
     });
   } catch (error) {
-    console.error("Dashboard Error:", error);
+    logSafeError("Dashboard Error:", error);
     res.status(500).send("Something went wrong");
   }
 };
