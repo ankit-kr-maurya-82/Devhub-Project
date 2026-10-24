@@ -103,7 +103,7 @@ export default function Community() {
     setActiveRoom({ ...room, ...fullRoom, id: roomId, memberCount: fullRoom.members?.length || room.memberCount || 0 });
     setMembers((fullRoom.members || []).map(normalizeMember));
     // Join socket room and request current users
-    joinRoom(roomId);
+    await joinRoom(roomId);
     requestRoomUsers(roomId);
     // Load existing messages via API (initial snapshot)
     await fetchMessages(roomId);
@@ -140,16 +140,20 @@ export default function Community() {
     return () => window.clearInterval(timer)
   }, [activeRoom, fetchMessages, user])
 
-  function sendMessage({ text = '', code }) {
+  async function sendMessage({ text = '', code }) {
   const cleanText = text.trim()
   const content = [cleanText, code?.content.trim()
     ? `\n\n\`\`\`${code.language || 'text'}\n${code.content.trimEnd()}\n\`\`\``
     : ''].filter(Boolean).join('')
   if (!content || !activeRoom) return false
-  // Use socket to send message; real-time updates will handle UI state
-  socketSendMessage(activeRoom.id, { content })
-  setError('')
-  return true
+  try {
+    await socketSendMessage(activeRoom.id, { content })
+    setError('')
+    return true
+  } catch (sendError) {
+    setError(sendError.message || 'Message could not be sent. Please try again.')
+    return false
+  }
 }
 
   async function toggleReaction(messageId, emoji) {

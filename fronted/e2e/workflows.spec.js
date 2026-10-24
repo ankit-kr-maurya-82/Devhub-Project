@@ -37,6 +37,37 @@ async function login(page, email = userEmail, password = userPassword) {
   await expect(page).toHaveURL(/\/dashboard$/)
 }
 
+test('community chat sends acknowledged messages and preserves text when disconnected', async ({ page, context }) => {
+  await login(page)
+  await page.goto('/community')
+  await expect(page.getByRole('heading', { name: 'Community' })).toBeVisible()
+
+  const messageLog = page.getByRole('log')
+  const noRoomsMessage = page.getByText('Select a room to begin.')
+  await expect.poll(async () => (
+    (await messageLog.count()) > 0 || (await noRoomsMessage.isVisible().catch(() => false))
+  )).toBe(true)
+  if (await noRoomsMessage.isVisible().catch(() => false)) {
+    test.skip(true, 'Seed at least one public room in the disposable E2E deployment.')
+  }
+
+  await expect(page.getByText('Socket: Connected')).toBeVisible()
+  const input = page.getByRole('textbox', { name: /Message/ })
+  const sentContent = `E2E acknowledged message ${runId}`
+  await input.fill(sentContent)
+  await page.getByRole('button', { name: 'Send', exact: true }).click()
+  await expect(messageLog).toContainText(sentContent)
+  await expect(input).toHaveValue('')
+
+  await context.setOffline(true)
+  await expect(page.getByText('Socket: Disconnected')).toBeVisible()
+  const unsentContent = `E2E disconnected message ${runId}`
+  await input.fill(unsentContent)
+  await page.getByRole('button', { name: 'Send', exact: true }).click()
+  await expect(page.getByRole('alert')).toContainText(/socket is not connected/i)
+  await expect(input).toHaveValue(unsentContent)
+})
+
 async function removeOwnedQuestion(page, id) {
   if (!id) return
   const response = await page.request.delete(`${apiBase}/questions/${encodeURIComponent(id)}`)

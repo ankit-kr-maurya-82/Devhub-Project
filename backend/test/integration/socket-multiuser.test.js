@@ -40,9 +40,11 @@ const waitForEvent = (socket, eventName, { rejectOnSocketError = true } = {}) =>
   if (rejectOnSocketError && eventName !== "socketError") socket.once("socketError", onSocketError);
 });
 
-const connectClient = (serverUrl, token) => new Promise((resolve, reject) => {
+const connectClient = (serverUrl, token, { cookie = false } = {}) => new Promise((resolve, reject) => {
   const socket = createClient(serverUrl, {
-    auth: token ? { token } : {},
+    ...(cookie && token
+      ? { extraHeaders: { Cookie: `token=${encodeURIComponent(token)}` } }
+      : { auth: token ? { token } : {} }),
     reconnection: false,
     timeout: TIMEOUT_MS,
   });
@@ -52,6 +54,13 @@ const connectClient = (serverUrl, token) => new Promise((resolve, reject) => {
   }, TIMEOUT_MS);
   socket.once("connect", () => { clearTimeout(timer); resolve(socket); });
   socket.once("connect_error", (error) => { clearTimeout(timer); socket.close(); resolve({ socket, error }); });
+});
+
+const emitWithAck = (socket, event, payload) => new Promise((resolve, reject) => {
+  socket.timeout(TIMEOUT_MS).emit(event, payload, (error, response) => {
+    if (error) reject(error);
+    else resolve(response);
+  });
 });
 
 const disconnectClient = async (socket) => {
@@ -149,7 +158,7 @@ describe("multi-user Socket.IO chat integration", { concurrency: false }, () => 
     const tokenB = jwt.sign({ userId: userB._id.toString() }, TEST_JWT_SECRET, { expiresIn: "5m" });
     const tokenNonMember = jwt.sign({ userId: nonMember._id.toString() }, TEST_JWT_SECRET, { expiresIn: "5m" });
 
-    const clientAResult = await connectClient(serverUrl, tokenA);
+    const clientAResult = await connectClient(serverUrl, tokenA, { cookie: true });
     assert.ok(!clientAResult.error, `User A connection failed: ${clientAResult.error?.message}`);
     const clientA = clientAResult;
     clients.add(clientA);
@@ -160,18 +169,23 @@ describe("multi-user Socket.IO chat integration", { concurrency: false }, () => 
 
     const joinedA = waitForEvent(clientA, "roomJoined");
     const joinedB = waitForEvent(clientB, "roomJoined");
-    clientA.emit("joinRoom", { roomId: room._id.toString() });
-    clientB.emit("joinRoom", { roomId: room._id.toString() });
+    const joinedAckA = emitWithAck(clientA, "joinRoom", { roomId: room._id.toString() });
+    const joinedAckB = emitWithAck(clientB, "joinRoom", { roomId: room._id.toString() });
     assert.equal(idOf((await joinedA)[0].roomId), room._id.toString());
     assert.equal(idOf((await joinedB)[0].roomId), room._id.toString());
+    assert.equal((await joinedAckA).success, true);
+    assert.equal((await joinedAckB).success, true);
 
     const parentContent = `multi-user-parent-${suffix}`;
     testContents.push(parentContent);
     const parentFromA = waitForEvent(clientA, "newMessage");
     const parentFromB = waitForEvent(clientB, "newMessage");
-    clientA.emit("sendMessage", { roomId: room._id.toString(), content: parentContent, messageType: "text" });
+    const parentAck = emitWithAck(clientA, "sendMessage", { roomId: room._id.toString(), content: parentContent, messageType: "text" });
     const [parentA] = await parentFromA;
     const [parentB] = await parentFromB;
+    const parentResponse = await parentAck;
+    assert.equal(parentResponse.success, true);
+    assert.equal(idOf(parentResponse.message._id), idOf(parentA._id));
     assert.equal(parentA.content, parentContent);
     assert.equal(parentB.content, parentContent);
     assert.equal(idOf(parentA._id), idOf(parentB._id));
@@ -226,8 +240,11 @@ describe("multi-user Socket.IO chat integration", { concurrency: false }, () => 
     const nonMemberSocket = nonMemberResult;
     clients.add(nonMemberSocket);
     const nonMemberError = waitForEvent(nonMemberSocket, "socketError", { rejectOnSocketError: false });
-    nonMemberSocket.emit("sendMessage", { roomId: room._id.toString(), content: `unauthorized-${suffix}` });
+    const nonMemberAck = emitWithAck(nonMemberSocket, "sendMessage", { roomId: room._id.toString(), content: `unauthorized-${suffix}` });
     assert.match((await nonMemberError)[0].message, /not a member/i);
+    const rejectedResponse = await nonMemberAck;
+    assert.equal(rejectedResponse.success, false);
+    assert.match(rejectedResponse.message, /not a member/i);
     assert.equal(await Message.countDocuments({ room: room._id, content: `unauthorized-${suffix}` }), 0);
   });
 });

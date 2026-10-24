@@ -18,6 +18,7 @@ export default function MessageInput({ conversationName, onSend }) {
   const [showCode, setShowCode] = useState(false)
   const [code, setCode] = useState('')
   const [language, setLanguage] = useState('javascript')
+  const [isSending, setIsSending] = useState(false)
   const textareaRef = useRef(null)
   const emojiRef = useRef(null)
   const composerId = useId()
@@ -38,15 +39,20 @@ export default function MessageInput({ conversationName, onSend }) {
     }
   }, [showEmoji])
 
-  const sendMessage = () => {
-    if (!canSend) return
-    const accepted = onSend({ text: text.trim(), ...(code.trim() ? { code: { language, content: code.trimEnd() } } : {}) })
-    if (accepted !== true) return
-    setText('')
-    setCode('')
-    setShowCode(false)
-    setShowEmoji(false)
-    textareaRef.current?.focus()
+  const sendMessage = async () => {
+    if (!canSend || isSending) return
+    setIsSending(true)
+    try {
+      const accepted = await onSend({ text: text.trim(), ...(code.trim() ? { code: { language, content: code.trimEnd() } } : {}) })
+      if (accepted !== true) return
+      setText('')
+      setCode('')
+      setShowCode(false)
+      setShowEmoji(false)
+      textareaRef.current?.focus()
+    } finally {
+      setIsSending(false)
+    }
   }
 
   const insertEmoji = (emoji) => {
@@ -62,7 +68,7 @@ export default function MessageInput({ conversationName, onSend }) {
   }
 
   return (
-    <form onSubmit={(event) => { event.preventDefault(); sendMessage() }} className="shrink-0 px-3 pb-3 pt-1 sm:px-5 sm:pb-4">
+    <form onSubmit={(event) => { event.preventDefault(); void sendMessage() }} className="shrink-0 px-3 pb-3 pt-1 sm:px-5 sm:pb-4">
       <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] transition focus-within:border-[var(--accent)]">
         {showCode && (
           <div className="m-2 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface-raised)]">
@@ -81,12 +87,12 @@ export default function MessageInput({ conversationName, onSend }) {
           </div>
         )}
         <label htmlFor={`${composerId}-message`} className="sr-only">Message {conversationName}</label>
-        <textarea ref={textareaRef} id={`${composerId}-message`} value={text} onChange={(event) => setText(event.target.value)} onKeyDown={(event) => {
+        <textarea ref={textareaRef} id={`${composerId}-message`} value={text} disabled={isSending} onChange={(event) => setText(event.target.value)} onKeyDown={(event) => {
           if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing && event.nativeEvent.keyCode !== 229) {
             event.preventDefault()
-            sendMessage()
+            void sendMessage()
           }
-        }} rows={2} placeholder={`Message ${conversationName}`} aria-describedby={`${composerId}-hint`} className="block max-h-40 min-h-20 w-full resize-y bg-transparent px-4 pb-1 pt-3 text-sm leading-6 text-[var(--text)] outline-none placeholder:text-[var(--muted)]" />
+        }} rows={2} placeholder={`Message ${conversationName}`} aria-describedby={`${composerId}-hint`} className="block max-h-40 min-h-20 w-full resize-y bg-transparent px-4 pb-1 pt-3 text-sm leading-6 text-[var(--text)] outline-none placeholder:text-[var(--muted)] disabled:opacity-70" />
         <div className="flex items-center justify-between gap-2 px-2 pb-2">
           <div className="flex items-center gap-0.5">
             <div ref={emojiRef} className="relative">
@@ -97,8 +103,8 @@ export default function MessageInput({ conversationName, onSend }) {
             </div>
             <button type="button" aria-label="Add code snippet" aria-expanded={showCode} onClick={() => setShowCode(true)} className={`${toolbarButtonClass} ${showCode ? 'bg-[var(--accent-soft)] text-[var(--accent)]' : ''}`}><Icon name="code" className="size-4" /></button>
           </div>
-          <button type="submit" disabled={!canSend} className="flex items-center gap-2 rounded-lg bg-[var(--primary)] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[var(--primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:cursor-not-allowed disabled:bg-[var(--accent-soft)] disabled:text-[var(--accent)] sm:px-4">
-            Send <ComposerIcon name="send" />
+          <button type="submit" disabled={!canSend || isSending} className="flex items-center gap-2 rounded-lg bg-[var(--primary)] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[var(--primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:cursor-not-allowed disabled:bg-[var(--accent-soft)] disabled:text-[var(--accent)] sm:px-4">
+            {isSending ? 'Sending…' : 'Send'} <ComposerIcon name="send" />
           </button>
         </div>
       </div>

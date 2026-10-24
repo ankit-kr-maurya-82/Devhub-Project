@@ -1,32 +1,13 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io } from 'socket.io-client';
 
-// Helper to extract JWT token from cookies (same logic as backend)
-function getCookieToken() {
-  const cookieHeader = document.cookie || '';
-  for (const part of cookieHeader.split(';')) {
-    const separator = part.indexOf('=');
-    if (separator < 0) continue;
-    const name = part.slice(0, separator).trim();
-    if (name !== 'token') continue;
-    try {
-      return decodeURIComponent(part.slice(separator + 1).trim());
-    } catch {
-      return '';
-    }
-  }
-  return '';
-}
-
 /**
  * useSocket – a React hook managing a Socket.IO client connection.
  * It handles authentication, connection lifecycle, and provides convenient
  * methods for community‑room interactions required by the frontend.
  */
 export default function useSocket({ onMessage, onMessageUpdated, onMessageDeleted, onReactionUpdated, onRoomUsers, onUserOnline, onUserOffline, onUserTyping, onUserStoppedTyping, onError }) {
-  const [connectionStatus, setConnectionStatus] = useState(() => (
-    getCookieToken() ? 'Connecting…' : 'No auth token'
-  ));
+  const [connectionStatus, setConnectionStatus] = useState('Connecting…');
   const socketRef = useRef(null);
   const typingTimers = useRef(new Map()); // maps roomId → timeoutId for stop‑typing debounce
   const handlersRef = useRef({});
@@ -49,11 +30,9 @@ export default function useSocket({ onMessage, onMessageUpdated, onMessageDelete
   // Initialise socket once on mount
   useEffect(() => {
     const timers = typingTimers.current;
-    const token = getCookieToken();
-    if (!token) return undefined;
     const socket = io({
-      auth: { token },
       path: '/socket.io', // default path used by backend Server
+      withCredentials: true,
     });
     socketRef.current = socket;
 
@@ -122,18 +101,54 @@ export default function useSocket({ onMessage, onMessageUpdated, onMessageDelete
     }
   }, []);
 
+  const emitWithAck = useCallback(async (event, payload, { waitForConnection = false } = {}) => {
+    const socket = socketRef.current;
+    if (!socket) throw new Error('Socket connection is unavailable.');
+
+    if (!socket.connected && waitForConnection) {
+      await new Promise((resolve, reject) => {
+        let timeout;
+        const onConnect = () => {
+          clearTimeout(timeout);
+          resolve();
+        };
+        timeout = setTimeout(() => {
+          socket.off('connect', onConnect);
+          reject(new Error('Socket did not connect in time. Please try again.'));
+        }, 10000);
+        socket.once('connect', onConnect);
+      });
+    }
+
+    if (!socket.connected) {
+      throw new Error('Socket is not connected. Please wait for it to reconnect.');
+    }
+
+    return new Promise((resolve, reject) => {
+      socket.timeout(10000).emit(event, payload, (timeoutError, response) => {
+        if (timeoutError) {
+          reject(new Error('The server did not confirm the request. Please try again.'));
+        } else if (!response?.success) {
+          reject(new Error(response?.message || 'The server rejected the request.'));
+        } else {
+          resolve(response);
+        }
+      });
+    });
+  }, []);
+
   // Public API
   const joinRoom = useCallback((roomId) => {
-    emit('joinRoom', { roomId });
-  }, [emit]);
+    return emitWithAck('joinRoom', { roomId }, { waitForConnection: true });
+  }, [emitWithAck]);
 
   const leaveRoom = useCallback((roomId) => {
     emit('leaveRoom', { roomId });
   }, [emit]);
 
   const sendMessage = useCallback((roomId, details) => {
-    emit('sendMessage', { roomId, ...details });
-  }, [emit]);
+    return emitWithAck('sendMessage', { roomId, ...details });
+  }, [emitWithAck]);
 
   const startTyping = useCallback((roomId) => {
     emit('typing', { roomId });

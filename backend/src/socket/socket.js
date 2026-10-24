@@ -6,7 +6,11 @@ import Room from "../models/room.model.js";
 import Message from "../models/message.model.js";
 import { addUserSocket, removeUserSocket, isUserOnline } from "./presence.js";
 
-const emitSocketError = (socket, message) => socket.emit("socketError", { success: false, message });
+const emitSocketError = (socket, message, acknowledge) => {
+  const response = { success: false, message };
+  socket.emit("socketError", response);
+  if (typeof acknowledge === "function") acknowledge(response);
+};
 const validPayloadRoomId = (payload) => payload && typeof payload === "object" && typeof payload.roomId === "string" && mongoose.isValidObjectId(payload.roomId);
 const isMember = (room, userId) => room?.members.some((member) => member.equals(userId));
 const replyPopulate = { path: "replyTo", select: "_id content sender isDeleted", populate: { path: "sender", select: "name username avatar" } };
@@ -99,21 +103,25 @@ const initializeSocket = (httpServer) => {
       eventTimes.push(now);
       return true;
     };
-    const guard = (handler) => async (payload) => {
-      if (!allowEvent()) return emitSocketError(socket, "Too many events. Please slow down.");
-      try { await handler(payload); }
-      catch (error) { console.error("Socket event error:", error); emitSocketError(socket, "Unable to complete socket event"); }
+    const guard = (handler) => async (payload, acknowledge) => {
+      if (!allowEvent()) return emitSocketError(socket, "Too many events. Please slow down.", acknowledge);
+      try { await handler(payload, acknowledge); }
+      catch (error) {
+        console.error("Socket event error:", error);
+        emitSocketError(socket, "Unable to complete socket event", acknowledge);
+      }
     };
 
-    socket.on("joinRoom", guard(async (payload) => {
+    socket.on("joinRoom", guard(async (payload, acknowledge) => {
       const result = await verifyRoomMembership(payload);
-      if (result.error) return emitSocketError(socket, result.error);
+      if (result.error) return emitSocketError(socket, result.error, acknowledge);
       const roomId = result.room._id.toString();
       const alreadyJoined = socket.rooms.has(roomId);
       await socket.join(roomId);
       socket.emit("roomJoined", { roomId });
       if (!alreadyJoined) socket.to(roomId).emit("userJoinedRoom", { roomId, user: { _id: socket.user._id, name: socket.user.name, username: socket.user.username, avatar: socket.user.avatar } });
       socket.emit("roomUsers", { roomId, users: await getRoomUsers(roomId) });
+      if (typeof acknowledge === "function") acknowledge({ success: true, roomId });
     }));
 
     socket.on("leaveRoom", guard(async (payload) => {
@@ -125,28 +133,29 @@ const initializeSocket = (httpServer) => {
       socket.to(roomId).emit("userLeftRoom", { roomId, userId: socket.user._id });
     }));
 
-    socket.on("sendMessage", guard(async (payload) => {
+    socket.on("sendMessage", guard(async (payload, acknowledge) => {
       const result = await verifyRoomMembership(payload);
-      if (result.error) return emitSocketError(socket, result.error);
-      if (!socket.rooms.has(result.room._id.toString())) return emitSocketError(socket, "Join the room before sending messages");
-      if (!payload || typeof payload.content !== "string") return emitSocketError(socket, "Message content is required");
+      if (result.error) return emitSocketError(socket, result.error, acknowledge);
+      if (!socket.rooms.has(result.room._id.toString())) return emitSocketError(socket, "Join the room before sending messages", acknowledge);
+      if (!payload || typeof payload.content !== "string") return emitSocketError(socket, "Message content is required", acknowledge);
       const content = payload.content.trim();
-      if (!content || content.length > 2000) return emitSocketError(socket, "Message content must be between 1 and 2000 characters");
+      if (!content || content.length > 2000) return emitSocketError(socket, "Message content must be between 1 and 2000 characters", acknowledge);
       const messageType = payload.messageType ?? "text";
-      if (!["text", "image", "file"].includes(messageType)) return emitSocketError(socket, "Invalid message type");
+      if (!["text", "image", "file"].includes(messageType)) return emitSocketError(socket, "Invalid message type", acknowledge);
       let replyTo = null;
       const requestedReplyTo = typeof payload.replyTo === "string" ? payload.replyTo.trim() : payload.replyTo;
       if (requestedReplyTo !== undefined && requestedReplyTo !== null && requestedReplyTo !== "") {
-        if (typeof requestedReplyTo !== "string" || !mongoose.isValidObjectId(requestedReplyTo)) return emitSocketError(socket, "Invalid replyTo message ID");
+        if (typeof requestedReplyTo !== "string" || !mongoose.isValidObjectId(requestedReplyTo)) return emitSocketError(socket, "Invalid replyTo message ID", acknowledge);
         const parent = await Message.findById(requestedReplyTo).select("_id room");
-        if (!parent) return emitSocketError(socket, "Reply target message not found");
-        if (!parent.room.equals(result.room._id)) return emitSocketError(socket, "Reply target must belong to the same room");
+        if (!parent) return emitSocketError(socket, "Reply target message not found", acknowledge);
+        if (!parent.room.equals(result.room._id)) return emitSocketError(socket, "Reply target must belong to the same room", acknowledge);
         replyTo = parent._id;
       }
       const message = await Message.create({ room: result.room._id, sender: socket.user._id, content, messageType, replyTo });
       await message.populate([{ path: "sender", select: "name username avatar" }, replyPopulate]);
       if (message.replyTo?.isDeleted) message.replyTo.content = "This message was deleted";
       io.to(result.room._id.toString()).emit("newMessage", message);
+      if (typeof acknowledge === "function") acknowledge({ success: true, message });
     }));
 
     socket.on("editMessage", guard(async (payload) => {
