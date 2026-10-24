@@ -59,6 +59,9 @@ app.use(
   express.static(path.join(__dirname, "../public"))
 );
 
+// Database readiness is established before the listener starts in src/index.js.
+app.get("/healthz", (_req, res) => res.status(200).json({ status: "ok" }));
+
 app.get("/api-docs.json", (req, res) => res.json(openapiSpecification));
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(openapiSpecification, {
   explorer: false,

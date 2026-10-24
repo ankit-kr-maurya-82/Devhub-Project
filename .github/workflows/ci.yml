@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            fronted/package-lock.json
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+      - name: Backend API tests
+        working-directory: backend
+        run: npm test
+      - name: Backend unit and configuration tests
+        working-directory: backend
+        run: npm run test:unit
+      - name: Backend legacy security tests
+        working-directory: backend
+        run: npm run test:legacy
+      - name: Install frontend dependencies
+        working-directory: fronted
+        run: npm ci
+      - name: Frontend lint
+        working-directory: fronted
+        run: npm run lint
+      - name: Frontend production build
+        working-directory: fronted
+        env:
+          VITE_API_URL: https://api.example.invalid/api/v1
+        run: npm run build
+      - name: Whitespace validation
+        run: git diff --check
+      - name: MongoDB integration test prerequisite
+        run: echo "Socket.IO integration tests require a dedicated TEST_MONGODB_URI and are not run in credential-free CI."

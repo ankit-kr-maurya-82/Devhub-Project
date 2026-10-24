@@ -27,10 +27,17 @@ const getCookieToken = (cookieHeader = "") => {
   return "";
 };
 
-const initializeSocket = (httpServer) => {
-  const allowedOrigins = (process.env.CLIENT_ORIGIN || "").split(",").map((origin) => origin.trim()).filter(Boolean);
-  if (process.env.NODE_ENV !== "production") allowedOrigins.push("http://localhost:5173", "http://127.0.0.1:5173");
-  const io = new Server(httpServer, { cors: { origin: [...new Set(allowedOrigins)], credentials: true } });
+const initializeSocket = (httpServer, configuredOrigins) => {
+  const allowedOrigins = configuredOrigins || (process.env.CLIENT_ORIGIN || "").split(",").map((origin) => origin.trim()).filter(Boolean);
+  if (!configuredOrigins && process.env.NODE_ENV !== "production") allowedOrigins.push("http://localhost:5173", "http://127.0.0.1:5173");
+  const uniqueOrigins = [...new Set(allowedOrigins)];
+  const io = new Server(httpServer, {
+    cors: { origin: uniqueOrigins, credentials: true },
+    allowRequest: (request, callback) => {
+      const origin = request.headers.origin;
+      callback(null, !origin || uniqueOrigins.includes(origin));
+    },
+  });
   setNotificationSocketServer(io);
   const presenceUpdates = new Map();
 

@@ -1,4 +1,18 @@
-const apiBase = (import.meta.env.VITE_API_URL || '/api/v1').replace(/\/$/, '')
+const configuredApiBase = import.meta.env.VITE_API_URL?.trim()
+if (import.meta.env.PROD && !configuredApiBase) {
+  throw new Error('VITE_API_URL must be set to the production API root ending in /api/v1.')
+}
+if (import.meta.env.PROD) {
+  let parsedApiBase
+  try { parsedApiBase = new URL(configuredApiBase) } catch {
+    throw new Error('Production VITE_API_URL must be an absolute HTTP(S) URL ending in /api/v1.')
+  }
+  if (!['http:', 'https:'].includes(parsedApiBase.protocol) || parsedApiBase.pathname.replace(/\/$/, '') !== '/api/v1' || parsedApiBase.search || parsedApiBase.hash || parsedApiBase.username || parsedApiBase.password) {
+    throw new Error('Production VITE_API_URL must be an absolute HTTP(S) URL ending in /api/v1.')
+  }
+}
+const apiBase = (configuredApiBase || '/api/v1').replace(/\/$/, '')
+export const socketOrigin = /^https?:\/\//i.test(apiBase) ? new URL(apiBase).origin : undefined
 
 async function request(path, { method = 'GET', body, ...options } = {}) {
   const response = await fetch(`${apiBase}${path}`, {

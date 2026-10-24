@@ -60,7 +60,7 @@ const validateEnvironment = (env = process.env) => {
   }
 
   const allowedOrigins = validateOrigins(env.CLIENT_ORIGIN, env.NODE_ENV === "production");
-  return { port, mongoUri, allowedOrigins };
+  return { port, mongoUri, allowedOrigins, nodeEnv: env.NODE_ENV };
 };
 
 export { validateEnvironment };
