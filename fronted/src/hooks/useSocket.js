@@ -24,17 +24,33 @@ function getCookieToken() {
  * methods for community‑room interactions required by the frontend.
  */
 export default function useSocket({ onMessage, onMessageUpdated, onMessageDeleted, onReactionUpdated, onRoomUsers, onUserOnline, onUserOffline, onUserTyping, onUserStoppedTyping, onError }) {
-  const [connectionStatus, setConnectionStatus] = useState('Connecting…');
+  const [connectionStatus, setConnectionStatus] = useState(() => (
+    getCookieToken() ? 'Connecting…' : 'No auth token'
+  ));
   const socketRef = useRef(null);
   const typingTimers = useRef(new Map()); // maps roomId → timeoutId for stop‑typing debounce
+  const handlersRef = useRef({});
+
+  useEffect(() => {
+    handlersRef.current = {
+      onMessage,
+      onMessageUpdated,
+      onMessageDeleted,
+      onReactionUpdated,
+      onRoomUsers,
+      onUserOnline,
+      onUserOffline,
+      onUserTyping,
+      onUserStoppedTyping,
+      onError,
+    };
+  }, [onMessage, onMessageUpdated, onMessageDeleted, onReactionUpdated, onRoomUsers, onUserOnline, onUserOffline, onUserTyping, onUserStoppedTyping, onError]);
 
   // Initialise socket once on mount
   useEffect(() => {
+    const timers = typingTimers.current;
     const token = getCookieToken();
-    if (!token) {
-      setConnectionStatus('No auth token');
-      return undefined;
-    }
+    if (!token) return undefined;
     const socket = io({
       auth: { token },
       path: '/socket.io', // default path used by backend Server
@@ -47,7 +63,7 @@ export default function useSocket({ onMessage, onMessageUpdated, onMessageDelete
     socket.on('connect_error', (err) => {
       console.error('Socket connection error', err);
       setConnectionStatus('Connection error');
-      if (onError) onError(err);
+      handlersRef.current.onError?.(err);
     });
     socket.on('disconnect', (reason) => {
       console.warn('Socket disconnected', reason);
@@ -59,40 +75,43 @@ export default function useSocket({ onMessage, onMessageUpdated, onMessageDelete
 
     // Core events emitted by backend
     socket.on('newMessage', (msg) => {
-      if (onMessage) onMessage(msg);
+      handlersRef.current.onMessage?.(msg);
     });
     socket.on('messageUpdated', (msg) => {
-      if (onMessageUpdated) onMessageUpdated(msg);
+      handlersRef.current.onMessageUpdated?.(msg);
     });
     socket.on('messageDeleted', (payload) => {
-      if (onMessageDeleted) onMessageDeleted(payload);
+      handlersRef.current.onMessageDeleted?.(payload);
     });
     socket.on('messageReactionUpdated', (payload) => {
-      if (onReactionUpdated) onReactionUpdated(payload);
+      handlersRef.current.onReactionUpdated?.(payload);
     });
     socket.on('roomUsers', (payload) => {
-      if (onRoomUsers) onRoomUsers(payload);
+      handlersRef.current.onRoomUsers?.(payload);
     });
     socket.on('userOnline', (payload) => {
-      if (onUserOnline) onUserOnline(payload);
+      handlersRef.current.onUserOnline?.(payload);
     });
     socket.on('userOffline', (payload) => {
-      if (onUserOffline) onUserOffline(payload);
+      handlersRef.current.onUserOffline?.(payload);
     });
     socket.on('userTyping', (payload) => {
-      if (onUserTyping) onUserTyping(payload);
+      handlersRef.current.onUserTyping?.(payload);
     });
     socket.on('userStoppedTyping', (payload) => {
-      if (onUserStoppedTyping) onUserStoppedTyping(payload);
+      handlersRef.current.onUserStoppedTyping?.(payload);
     });
     socket.on('socketError', (err) => {
       console.error('Socket error event', err);
-      if (onError) onError(err);
+      handlersRef.current.onError?.(err);
     });
 
     // Cleanup on unmount
     return () => {
       socket.disconnect();
+      socketRef.current = null;
+      for (const timerId of timers.values()) clearTimeout(timerId);
+      timers.clear();
     };
   }, []);
 
@@ -141,7 +160,6 @@ export default function useSocket({ onMessage, onMessageUpdated, onMessageDelete
   }, [emit]);
 
   return {
-    socket: socketRef.current,
     connectionStatus,
     joinRoom,
     leaveRoom,
@@ -151,4 +169,3 @@ export default function useSocket({ onMessage, onMessageUpdated, onMessageDelete
     requestRoomUsers,
   };
 }
-

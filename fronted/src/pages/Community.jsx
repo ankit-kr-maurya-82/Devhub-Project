@@ -69,10 +69,7 @@ export default function Community() {
   const {
     connectionStatus: socketConnectionStatus,
     joinRoom,
-    leaveRoom,
     sendMessage: socketSendMessage,
-    startTyping,
-    stopTyping,
     requestRoomUsers,
   } = useSocket({
     onMessage: (msg) => setMessages(prev => [...prev, normalizeMessage(msg, currentUserId)]),
@@ -84,11 +81,6 @@ export default function Community() {
     onUserOffline: (payload) => setMembers(prev => prev.map(m => m.id === payload.userId ? { ...m, online: false, lastSeen: payload.lastSeen } : m)),
     onError: (err) => console.error(err),
   });
-  // Sync socket connection status with component state
-  useEffect(() => {
-    setConnectionStatus(socketConnectionStatus);
-  }, [socketConnectionStatus]);
-
   const fetchMessages = useCallback(async roomId => {
     const result = await api.rooms.messages(roomId)
     setMessages(result.data.map(message => normalizeMessage(message, currentUserId)))
@@ -193,7 +185,7 @@ export default function Community() {
   const conversationName = activeRoom ? `#${activeRoom.name}` : 'a room'
   return (
     <section aria-label="DevHub Community chat" className="mx-auto flex h-[calc(100dvh-7.5rem)] min-h-[38rem] max-w-6xl flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
-      <div className="shrink-0 border-b border-[var(--border)] px-4 py-4 sm:px-6"><div className="flex flex-wrap items-center gap-3"><h1 className="text-xl font-semibold text-[var(--text)]">Community</h1><span className="rounded-full bg-[var(--surface-raised)] px-2.5 py-1 text-xs text-[var(--muted)]">Backend connected</span><button type="button" onClick={() => setShowCreateRoom(open => !open)} className="ui-button-secondary ml-auto">{showCreateRoom ? 'Cancel' : 'Create room'}</button></div><p className="mt-1 text-sm text-[var(--muted)]">{connectionStatus}</p>{showCreateRoom && <form onSubmit={createRoom} className="mt-4 grid gap-3 sm:grid-cols-[1fr_2fr_auto]"><input required minLength={3} maxLength={100} value={roomName} onChange={event => setRoomName(event.target.value)} aria-label="Room name" placeholder="Room name" className="rounded-lg border border-[var(--border)] bg-[var(--page)] px-3 py-2 text-sm" /><input maxLength={500} value={roomDescription} onChange={event => setRoomDescription(event.target.value)} aria-label="Room description" placeholder="Description (optional)" className="rounded-lg border border-[var(--border)] bg-[var(--page)] px-3 py-2 text-sm" /><button className="ui-button">Create public room</button></form>}</div>
+      <div className="shrink-0 border-b border-[var(--border)] px-4 py-4 sm:px-6"><div className="flex flex-wrap items-center gap-3"><h1 className="text-xl font-semibold text-[var(--text)]">Community</h1><span className="rounded-full bg-[var(--surface-raised)] px-2.5 py-1 text-xs text-[var(--muted)]">Backend connected</span><button type="button" onClick={() => setShowCreateRoom(open => !open)} className="ui-button-secondary ml-auto">{showCreateRoom ? 'Cancel' : 'Create room'}</button></div><p className="mt-1 text-sm text-[var(--muted)]">{connectionStatus} · Socket: {socketConnectionStatus}</p>{showCreateRoom && <form onSubmit={createRoom} className="mt-4 grid gap-3 sm:grid-cols-[1fr_2fr_auto]"><input required minLength={3} maxLength={100} value={roomName} onChange={event => setRoomName(event.target.value)} aria-label="Room name" placeholder="Room name" className="rounded-lg border border-[var(--border)] bg-[var(--page)] px-3 py-2 text-sm" /><input maxLength={500} value={roomDescription} onChange={event => setRoomDescription(event.target.value)} aria-label="Room description" placeholder="Description (optional)" className="rounded-lg border border-[var(--border)] bg-[var(--page)] px-3 py-2 text-sm" /><button className="ui-button">Create public room</button></form>}</div>
       {error && <p role="alert" className="border-b border-[var(--border)] px-5 py-3 text-sm text-[var(--danger)]">{error}</p>}
       <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] md:grid-cols-[14rem_minmax(0,1fr)] lg:grid-cols-[16rem_minmax(0,1fr)]">
         <aside aria-label="Community rooms" className="hidden min-h-0 overflow-y-auto border-r border-[var(--border)] md:block">{sidebar}</aside>

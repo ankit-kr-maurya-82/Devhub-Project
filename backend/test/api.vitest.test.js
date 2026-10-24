@@ -244,7 +244,7 @@ describe("HTTP API integration with mocked persistence", () => {
   it("logs in valid credentials and rejects invalid credentials", async () => {
     const hash = await bcrypt.hash("secret-pass", 4);
     vi.spyOn(User, "findOne").mockImplementation(() => makeQuery({
-      _id: userId, username: "reader", email: "reader@example.invalid", password: hash,
+      _id: userId, username: "reader", email: "reader@example.invalid", password: hash, isActive: true,
     }));
     const accepted = await jsonRequest("/api/v1/auth/login", {
       method: "POST", token: null, body: { email: "reader@example.invalid", password: "secret-pass" },
@@ -532,7 +532,7 @@ describe("HTTP API integration with mocked persistence", () => {
     const list = await jsonRequest("/api/v1/blogs?tag=mern");
     expect(list.status).toBe(200);
     expect(Blog.find).toHaveBeenCalledWith({ status: "published", moderationStatus: { $ne: "hidden" }, tags: "mern" });
-    vi.spyOn(Blog, "findOne").mockResolvedValue(null);
+    vi.spyOn(Blog, "findOne").mockReturnValue(makeQuery(null));
     const detail = await jsonRequest("/api/v1/blogs/draft-blog");
     expect(detail.status).toBe(404);
     expect(Blog.findOne).toHaveBeenCalledWith({ slug: "draft-blog", status: "published", moderationStatus: { $ne: "hidden" } });
