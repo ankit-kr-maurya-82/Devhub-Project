@@ -12,5 +12,5 @@ export function resolveSocketOrigin(apiBase) {
 }
 
 export function createSocketClient(origin, socketFactory = io) {
-  return socketFactory(origin, SOCKET_OPTIONS)
+  return socketFactory(origin, { ...SOCKET_OPTIONS })
 }

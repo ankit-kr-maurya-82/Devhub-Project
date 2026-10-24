@@ -33,18 +33,23 @@ describe('shared Socket.IO configuration', () => {
     assert.equal(resolveSocketOrigin(undefined), undefined)
   })
 
-  it('passes the shared path and credential options to the Socket.IO client', () => {
-    let call
+  it('passes mutable per-client copies of the shared socket options', () => {
+    const calls = []
     const socket = { connected: false }
-    const client = createSocketClient('https://api.example.com', (...args) => {
-      call = args
+    const factory = (...args) => {
+      calls.push(args)
+      args[1].path = '/socket.io'
       return socket
-    })
+    }
 
-    assert.equal(client, socket)
-    assert.equal(call[0], 'https://api.example.com')
-    assert.equal(call[1], SOCKET_OPTIONS)
-    assert.deepEqual(call[1], { path: '/socket.io', withCredentials: true })
+    assert.equal(createSocketClient('https://api.example.com', factory), socket)
+    assert.equal(createSocketClient('https://api.example.com', factory), socket)
+    assert.equal(calls[0][0], 'https://api.example.com')
+    assert.notEqual(calls[0][1], SOCKET_OPTIONS)
+    assert.notEqual(calls[0][1], calls[1][1])
+    assert.deepEqual(calls[0][1], { path: '/socket.io', withCredentials: true })
+    assert.deepEqual(SOCKET_OPTIONS, { path: '/socket.io', withCredentials: true })
+    assert.ok(Object.isFrozen(SOCKET_OPTIONS))
   })
 
   it('routes Community and Notifications through the same socket factory', async () => {
