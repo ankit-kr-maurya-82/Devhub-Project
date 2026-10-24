@@ -4,21 +4,64 @@
 
 DevHub has two independently built services. `fronted/` is a Vite and React single-page application; `backend/` is an Express API with Socket.IO. MongoDB stores application data. The backend also serves the existing Pug pages and API documentation, but it does not serve the React build. Deploy the frontend as a static site and the backend as a long-running Node web service with WebSocket support.
 
-Use Node.js 22.12 or newer for both frontend builds and the backend. This satisfies the current Vite and Mongoose runtime requirements and matches the Node 22 CI configuration.
+Use Node.js 22.13+ within the 22.x line, or 24+ for both frontend builds and the backend. These versions satisfy the current locked Vite and Mongoose runtime requirements and match the Node 22 CI configuration.
 
 ## Environment variables
 
 Set these in the backend service environment. Copy names and safe local defaults from `backend/.env.example`; never copy actual credentials into the repository.
 
-| Variable | Required | Purpose |
-| --- | --- | --- |
-| `NODE_ENV` | Yes | Must be `production` on the deployed API. |
-| `PORT` | Platform provided | HTTP listener port; defaults to `4000` locally. |
-| `MONGODB_URI` or `MONGO_URI` | Yes | MongoDB connection string. Set one name only. |
-| `JWT_SECRET` | Yes | Signing key, at least 32 characters in production. |
-| `CLIENT_ORIGIN` | Yes in production | Comma-separated exact HTTPS frontend origins, with no path. |
-| `RESEND_API_KEY` | Required for password recovery | Restricted, server-side Resend sending API key. |
-| `PASSWORD_RESET_FROM` | Required for password recovery | Sender address at a domain verified in Resend. |
+| Variable | Required in staging | Secret? | Purpose | Application validation |
+| --- | --- | --- | --- | --- |
+| `NODE_ENV` | Yes | No | Run the API in production mode, including Secure auth cookies and production origin rules. | Must be `development`, `test`, or `production`; staging should use `production`. |
+| `PORT` | Platform provided | No | HTTP listener port; defaults to `4000` locally. | Must be a decimal integer from 1 to 65535. |
+| `MONGODB_URI` or `MONGO_URI` | Yes | Yes | MongoDB connection string. Set one name only; it contains credentials. | URI shape is checked at startup, then a real connection must succeed before listening. Conflicting values are rejected. |
+| `JWT_SECRET` | Yes | Yes | Signs authentication tokens. | Required; in production it must be non-placeholder and at least 32 characters. |
+| `CLIENT_ORIGIN` | Yes | No | Comma-separated exact browser frontend origins, without paths. | Production requires at least one explicit HTTPS origin; wildcard, credentials, paths, and non-HTTPS origins are rejected. |
+| `RESEND_API_KEY` | Required to test password recovery | Yes | Restricted, server-side Resend sending API key. | The reset flow checks the key format; this does not validate it with Resend. Missing/invalid configuration fails closed with HTTP 503 for reset requests. |
+| `PASSWORD_RESET_FROM` | Required to test password recovery | No | Sender address at a domain verified in Resend. | Sender syntax is checked; domain verification and provider acceptance are not checked by the application. |
+| `VITE_API_URL` | Yes for a production frontend build | No; public build-time value | Absolute HTTPS API root ending in `/api/v1`, or `/api/v1` when a same-origin proxy is configured. | Production build rejects missing values, insecure absolute HTTP URLs, and URLs with an unexpected path, query, or fragment. |
+
+### Staging configuration checklist
+
+Use this initial topology: one static frontend deployment, one persistent Node.js backend instance, and one managed MongoDB database dedicated to staging. The backend and frontend have separate environments; only `VITE_API_URL` is embedded in the public frontend bundle. Never expose MongoDB credentials, `JWT_SECRET`, `RESEND_API_KEY`, or other backend secrets through a `VITE_*` variable, frontend build argument, or static-host setting.
+
+1. **Public frontend configuration**
+   - Set `VITE_API_URL` in the frontend build environment to the HTTPS API origin plus `/api/v1`, or use `/api/v1` only when the frontend host proxies both `/api/v1` and `/socket.io` to this backend.
+   - Publish `fronted/dist/` and enable SPA fallback to `index.html`.
+   - The built frontend contains no database, JWT, or email-provider credentials.
+2. **Backend-only secrets and configuration**
+   - Set `NODE_ENV=production`, the platform-provided `PORT`, `JWT_SECRET`, and `CLIENT_ORIGIN` on the backend service.
+   - Configure `MONGODB_URI` (or its supported alias `MONGO_URI`) only on the backend. Store it and `JWT_SECRET` in the host's secret manager.
+   - To exercise password recovery, also configure `RESEND_API_KEY` and `PASSWORD_RESET_FROM` on the backend. No email provider or mailbox has been contacted or verified as part of local preparation. Without valid values, password reset remains unavailable and fails closed.
+3. **MongoDB database and access controls**
+   - Provision a separate staging database and database-scoped least-privilege user; restrict network access to the backend where supported and enable provider backups.
+   - Do not reuse production credentials or copy production data. Verify the selected host/cluster and user scope independently before any database test.
+   - Production disables Mongoose automatic index creation. Review required indexes before controlled staging tests; the index checker is read-only and requires an independently verified disposable target. It was not run as part of this preparation.
+4. **Password-reset email**
+   - Use a sender domain verified with the email provider and a restricted sending-only key where available. Set `CLIENT_ORIGIN` to the exact HTTPS frontend origin so reset links point to staging.
+   - The application validates configuration shape but cannot establish provider acceptance, domain verification, inbox delivery, or reset-link usability without a controlled live test.
+5. **Hosting, proxy, health, and operations**
+   - Use HTTPS on both services and custom subdomains under the same registrable domain (for example, `app.example.com` and `api.example.com`). The auth cookie is HttpOnly, Secure in production, and `SameSite=Lax`; unrelated frontend/API sites must not be assumed to share it.
+   - Set `CLIENT_ORIGIN` to the exact frontend origin, including scheme and port if applicable, with no path. Credentialed CORS uses this allowlist; do not use `*`.
+   - Keep one backend instance. Socket.IO presence/delivery and API rate-limit state are process-local and have not been verified for multi-instance operation.
+   - Configure `GET /healthz` as a readiness check. It returns 200 only while Mongoose reports a connected database, and 503 otherwise. Startup waits for the initial MongoDB connection. This endpoint does not verify email delivery, Socket.IO reachability, or index correctness.
+   - The Socket.IO client uses the `/socket.io` path and credentials. Its default transports permit HTTP long-polling and WebSocket upgrade; the proxy must forward `/socket.io`, support WebSocket upgrades, and permit the polling requests as well. Provider-specific behavior is unverified until checked on the selected plan.
+   - The server logs startup and generic database connection status, handles `SIGINT`/`SIGTERM` by closing Socket.IO/HTTP and disconnecting Mongoose, and has a 10-second shutdown timeout. Verify the selected host allows sufficient graceful-shutdown time and review logs for errors without logging credentials or reset tokens.
+
+### Staging smoke tests (manual, after deployment)
+
+Use only dedicated staging accounts and the staging-only database. Do not use production accounts or user data.
+
+1. Load the frontend over HTTPS, verify SPA deep links, and confirm API requests use the configured staging API.
+2. Request `GET /healthz`; confirm it returns the connected-database readiness status. Confirm an unavailable database produces 503 only in an approved isolated staging exercise.
+3. Register and log in with a dedicated test account. Confirm the auth cookie is HttpOnly, Secure, and `SameSite=Lax`; refresh the page and verify session restoration; log out and confirm protected access is denied.
+4. Request password reset for a staging account and confirm the API response does not reveal whether an account exists. Confirm the configured provider accepts the request, receive the message in a controlled mailbox, and verify the link succeeds once, rejects replay, and expires. Inspect logs for absence of tokens, reset URLs, and credentials. Do not call this passed based only on mocked tests.
+5. With two authorized test users, join a staging room and exchange messages. On all connected devices for one user, leave the room and confirm that user receives no subsequent room broadcasts, while the remaining member can continue using the room.
+6. Verify leaving one room does not disrupt unrelated room subscriptions. Confirm unauthorized HTTP and Socket.IO room operations are rejected.
+7. Confirm exact-origin restrictions and authentication/password-reset rate limits remain active. Do not broaden trusted proxy settings merely to change client-IP behavior.
+8. Restart the backend using the host's normal restart flow, refresh the frontend, and verify expected authentication behavior and service recovery.
+
+Record sanitized outcomes only. Local tests and mocked provider responses are not evidence of deployed behavior; do not report a smoke test as passed unless it was actually run against this isolated staging environment.
 
 Set `VITE_API_URL` in the frontend build environment to either the absolute HTTPS API root ending in `/api/v1`, such as `https://api.example.com/api/v1`, or `/api/v1` when the frontend host proxies both `/api/v1` and `/socket.io` to the backend. This value is embedded in the built frontend and is not a secret. Production builds fail if it is absent or uses an insecure absolute HTTP URL. The Socket.IO client uses the API origin for an absolute URL and the frontend origin for `/api/v1`.
 
