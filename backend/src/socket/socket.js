@@ -81,6 +81,7 @@ const initializeSocket = (httpServer) => {
       if (!user || !user.isActive) return next(new Error("Authentication required"));
       socket.user = user;
       socket.data.user = { _id: user._id, name: user.name, username: user.username, avatar: user.avatar };
+      socket.data.authExpiresAt = decoded.exp ? decoded.exp * 1000 : null;
       next();
     } catch {
       next(new Error("Authentication required"));
@@ -100,6 +101,20 @@ const initializeSocket = (httpServer) => {
       return { room };
     };
     const eventTimes = [];
+    const ensureActiveSession = async (acknowledge) => {
+      if (socket.data.authExpiresAt && Date.now() >= socket.data.authExpiresAt) {
+        emitSocketError(socket, "Authentication expired. Reconnect to continue.", acknowledge);
+        socket.disconnect(true);
+        return false;
+      }
+      const activeUser = await User.findById(userId).select("isActive");
+      if (!activeUser?.isActive) {
+        emitSocketError(socket, "This account is no longer active.", acknowledge);
+        socket.disconnect(true);
+        return false;
+      }
+      return true;
+    };
     const allowEvent = () => {
       const now = Date.now();
       while (eventTimes.length && eventTimes[0] <= now - 10_000) eventTimes.shift();
@@ -109,7 +124,10 @@ const initializeSocket = (httpServer) => {
     };
     const guard = (handler) => async (payload, acknowledge) => {
       if (!allowEvent()) return emitSocketError(socket, "Too many events. Please slow down.", acknowledge);
-      try { await handler(payload, acknowledge); }
+      try {
+        if (!await ensureActiveSession(acknowledge)) return;
+        await handler(payload, acknowledge);
+      }
       catch (error) {
         console.error("Socket event error:", error);
         emitSocketError(socket, "Unable to complete socket event", acknowledge);

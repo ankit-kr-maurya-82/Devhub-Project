@@ -4,8 +4,11 @@ import Blog from "../models/blog.model.js";
 import Question from "../models/question.model.js";
 import Answer from "../models/answer.model.js";
 import Comment from "../models/comment.model.js";
+import CodingProblem from "../models/codingProblem.model.js";
+import Submission from "../models/submission.model.js";
 import Report from "../models/report.model.js";
 import ModerationAction from "../models/moderationAction.model.js";
+import { disconnectUserSockets } from "../socket/notificationDelivery.js";
 
 const targetModels = { blog: Blog, question: Question, answer: Answer, comment: Comment, user: User };
 const previewFields = {
@@ -32,18 +35,44 @@ const completeAction = async (action) => {
 
 const getDashboard = async (_req, res) => {
   try {
-    const [totalUsers, activeUsers, suspendedUsers, totalBlogs, totalQuestions, totalAnswers, totalComments, openReports, recentModerationActivity] = await Promise.all([
+    const recentCutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const [totalUsers, activeUsers, suspendedUsers, newUsersLast7Days, totalBlogs, totalQuestions, totalAnswers, totalComments, totalCodingProblems, publishedCodingProblems, totalSubmissions, openReports, recentUsers, recentModerationActivity] = await Promise.all([
       User.countDocuments({}),
       User.countDocuments({ isActive: true }),
       User.countDocuments({ isActive: false }),
+      User.countDocuments({ createdAt: { $gte: recentCutoff } }),
       Blog.countDocuments({}),
       Question.countDocuments({}),
       Answer.countDocuments({}),
       Comment.countDocuments({}),
+      CodingProblem.countDocuments({}),
+      CodingProblem.countDocuments({ status: "published" }),
+      Submission.countDocuments({}),
       Report.countDocuments({ status: { $in: ["open", "reviewing", "processing"] } }),
+      User.find({}).select("name username role isActive createdAt").sort({ createdAt: -1, _id: -1 }).limit(5),
       ModerationAction.find({}).sort({ createdAt: -1 }).limit(10).populate("actor", "name username"),
     ]);
-    return res.status(200).json({ success: true, data: { counts: { totalUsers, activeUsers, suspendedUsers, totalBlogs, totalQuestions, totalAnswers, totalComments, openReports }, recentModerationActivity } });
+    return res.status(200).json({
+      success: true,
+      data: {
+        counts: {
+          totalUsers,
+          activeUsers,
+          suspendedUsers,
+          newUsersLast7Days,
+          totalBlogs,
+          totalQuestions,
+          totalAnswers,
+          totalComments,
+          totalCodingProblems,
+          publishedCodingProblems,
+          totalSubmissions,
+          openReports,
+        },
+        recentUsers,
+        recentModerationActivity,
+      },
+    });
   } catch (error) {
     console.error("Admin Dashboard Error:", error);
     return sendError(res, 500, "Internal server error");
@@ -91,6 +120,7 @@ const setUserActiveStatus = async (req, res) => {
     if (user.isActive === desired) {
       const pending = await ModerationAction.findOne({ actor: req.user._id, action: actionName, targetType: "user", targetId: user._id, state: "pending" }).sort({ createdAt: -1 });
       if (pending && pending.previousValue !== desired) await completeAction(pending);
+      if (!desired) disconnectUserSockets(user._id);
       return res.status(200).json({ success: true, data: user });
     }
     const pending = await ModerationAction.findOne({ actor: req.user._id, action: actionName, targetType: "user", targetId: user._id, state: "pending", previousValue: user.isActive }).sort({ createdAt: -1 });
@@ -103,6 +133,7 @@ const setUserActiveStatus = async (req, res) => {
     }
     user.isActive = updatedUser.isActive;
     await completeAction(audit);
+    if (!desired) disconnectUserSockets(user._id);
     return res.status(200).json({ success: true, message: user.isActive ? "User reactivated" : "User suspended", data: user });
   } catch (error) {
     console.error("Admin User Status Error:", error);
@@ -223,6 +254,7 @@ const moderateReport = async (req, res) => {
     report.moderatedAt = new Date();
     await report.save();
     await completeAction(journal);
+    if (report.targetType === "user" && action === "suspend") disconnectUserSockets(actionTarget._id);
     return res.status(200).json({ success: true, message: "Moderation action recorded", data: report });
   } catch (error) {
     console.error("Moderate Report Error:", error);

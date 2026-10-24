@@ -30,6 +30,10 @@ const validateOrigins = (value, isProduction) => {
 };
 
 const validateEnvironment = (env = process.env) => {
+  if (!["development", "test", "production"].includes(env.NODE_ENV)) {
+    throw new Error("NODE_ENV must be explicitly set to development, test, or production.");
+  }
+
   const rawPort = env.PORT ?? "4000";
   if (typeof rawPort !== "string" || !/^\d{1,5}$/.test(rawPort)) {
     throw new Error("PORT must be an integer from 1 to 65535.");

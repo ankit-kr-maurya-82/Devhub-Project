@@ -208,10 +208,9 @@ const forgetPassword = async (req, res) => {
         user.resetPasswordExpires = new Date(Date.now() + 60 * 60 * 1000);
         await user.save();
 
-        const isDevelopment = process.env.NODE_ENV !== "production";
-        const appUrl = (process.env.APP_URL || `http://localhost:${process.env.PORT || 4000}`)
-            .replace(/\/+$/, "");
-        const resetUrl = `${appUrl}/api/v1/auth/reset-password/${resetToken}`;
+        const isDevelopment = process.env.NODE_ENV === "development";
+        const frontendOrigin = process.env.CLIENT_ORIGIN?.split(",")[0]?.trim() || "http://localhost:5173";
+        const resetUrl = new URL(`/reset-password/${resetToken}`, frontendOrigin).href;
 
         // Development delivery only; production email delivery is not configured.
         if (isDevelopment) {
@@ -224,7 +223,6 @@ const forgetPassword = async (req, res) => {
 
         return res.status(200).json({
             message,
-            ...(isDevelopment ? { resetToken, resetUrl } : {}),
         });
     } catch {
         console.error("Password reset request failed.");

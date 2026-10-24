@@ -231,12 +231,14 @@ describe("HTTP API integration with mocked persistence", () => {
     });
     const response = await jsonRequest("/api/v1/auth/register", {
       method: "POST", token: null,
-      body: { username: "reader", email: "reader@example.invalid", password: "secret-pass" },
+      body: { username: "reader", email: "reader@example.invalid", password: "secret-pass", role: "admin" },
     });
     expect(response.status).toBe(201);
     expect(response.headers.get("set-cookie")).toMatch(/HttpOnly/i);
     const body = await response.json();
     expect(body.user.email).toBe("reader@example.invalid");
+    expect(created.role).toBe("user");
+    expect(body.user.role).toBe("user");
     expect(created.password).not.toBe("secret-pass");
     expect(await bcrypt.compare("secret-pass", created.password)).toBe(true);
   });
@@ -244,7 +246,7 @@ describe("HTTP API integration with mocked persistence", () => {
   it("logs in valid credentials and rejects invalid credentials", async () => {
     const hash = await bcrypt.hash("secret-pass", 4);
     vi.spyOn(User, "findOne").mockImplementation(() => makeQuery({
-      _id: userId, username: "reader", email: "reader@example.invalid", password: hash, isActive: true,
+      _id: userId, username: "reader", email: "reader@example.invalid", password: hash, role: "admin", isActive: true,
     }));
     const accepted = await jsonRequest("/api/v1/auth/login", {
       method: "POST", token: null, body: { email: "reader@example.invalid", password: "secret-pass" },
@@ -252,6 +254,7 @@ describe("HTTP API integration with mocked persistence", () => {
     expect(accepted.status).toBe(200);
     expect(accepted.headers.get("set-cookie")).toMatch(/token=/);
     const acceptedBody = await accepted.json();
+    expect(acceptedBody.user.role).toBe("admin");
     expect(acceptedBody).not.toHaveProperty("password");
     expect(JSON.stringify(acceptedBody)).not.toContain(secret);
 
@@ -354,6 +357,12 @@ describe("HTTP API integration with mocked persistence", () => {
       method: "PUT", body: { name: "Someone else", userId: otherId },
     });
     expect(spoofed.status).toBe(400);
+    expect(updateProfile).toHaveBeenCalledTimes(1);
+
+    const roleEscalation = await jsonRequest("/api/v1/user/profile", {
+      method: "PUT", body: { name: "Someone else", role: "admin" },
+    });
+    expect(roleEscalation.status).toBe(400);
     expect(updateProfile).toHaveBeenCalledTimes(1);
   });
 
@@ -639,6 +648,8 @@ describe("HTTP API integration with mocked persistence", () => {
 
   it("requires admin authorization for reports and rejects malformed report identifiers", async () => {
     const reportsFind = vi.spyOn(Report, "find");
+    const unauthenticated = await jsonRequest("/api/v1/admin/dashboard", { token: null });
+    expect(unauthenticated.status).toBe(401);
     const denied = await jsonRequest("/api/v1/admin/reports");
     expect(denied.status).toBe(403);
     expect(reportsFind).not.toHaveBeenCalled();

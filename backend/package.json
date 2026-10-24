@@ -18,6 +18,7 @@
     "test:unit": "vitest run test/controllers.unit.test.js test/blogs.unit.test.js test/coding.unit.test.js test/admin-moderation.unit.test.js && node --test test/db-configuration.test.js",
     "test:legacy": "node --test test/security.test.js",
     "test:socket:integration": "node --test test/integration/socket-multiuser.test.js",
+    "admin:promote": "node scripts/promote-admin.js",
     "seed:e2e": "node scripts/seed-e2e.js"
   },
   "dependencies": {

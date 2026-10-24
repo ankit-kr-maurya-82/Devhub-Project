@@ -3,10 +3,10 @@
  * /api/v1/admin/dashboard:
  *   get:
  *     tags: [Administration]
- *     summary: Read admin counts and recent moderation activity
+ *     summary: Read platform counts, recent registrations, and moderation activity
  *     security: [{ cookieAuth: [] }, { bearerAuth: [] }]
  *     responses:
- *       '200': { description: Aggregate counts and audit activity }
+ *       '200': { description: Database-backed account, Q&A, blog, coding, submission, and report counts; safe recent user fields; and audit activity }
  *       '401': { $ref: '#/components/responses/Unauthorized' }
  *       '403': { description: Administrator access required }
  * /api/v1/admin/users:
@@ -316,7 +316,7 @@
  *         application/json:
  *           schema: { type: object, required: [email], properties: { email: { type: string, format: email } } }
  *     responses:
- *       '200': { description: Generic reset request response; development may include resetToken and resetUrl }
+ *       '200': { description: Generic reset request response; development reset links are delivered only through the server's local development output }
  *       '400': { description: Invalid input }
  *       '429': { $ref: '#/components/responses/RateLimited' }
  * /api/v1/auth/forget-password:
@@ -329,7 +329,7 @@
  *         application/json:
  *           schema: { type: object, required: [email], properties: { email: { type: string, format: email } } }
  *     responses:
- *       '200': { description: Generic reset request response; development may include resetToken and resetUrl }
+ *       '200': { description: Generic reset request response; development reset links are delivered only through the server's local development output }
  *       '400': { description: Invalid input }
  *       '429': { $ref: '#/components/responses/RateLimited' }
  * /api/v1/auth/reset-password/{token}:

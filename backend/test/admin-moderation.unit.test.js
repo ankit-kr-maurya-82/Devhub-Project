@@ -1,11 +1,16 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import User from "../src/models/user.model.js";
 import Blog from "../src/models/blog.model.js";
+import Question from "../src/models/question.model.js";
+import Answer from "../src/models/answer.model.js";
 import Comment from "../src/models/comment.model.js";
+import CodingProblem from "../src/models/codingProblem.model.js";
+import Submission from "../src/models/submission.model.js";
 import Report from "../src/models/report.model.js";
 import ModerationAction from "../src/models/moderationAction.model.js";
-import { listUsers, setUserActiveStatus, createReport, listReports, moderateReport } from "../src/controllers/admin.controller.js";
+import { getDashboard, listUsers, setUserActiveStatus, createReport, listReports, moderateReport } from "../src/controllers/admin.controller.js";
 import { adminMiddleware } from "../src/middlewares/admin.middleware.js";
+import { setNotificationSocketServer } from "../src/socket/notificationDelivery.js";
 
 const actorId = "507f1f77bcf86cd799439011";
 const targetId = "507f191e810c19729de860ea";
@@ -17,7 +22,10 @@ const queryChain = result => {
   return query;
 };
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  setNotificationSocketServer(null);
+});
 
 describe("admin moderation unit checks", () => {
   it("denies non-admins at the backend authorization middleware", () => {
@@ -25,6 +33,51 @@ describe("admin moderation unit checks", () => {
     adminMiddleware(request({ role: "user" }), res, next);
     expect(res.statusCode).toBe(403);
     expect(next).not.toHaveBeenCalled();
+  });
+
+  it("returns database-backed overview counts and safe recent registrations", async () => {
+    const recentUsers = [{ _id: targetId, name: "New member", username: "new_member", role: "user", isActive: true, createdAt: new Date() }];
+    const usersQuery = queryChain(recentUsers);
+    const recentActionsQuery = {
+      sort: vi.fn(function sort() { return this; }),
+      limit: vi.fn(function limit() { return this; }),
+      populate: vi.fn().mockResolvedValue([]),
+    };
+    vi.spyOn(User, "countDocuments").mockImplementation(filter => Promise.resolve(
+      filter.createdAt ? 3 : filter.isActive === true ? 8 : filter.isActive === false ? 2 : 10
+    ));
+    vi.spyOn(User, "find").mockReturnValue(usersQuery);
+    vi.spyOn(Blog, "countDocuments").mockResolvedValue(4);
+    vi.spyOn(Question, "countDocuments").mockResolvedValue(5);
+    vi.spyOn(Answer, "countDocuments").mockResolvedValue(6);
+    vi.spyOn(Comment, "countDocuments").mockResolvedValue(7);
+    vi.spyOn(CodingProblem, "countDocuments").mockImplementation(filter => Promise.resolve(filter.status ? 9 : 11));
+    vi.spyOn(Submission, "countDocuments").mockResolvedValue(12);
+    vi.spyOn(Report, "countDocuments").mockResolvedValue(13);
+    vi.spyOn(ModerationAction, "find").mockReturnValue(recentActionsQuery);
+    const res = response();
+
+    await getDashboard(request(), res);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.data.counts).toEqual({
+      totalUsers: 10,
+      activeUsers: 8,
+      suspendedUsers: 2,
+      newUsersLast7Days: 3,
+      totalBlogs: 4,
+      totalQuestions: 5,
+      totalAnswers: 6,
+      totalComments: 7,
+      totalCodingProblems: 11,
+      publishedCodingProblems: 9,
+      totalSubmissions: 12,
+      openReports: 13,
+    });
+    expect(usersQuery.select).toHaveBeenCalledWith("name username role isActive createdAt");
+    expect(res.body.data.recentUsers).toEqual(recentUsers);
+    expect(res.body.data.recentUsers[0]).not.toHaveProperty("password");
+    expect(User.countDocuments).toHaveBeenCalledWith({ createdAt: { $gte: expect.any(Date) } });
   });
 
   it("paginates sanitized user results and supports escaped search", async () => {
@@ -54,6 +107,24 @@ describe("admin moderation unit checks", () => {
     await setUserActiveStatus(request({ params: { userId: targetId }, body: { isActive: false } }), res);
     expect(res.statusCode).toBe(409);
     expect(update).not.toHaveBeenCalled();
+  });
+
+  it("disconnects the user's live sockets after a successful account suspension", async () => {
+    const user = { _id: targetId, role: "user", isActive: true };
+    vi.spyOn(User, "findById").mockReturnValue({ select: vi.fn().mockResolvedValue(user) });
+    vi.spyOn(ModerationAction, "findOne").mockReturnValue({ sort: vi.fn().mockResolvedValue(null) });
+    vi.spyOn(ModerationAction, "create").mockResolvedValue({ save: vi.fn().mockResolvedValue(undefined) });
+    vi.spyOn(User, "findOneAndUpdate").mockResolvedValue({ isActive: false });
+    const disconnectSockets = vi.fn();
+    const socketServer = { in: vi.fn(() => ({ disconnectSockets })) };
+    setNotificationSocketServer(socketServer);
+    const res = response();
+
+    await setUserActiveStatus(request({ params: { userId: targetId }, body: { isActive: false } }), res);
+
+    expect(res.statusCode).toBe(200);
+    expect(socketServer.in).toHaveBeenCalledWith(`user:${targetId}`);
+    expect(disconnectSockets).toHaveBeenCalledWith(true);
   });
 
   it("rejects invalid reports before persistence and verifies target existence", async () => {

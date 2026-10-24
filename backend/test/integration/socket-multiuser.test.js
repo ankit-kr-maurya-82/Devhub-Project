@@ -298,5 +298,17 @@ describe("multi-user Socket.IO chat integration", { concurrency: false }, () => 
     assert.equal(rejectedResponse.success, false);
     assert.match(rejectedResponse.message, /not a member/i);
     assert.equal(await Message.countDocuments({ room: room._id, content: `unauthorized-${suffix}` }), 0);
+
+    const suspendedMessage = `suspended-user-${suffix}`;
+    testContents.push(suspendedMessage);
+    userB.isActive = false;
+    await userB.save();
+    const suspendedSocketError = waitForEvent(clientB, "socketError", { rejectOnSocketError: false });
+    const disconnectedB = waitForEvent(clientB, "disconnect", { rejectOnSocketError: false });
+    const suspendedAck = emitWithAck(clientB, "sendMessage", { roomId: room._id.toString(), content: suspendedMessage });
+    assert.match((await suspendedSocketError)[0].message, /account is no longer active/i);
+    assert.equal((await suspendedAck).success, false);
+    await disconnectedB;
+    assert.equal(await Message.countDocuments({ room: room._id, content: suspendedMessage }), 0);
   });
 });

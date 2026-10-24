@@ -20,4 +20,9 @@ const emitNotification = (notification) => {
   });
 };
 
-export { emitNotification, setNotificationSocketServer };
+const disconnectUserSockets = (userId) => {
+  if (!socketServer || !userId) return;
+  socketServer.in(`user:${userId.toString()}`).disconnectSockets(true);
+};
+
+export { disconnectUserSockets, emitNotification, setNotificationSocketServer };

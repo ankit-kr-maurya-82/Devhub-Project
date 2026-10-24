@@ -25,6 +25,7 @@ describe("password reset", { concurrency: false }, () => {
     NODE_ENV: process.env.NODE_ENV,
     JWT_SECRET: process.env.JWT_SECRET,
     APP_URL: process.env.APP_URL,
+    CLIENT_ORIGIN: process.env.CLIENT_ORIGIN,
   };
 
   function matches(query) {
@@ -66,15 +67,12 @@ describe("password reset", { concurrency: false }, () => {
     const response = await request(path, { method: "POST", body: { email } });
     assert.equal(response.status, 200);
     const body = await response.json();
-    assert.match(body.resetToken, /^[a-f0-9]{64}$/);
-    return body;
-  }
-
-  async function assertInvalidResetPage(response) {
-    assert.equal(response.status, 400);
-    const html = await response.text();
-    assert.match(html, /reset link is invalid or has expired/i);
-    assert.doesNotMatch(html, /<form\b/i);
+    assert.equal(body.resetToken, undefined);
+    assert.equal(body.resetUrl, undefined);
+    const resetUrl = loggedUrl();
+    const resetToken = resetUrl.pathname.split("/").at(-1);
+    assert.match(resetToken, /^[a-f0-9]{64}$/);
+    return { ...body, resetToken };
   }
 
   function loggedUrl() {
@@ -104,7 +102,7 @@ describe("password reset", { concurrency: false }, () => {
     server = app.listen(0, "127.0.0.1");
     await once(server, "listening");
     baseUrl = `http://127.0.0.1:${server.address().port}`;
-    process.env.APP_URL = baseUrl;
+    process.env.CLIENT_ORIGIN = "http://127.0.0.1:5173";
   });
 
   beforeEach(() => {
@@ -116,6 +114,7 @@ describe("password reset", { concurrency: false }, () => {
       username: "reader",
       email,
       password: originalPasswordHash,
+      isActive: true,
       resetPasswordToken: null,
       resetPasswordExpires: null,
     };
@@ -135,13 +134,13 @@ describe("password reset", { concurrency: false }, () => {
     }
   });
 
-  it("renders the forgot-password form for both route aliases", async () => {
-    for (const path of ["/forgot-password", "/forget-password"]) {
-      const response = await request(path, { html: true });
+  it("returns generic reset responses for both API aliases without exposing a token", async () => {
+    for (const path of ["/api/v1/auth/forgot-password", "/api/v1/auth/forget-password"]) {
+      const response = await request(path, { method: "POST", body: { email } });
       assert.equal(response.status, 200);
-      const html = await response.text();
-      assert.match(html, /<form[^>]*action="\/(?:forgot|forget)-password"/);
-      assert.match(html, /name="email"/);
+      const body = await response.json();
+      assert.equal(body.resetToken, undefined);
+      assert.equal(body.resetUrl, undefined);
     }
   });
 
@@ -171,7 +170,7 @@ describe("password reset", { concurrency: false }, () => {
     assert.equal(modelCalls.saves, 1);
   });
 
-  it("issues an opaque token, stores its hash, and logs a usable development URL", async () => {
+  it("keeps reset tokens out of API responses and logs a usable frontend development link", async () => {
     const beforeRequest = Date.now();
     const body = await issueToken();
     assert.equal(storedUser.resetPasswordToken, digest(body.resetToken));
@@ -181,37 +180,19 @@ describe("password reset", { concurrency: false }, () => {
     assert.ok(expiry <= Date.now() + 3_600_000);
     assert.equal(modelCalls.saves, 1);
     const url = loggedUrl();
-    assert.equal(url.origin, baseUrl);
+    assert.equal(url.origin, "http://127.0.0.1:5173");
     assert.equal(url.pathname, `/reset-password/${body.resetToken}`);
-    assert.equal(body.resetUrl, url.href);
-    assert.equal((await request(url.href, { html: true })).status, 200);
 
     const replacement = await issueToken("/api/v1/auth/forget-password");
     assert.notEqual(replacement.resetToken, body.resetToken);
-    assert.equal((await request(url.href, { html: true })).status, 400);
   });
 
-  it("completes the browser flow and permits login only with the new password", async () => {
-    const response = await request("/forgot-password", {
-      method: "POST", html: true, body: { email },
+  it("completes the reset API flow and permits login only with the new password", async () => {
+    const { resetToken } = await issueToken();
+    const reset = await request(`/api/v1/auth/reset-password/${resetToken}`, {
+      method: "POST", body: { password: newPassword, confirmPassword: newPassword },
     });
-    assert.equal(response.status, 200);
-    assert.match(response.headers.get("content-type"), /text\/html/);
-    assert.match(await response.text(), /reset/i);
-    const url = loggedUrl();
-    const page = await request(url.href, { html: true });
-    assert.equal(page.status, 200);
-    const html = await page.text();
-    assert.match(html, /name="password"/);
-    assert.match(html, /name="confirmPassword"/);
-    assert.ok(html.includes(`action="${url.pathname}"`));
-
-    const reset = await request(url.pathname, {
-      method: "POST", html: true,
-      body: { password: newPassword, confirmPassword: newPassword },
-    });
-    assert.equal(reset.status, 303);
-    assert.equal(reset.headers.get("location"), "/login");
+    assert.equal(reset.status, 200);
     assert.equal(storedUser.resetPasswordToken, null);
     assert.equal(storedUser.resetPasswordExpires, null);
     assert.notEqual(storedUser.password, newPassword);
@@ -225,47 +206,28 @@ describe("password reset", { concurrency: false }, () => {
       assert.equal(login.status, status);
       if (status === 200) assert.equal(typeof (await login.json()).token, "string");
     }
-    await assertInvalidResetPage(await request(url.pathname, { html: true }));
-    for (const body of [
-      { password: "short", confirmPassword: "short" },
-      { password: newPassword, confirmPassword: "different-password" },
-    ]) {
-      await assertInvalidResetPage(await request(url.pathname, {
-        method: "POST", html: true, body,
-      }));
-    }
-    const reused = await request(url.pathname, {
+    const reused = await request(`/api/v1/auth/reset-password/${resetToken}`, {
       method: "POST", body: { password: "another-password", confirmPassword: "another-password" },
     });
     assert.equal(reused.status, 400);
     assert.equal(await bcrypt.compare(newPassword, storedUser.password), true);
   });
 
-  it("rejects invalid and expired links without changing the password", async () => {
+  it("rejects invalid and expired reset tokens without changing the password", async () => {
     const { resetToken } = await issueToken();
     storedUser.resetPasswordExpires = new Date(Date.now() - 1);
     for (const token of [resetToken, "not-a-valid-token", "f".repeat(64)]) {
-      const path = `/reset-password/${token}`;
-      await assertInvalidResetPage(await request(path, { html: true }));
-      for (const body of [
-        { password: "short", confirmPassword: "short" },
-        { password: newPassword, confirmPassword: "different-password" },
-      ]) {
-        await assertInvalidResetPage(await request(path, {
-          method: "POST", html: true, body,
-        }));
-      }
-      const reset = await request(path, {
+      const response = await request(`/api/v1/auth/reset-password/${token}`, {
         method: "POST", body: { password: newPassword, confirmPassword: newPassword },
       });
-      assert.equal(reset.status, 400);
+      assert.equal(response.status, 400);
       assert.equal(storedUser.password, originalPasswordHash);
     }
   });
 
-  it("keeps a reset link usable after missing, short, mismatched, or non-string passwords", async () => {
+  it("keeps a reset token usable after invalid password submissions", async () => {
     const { resetToken } = await issueToken();
-    const path = `/reset-password/${resetToken}`;
+    const path = `/api/v1/auth/reset-password/${resetToken}`;
     for (const body of [
       {},
       { password: newPassword },
@@ -280,18 +242,11 @@ describe("password reset", { concurrency: false }, () => {
       assert.equal(storedUser.password, originalPasswordHash);
       assert.equal(storedUser.resetPasswordToken, digest(resetToken));
     }
-    const formError = await request(path, {
-      method: "POST", html: true,
-      body: { password: newPassword, confirmPassword: "different-password" },
-    });
-    assert.equal(formError.status, 400);
-    assert.match(await formError.text(), /name="confirmPassword"/);
     assert.equal(modelCalls.updates, 0);
     const reset = await request(path, {
       method: "POST", body: { password: newPassword, confirmPassword: newPassword },
     });
     assert.equal(reset.status, 200);
-    assert.equal(typeof (await reset.json()).message, "string");
   });
 
   it("allows only one of two simultaneous API submissions to consume the token", async () => {
@@ -318,12 +273,19 @@ describe("password reset", { concurrency: false }, () => {
     assert.equal(body.resetUrl, undefined);
     assert.match(storedUser.resetPasswordToken, /^[a-f0-9]{64}$/);
     assert.ok(!logLines.some((line) => /Password Reset Link:|\/reset-password\//.test(line)));
-    const form = await request("/forgot-password", {
-      method: "POST", html: true, body: { email },
+  });
+
+  it("does not enable development reset-link delivery when NODE_ENV is unset", async () => {
+    delete process.env.NODE_ENV;
+    const response = await request("/api/v1/auth/forgot-password", {
+      method: "POST", body: { email },
     });
-    assert.equal(form.status, 200);
-    assert.doesNotMatch(await form.text(), /\/reset-password\/[a-f0-9]{64}/);
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.resetToken, undefined);
+    assert.equal(body.resetUrl, undefined);
     assert.ok(!logLines.some((line) => /Password Reset Link:|\/reset-password\//.test(line)));
+    assert.match(storedUser.resetPasswordToken, /^[a-f0-9]{64}$/);
   });
 
   it("rejects malformed JSON before model access and forwards unrelated errors", async () => {

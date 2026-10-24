@@ -20,6 +20,12 @@ Security requirements and review checklist. Confirm actual implementation in cod
 - Do not trust user IDs, roles, or ownership claims supplied in request bodies.
 - Consider whether `404` is preferable to `403` when revealing resource existence would be sensitive.
 
+## Administrator account setup
+- Public registration creates standard user accounts only; never accept a client-provided role.
+- To provision an administrator, register a standard account, configure the backend database connection, then run `cd backend && npm run admin:promote -- user@example.com` in an interactive terminal.
+- Confirm the exact email at the prompt. The command only promotes an existing active account and does not create credentials or expose a public administrator-registration endpoint.
+- Administrators sign in through the existing `/login` flow and access `/admin`; API authorization remains enforced by backend middleware.
+
 ## Input and output
 - Validate type, length, format, and allowed values.
 - Use allowlists for fields that may be updated.

@@ -13,7 +13,7 @@ import { createQuestion, updateQuestion } from "../src/controllers/question.cont
 import { createAnswer, acceptAnswer } from "../src/controllers/answer.controller.js";
 import { updateComment } from "../src/controllers/comment.controller.js";
 import createNotification from "../src/utils/createNotification.js";
-import { setNotificationSocketServer } from "../src/socket/notificationDelivery.js";
+import { disconnectUserSockets, setNotificationSocketServer } from "../src/socket/notificationDelivery.js";
 import {
   deleteNotification,
   getNotifications,
@@ -75,6 +75,13 @@ describe("controller and middleware unit checks", () => {
       MONGO_URI: "mongodb+srv://cluster.example.test/devhub",
       JWT_SECRET: secret,
     }).mongoUri).toBe("mongodb+srv://cluster.example.test/devhub");
+    expect(validateEnvironment({
+      NODE_ENV: "test",
+      MONGODB_URI: "mongodb://127.0.0.1:27017/devhub_test",
+      JWT_SECRET: secret,
+    }).mongoUri).toBe("mongodb://127.0.0.1:27017/devhub_test");
+    expect(() => validateEnvironment({ ...development, NODE_ENV: undefined })).toThrow(/NODE_ENV/);
+    expect(() => validateEnvironment({ ...development, NODE_ENV: "staging" })).toThrow(/NODE_ENV/);
   });
 
   it("rejects production secrets and wildcard or malformed CORS origins", () => {
@@ -333,6 +340,17 @@ describe("controller and middleware unit checks", () => {
     }));
     expect(emit.mock.calls[0][1]).not.toHaveProperty("recipient");
     expect(emit.mock.calls[0][1]).not.toHaveProperty("sender");
+  });
+
+  it("disconnects every socket in a suspended user's private room", () => {
+    const disconnectSockets = vi.fn();
+    const socketServer = { in: vi.fn(() => ({ disconnectSockets })) };
+    setNotificationSocketServer(socketServer);
+
+    disconnectUserSockets(otherUserId);
+
+    expect(socketServer.in).toHaveBeenCalledWith(`user:${otherUserId}`);
+    expect(disconnectSockets).toHaveBeenCalledWith(true);
   });
 
   it("lists only the authenticated recipient's notifications using validated pagination", async () => {
