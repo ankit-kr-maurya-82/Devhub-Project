@@ -5,6 +5,8 @@ import User from "../models/user.model.js";
 import Room from "../models/room.model.js";
 import Message from "../models/message.model.js";
 import { addUserSocket, removeUserSocket, isUserOnline } from "./presence.js";
+import { setNotificationSocketServer } from "./notificationDelivery.js";
+import createNotification from "../utils/createNotification.js";
 
 const emitSocketError = (socket, message, acknowledge) => {
   const response = { success: false, message };
@@ -29,6 +31,7 @@ const initializeSocket = (httpServer) => {
   const allowedOrigins = (process.env.CLIENT_ORIGIN || "").split(",").map((origin) => origin.trim()).filter(Boolean);
   if (process.env.NODE_ENV !== "production") allowedOrigins.push("http://localhost:5173", "http://127.0.0.1:5173");
   const io = new Server(httpServer, { cors: { origin: [...new Set(allowedOrigins)], credentials: true } });
+  setNotificationSocketServer(io);
   const presenceUpdates = new Map();
 
   const savePresence = (userId, online) => {
@@ -86,6 +89,7 @@ const initializeSocket = (httpServer) => {
 
   io.on("connection", (socket) => {
     const userId = socket.user._id.toString();
+    socket.join(`user:${userId}`);
     if (addUserSocket(userId, socket.id)) savePresence(userId, true);
 
     const verifyRoomMembership = async (payload) => {
@@ -154,6 +158,16 @@ const initializeSocket = (httpServer) => {
       const message = await Message.create({ room: result.room._id, sender: socket.user._id, content, messageType, replyTo });
       await message.populate([{ path: "sender", select: "name username avatar" }, replyPopulate]);
       if (message.replyTo?.isDeleted) message.replyTo.content = "This message was deleted";
+      await Promise.all(result.room.members
+        .filter((member) => !member.equals(socket.user._id))
+        .map((recipient) => createNotification({
+          recipient,
+          sender: socket.user._id,
+          type: "community_message",
+          message: "You have a new message in Community.",
+        }).catch((error) => {
+          console.error("Community message notification error:", error);
+        })));
       io.to(result.room._id.toString()).emit("newMessage", message);
       if (typeof acknowledge === "function") acknowledge({ success: true, message });
     }));

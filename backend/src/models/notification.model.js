@@ -16,8 +16,9 @@ const notificationSchema = new mongoose.Schema(
       enum: [
         "answer", "comment", 
         "question_upvote", 
-        "answer_upvote", 
-        "accepted_answer", 
+        "answer_upvote",
+        "accepted_answer",
+        "community_message",
         "mention", "system"],
       required: true,
     },

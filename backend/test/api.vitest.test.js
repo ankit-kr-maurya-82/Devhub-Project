@@ -583,9 +583,18 @@ describe("HTTP API integration with mocked persistence", () => {
   it("scopes notification listing and read updates to the authenticated recipient", async () => {
     vi.spyOn(Notification, "find").mockReturnValue(makeQuery([]));
     vi.spyOn(Notification, "countDocuments").mockResolvedValue(0);
-    const list = await jsonRequest("/api/v1/notifications?unread=true");
+    const list = await jsonRequest("/api/v1/notifications?page=2&limit=5&unread=true");
     expect(list.status).toBe(200);
     expect(Notification.find).toHaveBeenCalledWith({ recipient: userId, isRead: false });
+    expect(Notification.find().skip).toHaveBeenCalledWith(5);
+    expect((await list.json()).pagination).toMatchObject({ page: 2, limit: 5 });
+    const unreadCount = await jsonRequest("/api/v1/notifications/unread-count");
+    expect(unreadCount.status).toBe(200);
+    expect(await unreadCount.json()).toMatchObject({ success: true, unreadCount: 0 });
+    const unauthenticated = await jsonRequest("/api/v1/notifications/unread-count", { token: null });
+    expect(unauthenticated.status).toBe(401);
+    const invalidPage = await jsonRequest("/api/v1/notifications?page=0");
+    expect(invalidPage.status).toBe(400);
     const read = vi.spyOn(Notification, "findOneAndUpdate").mockReturnValue({ populate: vi.fn().mockResolvedValue(null) });
     const foreign = await jsonRequest(`/api/v1/notifications/${messageId}/read`, { method: "PATCH" });
     expect(foreign.status).toBe(404);

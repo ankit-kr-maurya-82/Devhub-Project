@@ -592,8 +592,21 @@
  *     tags: [Notifications]
  *     summary: List the authenticated user's notifications
  *     security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+ *     parameters:
+ *       - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+ *       - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
+ *       - { name: unread, in: query, schema: { type: boolean } }
  *     responses:
  *       '200': { description: Notifications owned by the authenticated user }
+ *       '400': { $ref: '#/components/responses/BadRequest' }
+ *       '401': { $ref: '#/components/responses/Unauthorized' }
+ * /api/v1/notifications/unread-count:
+ *   get:
+ *     tags: [Notifications]
+ *     summary: Get the authenticated user's unread notification count
+ *     security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+ *     responses:
+ *       '200': { description: Unread notification count }
  *       '401': { $ref: '#/components/responses/Unauthorized' }
  * /api/v1/notifications/read-all:
  *   patch:

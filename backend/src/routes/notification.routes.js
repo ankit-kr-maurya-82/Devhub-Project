@@ -2,6 +2,7 @@ import express from "express";
 import {
   deleteNotification,
   getNotifications,
+  getUnreadNotificationCount,
   markAllNotificationsRead,
   markNotificationRead,
 } from "../controllers/notification.controller.js";
@@ -11,6 +12,7 @@ const router = express.Router();
 
 router.use(authMiddleware);
 router.get("/", getNotifications);
+router.get("/unread-count", getUnreadNotificationCount);
 router.patch("/read-all", markAllNotificationsRead);
 router.patch("/:notificationId/read", markNotificationRead);
 router.delete("/:notificationId", deleteNotification);

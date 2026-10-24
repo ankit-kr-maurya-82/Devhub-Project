@@ -10,6 +10,8 @@ import { io as createClient } from "socket.io-client";
 import User from "../../src/models/user.model.js";
 import Room from "../../src/models/room.model.js";
 import Message from "../../src/models/message.model.js";
+import Notification from "../../src/models/notification.model.js";
+import createNotification from "../../src/utils/createNotification.js";
 import { app } from "../../src/app.js";
 import initializeSocket from "../../src/socket/socket.js";
 import "../../src/db/index.js"; // Apply the backend's configured DNS resolver.
@@ -82,6 +84,7 @@ describe("multi-user Socket.IO chat integration", { concurrency: false }, () => 
   const originalJwtSecret = process.env.JWT_SECRET;
   const clients = new Set();
   const createdUserIds = [];
+  const createdNotificationIds = [];
   let createdRoomId;
   const testContents = [];
 
@@ -118,6 +121,7 @@ describe("multi-user Socket.IO chat integration", { concurrency: false }, () => 
         if (messageIds.length) await Message.deleteMany({ _id: { $in: messageIds }, room: createdRoomId });
         await Room.deleteOne({ _id: createdRoomId });
       }
+      if (createdNotificationIds.length) await Notification.deleteMany({ _id: { $in: createdNotificationIds } });
       if (createdUserIds.length) await User.deleteMany({ _id: { $in: createdUserIds } });
       await mongoose.disconnect();
     }
@@ -167,6 +171,34 @@ describe("multi-user Socket.IO chat integration", { concurrency: false }, () => 
     const clientB = clientBResult;
     clients.add(clientB);
 
+    const notificationForA = waitForEvent(clientA, "notificationCreated");
+    const notificationForB = new Promise((resolve) => {
+      const listener = () => {
+        clearTimeout(timer);
+        resolve(false);
+      };
+      const timer = setTimeout(() => {
+        clientB.off("notificationCreated", listener);
+        resolve(true);
+      }, 150);
+      clientB.once("notificationCreated", listener);
+    });
+    const notification = await createNotification({
+      recipient: userA._id,
+      sender: userB._id,
+      type: "answer",
+      message: "A member answered your question.",
+    });
+    createdNotificationIds.push(notification._id);
+    const [notificationPayload] = await notificationForA;
+    assert.equal(notificationPayload._id, notification._id.toString());
+    assert.equal(notificationPayload.type, "answer");
+    assert.equal(notificationPayload.message, "A member answered your question.");
+    assert.equal("recipient" in notificationPayload, false);
+    assert.equal("sender" in notificationPayload, false);
+    assert.equal(await notificationForB, true, "a different authenticated user must not receive the notification");
+    assert.ok(await Notification.findById(notification._id), "notification is persisted before delivery");
+
     const joinedA = waitForEvent(clientA, "roomJoined");
     const joinedB = waitForEvent(clientB, "roomJoined");
     const joinedAckA = emitWithAck(clientA, "joinRoom", { roomId: room._id.toString() });
@@ -180,6 +212,18 @@ describe("multi-user Socket.IO chat integration", { concurrency: false }, () => 
     testContents.push(parentContent);
     const parentFromA = waitForEvent(clientA, "newMessage");
     const parentFromB = waitForEvent(clientB, "newMessage");
+    const communityNotificationForB = waitForEvent(clientB, "notificationCreated");
+    const communityNotificationForA = new Promise((resolve) => {
+      const listener = () => {
+        clearTimeout(timer);
+        resolve(false);
+      };
+      const timer = setTimeout(() => {
+        clientA.off("notificationCreated", listener);
+        resolve(true);
+      }, 150);
+      clientA.once("notificationCreated", listener);
+    });
     const parentAck = emitWithAck(clientA, "sendMessage", { roomId: room._id.toString(), content: parentContent, messageType: "text" });
     const [parentA] = await parentFromA;
     const [parentB] = await parentFromB;
@@ -196,6 +240,14 @@ describe("multi-user Socket.IO chat integration", { concurrency: false }, () => 
     assert.ok(savedParent, "parent message is persisted in MongoDB");
     assert.equal(savedParent.room.toString(), room._id.toString());
     assert.equal(savedParent.sender.toString(), userA._id.toString());
+    const [communityNotification] = await communityNotificationForB;
+    createdNotificationIds.push(communityNotification._id);
+    assert.equal(communityNotification.type, "community_message");
+    assert.equal(communityNotification.message, "You have a new message in Community.");
+    assert.equal("recipient" in communityNotification, false);
+    assert.equal("sender" in communityNotification, false);
+    assert.equal(await communityNotificationForA, true, "the sender must not receive a notification for their own message");
+    assert.ok(await Notification.findById(communityNotification._id), "community notification is persisted");
 
     const replyContent = `multi-user-reply-${suffix}`;
     testContents.push(replyContent);

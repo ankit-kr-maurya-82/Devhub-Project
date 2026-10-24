@@ -97,7 +97,8 @@ export const api = {
     react: (id, emoji) => request(`/messages/${encodeURIComponent(id)}/reaction`, { method: 'POST', body: { emoji } }),
   },
   notifications: {
-    list: () => request('/notifications'),
+    list: params => request(`/notifications${params ? `?${new URLSearchParams(params)}` : ''}`),
+    unreadCount: () => request('/notifications/unread-count'),
     markRead: id => request(`/notifications/${encodeURIComponent(id)}/read`, { method: 'PATCH' }),
     markAllRead: () => request('/notifications/read-all', { method: 'PATCH' }),
     remove: id => request(`/notifications/${encodeURIComponent(id)}`, { method: 'DELETE' }),

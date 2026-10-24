@@ -5,9 +5,12 @@ import { useNotifications } from '../../state/useNotifications.js'
 
 export default function NotificationItem({ notification, compact = false, onNavigate, onClose, onAction }) {
   const { markAsRead, deleteNotification } = useNotifications()
-  const markRead = () => {
-    markAsRead(notification.id)
-    onAction?.('Notification marked as read.')
+  const markRead = async () => {
+    if (await markAsRead(notification.id)) onAction?.('Notification marked as read.')
+  }
+
+  const remove = async () => {
+    if (await deleteNotification(notification.id)) onAction?.('Notification deleted.')
   }
 
   return (
@@ -16,7 +19,7 @@ export default function NotificationItem({ notification, compact = false, onNavi
         <span aria-hidden="true" className={`flex shrink-0 items-center justify-center rounded-xl border border-[var(--border)] ${compact ? 'size-9' : 'size-11'} ${notification.type === 'achievement' ? 'bg-[var(--surface-raised)] text-[var(--warning)]' : 'bg-[var(--surface-raised)] text-[var(--accent)]'}`}><Icon name={notification.icon} className={compact ? 'size-4' : 'size-5'} /></span>
         <div className="min-w-0 flex-1">
           <Link to={notification.target} onClick={() => {
-            if (!notification.read) markAsRead(notification.id)
+            if (!notification.read) void markRead()
             onNavigate?.(notification)
             onClose?.()
           }} className="block rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--accent)]">
@@ -31,7 +34,7 @@ export default function NotificationItem({ notification, compact = false, onNavi
             {!notification.read ? (
               <button type="button" onClick={markRead} aria-label={`Mark as read: ${notification.title}`} className="flex min-h-7 items-center gap-1 rounded text-xs font-medium text-[var(--accent)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"><Icon name="check" className="size-3.5" />Mark as read</button>
             ) : <span className="flex items-center gap-1 text-xs text-[var(--subtle)]"><Icon name="check" className="size-3" />Read</span>}
-            <button type="button" onClick={() => { deleteNotification(notification.id); onAction?.('Notification deleted.') }} aria-label={`Delete notification: ${notification.title}`} className="ml-auto flex min-h-7 items-center gap-1 rounded text-xs text-[var(--subtle)] transition hover:text-[var(--danger)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"><Icon name="trash" className="size-3.5" /><span className={compact ? 'sr-only' : ''}>Delete</span></button>
+            <button type="button" onClick={() => { void remove() }} aria-label={`Delete notification: ${notification.title}`} className="ml-auto flex min-h-7 items-center gap-1 rounded text-xs text-[var(--subtle)] transition hover:text-[var(--danger)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"><Icon name="trash" className="size-3.5" /><span className={compact ? 'sr-only' : ''}>Delete</span></button>
           </div>
         </div>
       </div>

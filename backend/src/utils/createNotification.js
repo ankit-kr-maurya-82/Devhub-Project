@@ -1,4 +1,5 @@
 import Notification from "../models/notification.model.js";
+import { emitNotification } from "../socket/notificationDelivery.js";
 
 const createNotification = async ({
   recipient,
@@ -12,7 +13,7 @@ const createNotification = async ({
   if (!recipient) return null;
   if (sender && recipient.toString() === sender.toString()) return null;
 
-  return Notification.create({
+  const notification = await Notification.create({
     recipient,
     sender,
     type,
@@ -21,6 +22,8 @@ const createNotification = async ({
     relatedAnswer,
     relatedComment,
   });
+  emitNotification(notification);
+  return notification;
 };
 
 export default createNotification;

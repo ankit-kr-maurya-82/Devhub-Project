@@ -34,6 +34,20 @@ Error:
 
 These are examples, not a claim about the current implementation.
 
+## Implemented notifications API
+
+All notification routes require authentication and scope reads and mutations to the authenticated recipient.
+
+| Method | Path | Behavior |
+|---|---|---|
+| `GET` | `/api/v1/notifications?page=1&limit=20&unread=true` | Return a recipient-scoped page, pagination metadata, and the recipient's unread total. `limit` is capped at 50; `unread` accepts `true` or `false`. |
+| `GET` | `/api/v1/notifications/unread-count` | Return the authenticated recipient's unread count. |
+| `PATCH` | `/api/v1/notifications/read-all` | Mark all of the authenticated recipient's unread notifications as read. |
+| `PATCH` | `/api/v1/notifications/{notificationId}/read` | Mark one of the authenticated recipient's notifications as read. |
+| `DELETE` | `/api/v1/notifications/{notificationId}` | Delete one of the authenticated recipient's notifications. |
+
+Newly persisted notifications are sent to the authenticated recipient over the existing Socket.IO connection as `notificationCreated`. The server derives the recipient room from the authenticated socket identity; clients cannot subscribe to another user's notification room. Community messages create a generic notification for each other room member; message content is not copied into notifications.
+
 ## Resource areas to document
 - Authentication: registration, login, logout, current user, password recovery.
 - Users: profile read/update and account status.

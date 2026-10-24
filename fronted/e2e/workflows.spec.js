@@ -37,6 +37,34 @@ async function login(page, email = userEmail, password = userPassword) {
   await expect(page).toHaveURL(/\/dashboard$/)
 }
 
+test('notifications load the authenticated account data and render empty or populated state', async ({ page }) => {
+  const listResponse = page.waitForResponse(response => {
+    const url = new URL(response.url())
+    return response.request().method() === 'GET' && url.pathname === '/api/v1/notifications'
+  })
+  await login(page)
+  await page.goto('/notifications')
+  const response = await listResponse
+  expect(response.ok()).toBe(true)
+  const payload = await response.json()
+  await expect(page.getByRole('heading', { name: 'Notifications', exact: true })).toBeVisible()
+  await expect(page.getByText('Loading notifications…')).toHaveCount(0)
+  if (payload.data.length) {
+    await expect(page.getByRole('list', { name: 'All notifications' })).toBeVisible()
+  } else {
+    await expect(page.getByRole('heading', { name: 'No notifications yet' })).toBeVisible()
+  }
+  if (payload.unreadCount > 0) {
+    const markAllResponse = page.waitForResponse(response => (
+      response.request().method() === 'PATCH'
+      && new URL(response.url()).pathname === '/api/v1/notifications/read-all'
+    ))
+    await page.getByRole('button', { name: 'Mark all as read' }).click()
+    expect((await markAllResponse).ok()).toBe(true)
+    await expect(page.getByText('All caught up')).toBeVisible()
+  }
+})
+
 test('community chat sends acknowledged messages and preserves text when disconnected', async ({ page, context }) => {
   await login(page)
   await page.goto('/community')

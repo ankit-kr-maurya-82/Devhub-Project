@@ -12,8 +12,12 @@ import { validateEnvironment } from "../src/config/env.js";
 import { createQuestion, updateQuestion } from "../src/controllers/question.controller.js";
 import { createAnswer, acceptAnswer } from "../src/controllers/answer.controller.js";
 import { updateComment } from "../src/controllers/comment.controller.js";
+import createNotification from "../src/utils/createNotification.js";
+import { setNotificationSocketServer } from "../src/socket/notificationDelivery.js";
 import {
   deleteNotification,
+  getNotifications,
+  getUnreadNotificationCount,
   markAllNotificationsRead,
   markNotificationRead,
 } from "../src/controllers/notification.controller.js";
@@ -52,6 +56,7 @@ describe("controller and middleware unit checks", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    setNotificationSocketServer(null);
     delete process.env.JWT_SECRET;
     if (originalNodeEnv === undefined) delete process.env.NODE_ENV;
     else process.env.NODE_ENV = originalNodeEnv;
@@ -283,6 +288,97 @@ describe("controller and middleware unit checks", () => {
 
     expect(response.statusCode).toBe(403);
     expect(save).not.toHaveBeenCalled();
+  });
+
+  it("persists notifications and emits only a minimal payload to the recipient room", async () => {
+    const notification = {
+      _id: notificationId,
+      recipient: otherUserId,
+      type: "answer",
+      message: "A user answered your question.",
+      relatedQuestion: questionId,
+      isRead: false,
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+    };
+    const create = vi.spyOn(Notification, "create").mockResolvedValue(notification);
+    const emit = vi.fn();
+    const socketServer = { to: vi.fn(() => ({ emit })) };
+    setNotificationSocketServer(socketServer);
+
+    const created = await createNotification({
+      recipient: otherUserId,
+      sender: userId,
+      type: "answer",
+      message: notification.message,
+      relatedQuestion: questionId,
+    });
+
+    expect(created).toBe(notification);
+    expect(create).toHaveBeenCalledWith({
+      recipient: otherUserId,
+      sender: userId,
+      type: "answer",
+      message: notification.message,
+      relatedQuestion: questionId,
+      relatedAnswer: undefined,
+      relatedComment: undefined,
+    });
+    expect(socketServer.to).toHaveBeenCalledWith(`user:${otherUserId}`);
+    expect(emit).toHaveBeenCalledWith("notificationCreated", expect.objectContaining({
+      _id: notificationId,
+      type: "answer",
+      message: notification.message,
+      relatedQuestion: questionId,
+      isRead: false,
+    }));
+    expect(emit.mock.calls[0][1]).not.toHaveProperty("recipient");
+    expect(emit.mock.calls[0][1]).not.toHaveProperty("sender");
+  });
+
+  it("lists only the authenticated recipient's notifications using validated pagination", async () => {
+    const query = {
+      populate: vi.fn(() => query),
+      sort: vi.fn(() => query),
+      skip: vi.fn(() => query),
+      limit: vi.fn(() => query),
+      then: (resolve, reject) => Promise.resolve([{ _id: notificationId }]).then(resolve, reject),
+    };
+    const find = vi.spyOn(Notification, "find").mockReturnValue(query);
+    const count = vi.spyOn(Notification, "countDocuments").mockResolvedValueOnce(1).mockResolvedValueOnce(4);
+    const request = makeRequest();
+    request.query = { page: "2", limit: "5", unread: "true" };
+    const response = makeResponse();
+
+    await getNotifications(request, response);
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toMatchObject({
+      success: true,
+      unreadCount: 4,
+      pagination: { page: 2, limit: 5, total: 1, totalPages: 1 },
+    });
+    expect(find).toHaveBeenCalledWith({ recipient: userId, isRead: false });
+    expect(query.skip).toHaveBeenCalledWith(5);
+    expect(query.limit).toHaveBeenCalledWith(5);
+    expect(count).toHaveBeenNthCalledWith(1, { recipient: userId, isRead: false });
+    expect(count).toHaveBeenNthCalledWith(2, { recipient: userId, isRead: false });
+
+    const invalidRequest = makeRequest();
+    invalidRequest.query = { page: "0" };
+    const invalidResponse = makeResponse();
+    await getNotifications(invalidRequest, invalidResponse);
+    expect(invalidResponse.statusCode).toBe(400);
+  });
+
+  it("returns unread counts only for the authenticated recipient", async () => {
+    const countDocuments = vi.spyOn(Notification, "countDocuments").mockResolvedValue(3);
+    const response = makeResponse();
+
+    await getUnreadNotificationCount(makeRequest(), response);
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toEqual({ success: true, unreadCount: 3 });
+    expect(countDocuments).toHaveBeenCalledWith({ recipient: userId, isRead: false });
   });
 
   it("scopes notification read updates to the authenticated recipient", async () => {
