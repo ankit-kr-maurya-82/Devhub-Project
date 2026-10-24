@@ -2,6 +2,11 @@ import bcrypt from "bcrypt";
 import { randomBytes, createHash } from "node:crypto";
 import jwt from "jsonwebtoken";
 import User from "../models/user.model.js";
+import {
+    createPasswordResetUrl,
+    sendPasswordResetEmail,
+    validatePasswordResetEmailConfig,
+} from "../services/passwordResetEmail.service.js";
  const getDashboard = async (req, res) => {
   try {
     const user = req.user;
@@ -197,32 +202,78 @@ const forgetPassword = async (req, res) => {
             return sendPasswordMessage(res, 400, "Email is required.");
         }
 
-        // Reset links are delivered only in development, where the link is
-        // intentionally written to the local server log. Never create a token
-        // that cannot be delivered, and keep this response account-agnostic.
-        if (process.env.NODE_ENV !== "development") {
+        let emailConfig;
+        try {
+            emailConfig = validatePasswordResetEmailConfig(process.env);
+        } catch {
+            console.error("Password reset email configuration is unavailable.");
             return sendPasswordMessage(res, 503, "Password reset is currently unavailable. Please try again later.");
         }
 
         const user = await User.findOne({ email: email.trim().toLowerCase() });
         if (!user) {
-            return sendPasswordMessage(res, 200, "If an account exists for that email, password reset instructions will be available shortly.");
+            return sendPasswordMessage(res, 200, "If an account exists, reset instructions will be sent if email delivery is available.");
         }
 
         const resetToken = randomBytes(32).toString("hex");
-        // Store only a hash; the original token is used in the reset link.
-        user.resetPasswordToken = hashResetToken(resetToken);
-        user.resetPasswordExpires = new Date(Date.now() + 60 * 60 * 1000);
-        await user.save();
+        const hashedToken = hashResetToken(resetToken);
+        const pendingToken = await User.findOneAndUpdate(
+            { _id: user._id },
+            { $set: { resetPasswordToken: hashedToken, resetPasswordExpires: null } },
+            { new: true, runValidators: true }
+        );
+        if (!pendingToken) {
+            return sendPasswordMessage(res, 200, "If an account exists, reset instructions will be sent if email delivery is available.");
+        }
 
-        const frontendOrigin = process.env.CLIENT_ORIGIN?.split(",")[0]?.trim() || "http://localhost:5173";
-        const resetUrl = new URL(`/reset-password/${resetToken}`, frontendOrigin).href;
+        const resetUrl = createPasswordResetUrl(resetToken, emailConfig.frontendOrigin);
+        try {
+            const delivery = await sendPasswordResetEmail({
+                recipient: user.email,
+                resetUrl,
+                config: emailConfig,
+            });
+            if (!delivery?.accepted) throw new Error("Password reset email was not accepted.");
+        } catch (error) {
+            try {
+                await User.findOneAndUpdate(
+                    {
+                        _id: user._id,
+                        resetPasswordToken: hashedToken,
+                        resetPasswordExpires: null,
+                    },
+                    { $set: { resetPasswordToken: null, resetPasswordExpires: null } },
+                    { new: true, runValidators: true }
+                );
+            } catch {
+                console.error("Password reset delivery failed; pending token remains inactive.");
+            }
+            if (error?.reason) {
+                console.error(`Password reset email delivery failed (${error.reason}).`);
+            } else {
+                console.error("Password reset email delivery failed.");
+            }
+            return sendPasswordMessage(res, 200, "If an account exists, reset instructions will be sent if email delivery is available.");
+        }
 
-        console.log(`Password Reset Link: ${resetUrl}`);
+        try {
+            const activation = await User.findOneAndUpdate(
+                {
+                    _id: user._id,
+                    resetPasswordToken: hashedToken,
+                    resetPasswordExpires: null,
+                },
+                { $set: { resetPasswordExpires: new Date(Date.now() + 60 * 60 * 1000) } },
+                { new: true, runValidators: true }
+            );
+            if (!activation) {
+                console.error("Password reset email was accepted but its token was superseded before activation.");
+            }
+        } catch {
+            console.error("Password reset email was accepted but token activation failed.");
+        }
 
-        return res.status(200).json({
-            message: "Password reset link generated. Check the server terminal.",
-        });
+        return sendPasswordMessage(res, 200, "If an account exists, reset instructions will be sent if email delivery is available.");
     } catch {
         console.error("Password reset request failed.");
         return sendPasswordMessage(res, 500, "Server error during forget password.");

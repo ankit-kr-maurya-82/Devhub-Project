@@ -316,8 +316,9 @@
  *         application/json:
  *           schema: { type: object, required: [email], properties: { email: { type: string, format: email } } }
  *     responses:
- *       '200': { description: Generic reset request response; development reset links are delivered only through the server's local development output }
+ *       '200': { description: Account-agnostic response; does not confirm email delivery }
  *       '400': { description: Invalid input }
+ *       '503': { description: Password reset email configuration is unavailable }
  *       '429': { $ref: '#/components/responses/RateLimited' }
  * /api/v1/auth/forget-password:
  *   post:
@@ -329,8 +330,9 @@
  *         application/json:
  *           schema: { type: object, required: [email], properties: { email: { type: string, format: email } } }
  *     responses:
- *       '200': { description: Generic reset request response; development reset links are delivered only through the server's local development output }
+ *       '200': { description: Account-agnostic response; does not confirm email delivery }
  *       '400': { description: Invalid input }
+ *       '503': { description: Password reset email configuration is unavailable }
  *       '429': { $ref: '#/components/responses/RateLimited' }
  * /api/v1/auth/reset-password/{token}:
  *   post:

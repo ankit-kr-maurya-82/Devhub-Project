@@ -21,17 +21,24 @@ describe("password reset", { concurrency: false }, () => {
   let storedUser;
   let logLines;
   let modelCalls;
+  let providerBehavior;
+  let providerRequests;
   const originalEnvironment = {
     NODE_ENV: process.env.NODE_ENV,
     JWT_SECRET: process.env.JWT_SECRET,
-    APP_URL: process.env.APP_URL,
     CLIENT_ORIGIN: process.env.CLIENT_ORIGIN,
+    RESEND_API_KEY: process.env.RESEND_API_KEY,
+    PASSWORD_RESET_FROM: process.env.PASSWORD_RESET_FROM,
   };
+  const originalFetch = globalThis.fetch;
 
   function matches(query) {
+    if (query._id !== undefined && query._id !== storedUser._id) return false;
     if (query.email !== undefined && query.email !== storedUser.email) return false;
     if (query.resetPasswordToken !== undefined &&
         query.resetPasswordToken !== storedUser.resetPasswordToken) return false;
+    if (Object.hasOwn(query, "resetPasswordExpires") && query.resetPasswordExpires === null &&
+        storedUser.resetPasswordExpires !== null) return false;
     if (query.resetPasswordExpires?.$gt !== undefined &&
         !(new Date(storedUser.resetPasswordExpires) > query.resetPasswordExpires.$gt)) return false;
     return true;
@@ -69,24 +76,22 @@ describe("password reset", { concurrency: false }, () => {
     const body = await response.json();
     assert.equal(body.resetToken, undefined);
     assert.equal(body.resetUrl, undefined);
-    const resetUrl = loggedUrl();
+    const resetUrl = sentResetUrl(providerRequests.at(-1));
     const resetToken = resetUrl.pathname.split("/").at(-1);
     assert.match(resetToken, /^[a-f0-9]{64}$/);
     return { ...body, resetToken };
   }
 
-  function loggedUrl() {
-    const line = logLines.findLast((value) => value.includes("Password Reset Link:"));
-    assert.ok(line, "development logs contain a reset link");
-    const url = line.match(/https?:\/\/\S+/)?.[0];
-    assert.ok(url, "the logged link is a full HTTP URL");
+  function sentResetUrl(request) {
+    const url = request?.payload.text.match(/https?:\/\/\S+/)?.[0];
+    assert.ok(url, "the mocked provider receives a reset URL");
     return new URL(url);
   }
 
   before(async () => {
     originalPasswordHash = await bcrypt.hash(oldPassword, 4);
     process.env.JWT_SECRET = "password-reset-test-secret";
-    mock.method(console, "log", (...args) => logLines.push(args.join(" ")));
+    mock.method(console, "error", (...args) => logLines.push(args.join(" ")));
     mock.method(User, "findOne", (query) => {
       modelCalls.finds += 1;
       const result = Promise.resolve(matches(query) ? document() : null);
@@ -99,6 +104,19 @@ describe("password reset", { concurrency: false }, () => {
       storedUser = { ...storedUser, ...update.$set };
       return document();
     });
+    mock.method(globalThis, "fetch", async (input, options) => {
+      if (String(input) === "https://api.resend.com/emails") {
+        const request = {
+          url: String(input),
+          headers: options.headers,
+          payload: JSON.parse(options.body),
+          signal: options.signal,
+        };
+        providerRequests.push(request);
+        return providerBehavior(request);
+      }
+      return originalFetch(input, options);
+    });
     server = app.listen(0, "127.0.0.1");
     await once(server, "listening");
     baseUrl = `http://127.0.0.1:${server.address().port}`;
@@ -107,7 +125,11 @@ describe("password reset", { concurrency: false }, () => {
 
   beforeEach(() => {
     process.env.NODE_ENV = "development";
+    process.env.RESEND_API_KEY = "re_test_key_123456789";
+    process.env.PASSWORD_RESET_FROM = "DevHub <no-reply@example.com>";
     logLines = [];
+    providerRequests = [];
+    providerBehavior = async () => ({ ok: true, status: 200 });
     modelCalls = { finds: 0, saves: 0, updates: 0 };
     storedUser = {
       _id: "507f1f77bcf86cd799439011",
@@ -167,10 +189,10 @@ describe("password reset", { concurrency: false }, () => {
       method: "POST", body: { email: "  READER@EXAMPLE.COM  " },
     });
     assert.equal(response.status, 200);
-    assert.equal(modelCalls.saves, 1);
+    assert.equal(modelCalls.saves, 0);
   });
 
-  it("keeps reset tokens out of API responses and logs a usable frontend development link", async () => {
+  it("sends a reset email without leaking the token or URL into responses or logs", async () => {
     const beforeRequest = Date.now();
     const body = await issueToken();
     assert.equal(storedUser.resetPasswordToken, digest(body.resetToken));
@@ -178,13 +200,84 @@ describe("password reset", { concurrency: false }, () => {
     const expiry = new Date(storedUser.resetPasswordExpires).getTime();
     assert.ok(expiry >= beforeRequest + 3_600_000);
     assert.ok(expiry <= Date.now() + 3_600_000);
-    assert.equal(modelCalls.saves, 1);
-    const url = loggedUrl();
+    assert.equal(modelCalls.saves, 0);
+    assert.equal(providerRequests.length, 1);
+    assert.equal(providerRequests[0].url, "https://api.resend.com/emails");
+    assert.equal(providerRequests[0].headers.Authorization, `Bearer ${process.env.RESEND_API_KEY}`);
+    const url = sentResetUrl(providerRequests[0]);
     assert.equal(url.origin, "http://127.0.0.1:5173");
     assert.equal(url.pathname, `/reset-password/${body.resetToken}`);
+    const publicBody = { ...body };
+    delete publicBody.resetToken;
+    assert.ok(!JSON.stringify(publicBody).includes(body.resetToken));
+    assert.ok(!JSON.stringify(publicBody).includes(url.href));
+    assert.ok(!logLines.some((line) => line.includes(body.resetToken) || line.includes(url.href)));
 
     const replacement = await issueToken("/api/v1/auth/forget-password");
     assert.notEqual(replacement.resetToken, body.resetToken);
+  });
+
+  it("returns the same public response for known and unknown accounts", async () => {
+    const known = await request("/api/v1/auth/forgot-password", {
+      method: "POST", body: { email },
+    });
+    const unknown = await request("/api/v1/auth/forgot-password", {
+      method: "POST", body: { email: "unknown@example.com" },
+    });
+    assert.equal(known.status, 200);
+    assert.equal(unknown.status, 200);
+    assert.deepEqual(await known.json(), await unknown.json());
+    assert.equal(providerRequests.length, 1);
+  });
+
+  it("invalidates a rejected delivery token without exposing provider details", async () => {
+    const providerFailure = "provider secret and recipient details";
+    providerBehavior = async () => ({ ok: false, status: 503, body: providerFailure });
+    const response = await request("/api/v1/auth/forgot-password", {
+      method: "POST", body: { email },
+    });
+    const responseBody = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(storedUser.resetPasswordToken, null);
+    assert.equal(storedUser.resetPasswordExpires, null);
+    assert.ok(!JSON.stringify(responseBody).includes(providerFailure));
+    assert.ok(!logLines.some((line) => line.includes(providerFailure)));
+    assert.equal(logLines.at(-1), "Password reset email delivery failed (provider_rejected).");
+  });
+
+  it("does not let a failed concurrent delivery clear a newer token", async () => {
+    let releaseFirstDelivery;
+    let firstDeliveryStarted;
+    const started = new Promise((resolve) => { firstDeliveryStarted = resolve; });
+    providerBehavior = async () => {
+      if (providerRequests.length === 1) {
+        firstDeliveryStarted();
+        return new Promise((resolve) => {
+          releaseFirstDelivery = () => resolve({ ok: false, status: 503 });
+        });
+      }
+      return { ok: true, status: 200 };
+    };
+
+    const firstRequest = request("/api/v1/auth/forgot-password", {
+      method: "POST", body: { email },
+    });
+    await started;
+    const secondResponse = await request("/api/v1/auth/forgot-password", {
+      method: "POST", body: { email },
+    });
+    assert.equal(secondResponse.status, 200);
+    const secondToken = sentResetUrl(providerRequests[1]).pathname.split("/").at(-1);
+    const secondHash = digest(secondToken);
+    assert.equal(storedUser.resetPasswordToken, secondHash);
+    assert.ok(storedUser.resetPasswordExpires instanceof Date);
+
+    releaseFirstDelivery();
+    const firstResponse = await firstRequest;
+    assert.equal(firstResponse.status, 200);
+    assert.equal(storedUser.resetPasswordToken, secondHash);
+    assert.ok(storedUser.resetPasswordExpires instanceof Date);
+    assert.ok(logLines.some((line) => line === "Password reset email delivery failed (provider_rejected)."));
   });
 
   it("completes the reset API flow and permits login only with the new password", async () => {
@@ -227,6 +320,7 @@ describe("password reset", { concurrency: false }, () => {
 
   it("keeps a reset token usable after invalid password submissions", async () => {
     const { resetToken } = await issueToken();
+    const updatesAfterDelivery = modelCalls.updates;
     const path = `/api/v1/auth/reset-password/${resetToken}`;
     for (const body of [
       {},
@@ -242,7 +336,7 @@ describe("password reset", { concurrency: false }, () => {
       assert.equal(storedUser.password, originalPasswordHash);
       assert.equal(storedUser.resetPasswordToken, digest(resetToken));
     }
-    assert.equal(modelCalls.updates, 0);
+    assert.equal(modelCalls.updates, updatesAfterDelivery);
     const reset = await request(path, {
       method: "POST", body: { password: newPassword, confirmPassword: newPassword },
     });
@@ -262,8 +356,10 @@ describe("password reset", { concurrency: false }, () => {
     assert.equal(await bcrypt.compare(newPassword, storedUser.password), true);
   });
 
-  it("fails closed with the same production response for known and unknown accounts", async () => {
+  it("fails closed with the same response when provider configuration is absent", async () => {
     process.env.NODE_ENV = "production";
+    delete process.env.RESEND_API_KEY;
+    delete process.env.PASSWORD_RESET_FROM;
     const knownResponse = await request("/api/v1/auth/forgot-password", {
       method: "POST", body: { email },
     });
@@ -274,10 +370,10 @@ describe("password reset", { concurrency: false }, () => {
     assert.equal(unknownResponse.status, 503);
     assert.deepEqual(await knownResponse.json(), await unknownResponse.json());
     assert.equal(modelCalls.finds, 0);
-    assert.equal(modelCalls.saves, 0);
+    assert.equal(modelCalls.updates, 0);
     assert.equal(storedUser.resetPasswordToken, null);
     assert.equal(storedUser.resetPasswordExpires, null);
-    assert.ok(!logLines.some((line) => /Password Reset Link:|\/reset-password\//.test(line)));
+    assert.ok(!logLines.some((line) => /\/reset-password\//.test(line)));
   });
 
   it("does not create reset tokens when NODE_ENV is unset", async () => {
@@ -287,8 +383,8 @@ describe("password reset", { concurrency: false }, () => {
     });
     assert.equal(response.status, 503);
     assert.equal(modelCalls.finds, 0);
-    assert.equal(modelCalls.saves, 0);
-    assert.ok(!logLines.some((line) => /Password Reset Link:|\/reset-password\//.test(line)));
+    assert.equal(modelCalls.updates, 0);
+    assert.ok(!logLines.some((line) => /\/reset-password\//.test(line)));
     assert.equal(storedUser.resetPasswordToken, null);
     assert.equal(storedUser.resetPasswordExpires, null);
   });
