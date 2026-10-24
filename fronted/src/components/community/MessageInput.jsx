@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import Icon from '../../../components/Icon.jsx'
 
 const emojis = ['👋', '😀', '🙌', '🚀', '🔥', '💜', '👍', '🎉', '💡', '🤔', '✅', '👀']
-const toolbarButtonClass = 'flex size-10 items-center justify-center rounded-lg text-[var(--muted)] transition hover:bg-[var(--surface-raised)] hover:text-[var(--text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]'
+const toolbarButtonClass = 'flex size-11 items-center justify-center rounded-lg text-[var(--muted)] transition hover:bg-[var(--surface-raised)] hover:text-[var(--text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]'
 
 function ComposerIcon({ name }) {
   const paths = {
@@ -97,13 +97,13 @@ export default function MessageInput({ conversationName, onSend }) {
           <div className="flex items-center gap-0.5">
             <div ref={emojiRef} className="relative">
               <button type="button" aria-label="Choose an emoji" aria-expanded={showEmoji} aria-controls={`${composerId}-emojis`} onClick={() => setShowEmoji((visible) => !visible)} className={toolbarButtonClass}><ComposerIcon name="emoji" /></button>
-              {showEmoji && <div id={`${composerId}-emojis`} role="group" aria-label="Emoji picker" className="absolute bottom-11 left-0 z-20 grid w-56 grid-cols-6 gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2 shadow-xl">
-                {emojis.map((emoji) => <button key={emoji} type="button" aria-label={`Insert ${emoji}`} onClick={() => insertEmoji(emoji)} className="flex size-8 items-center justify-center rounded-lg text-lg hover:bg-[var(--surface-raised)] focus-visible:outline-2 focus-visible:outline-[var(--accent)]">{emoji}</button>)}
+              {showEmoji && <div id={`${composerId}-emojis`} role="group" aria-label="Emoji picker" className="absolute bottom-12 left-0 z-20 grid w-56 grid-cols-4 gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2 shadow-lg">
+                {emojis.map((emoji) => <button key={emoji} type="button" aria-label={`Insert ${emoji}`} onClick={() => insertEmoji(emoji)} className="flex size-11 items-center justify-center rounded-lg text-lg hover:bg-[var(--surface-raised)] focus-visible:outline-2 focus-visible:outline-[var(--accent)]">{emoji}</button>)}
               </div>}
             </div>
             <button type="button" aria-label="Add code snippet" aria-expanded={showCode} onClick={() => setShowCode(true)} className={`${toolbarButtonClass} ${showCode ? 'bg-[var(--accent-soft)] text-[var(--accent)]' : ''}`}><Icon name="code" className="size-4" /></button>
           </div>
-          <button type="submit" disabled={!canSend || isSending} className="flex items-center gap-2 rounded-lg bg-[var(--primary)] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[var(--primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:cursor-not-allowed disabled:bg-[var(--accent-soft)] disabled:text-[var(--accent)] sm:px-4">
+          <button type="submit" disabled={!canSend || isSending} className="flex min-h-11 items-center gap-2 rounded-lg bg-[var(--primary)] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[var(--primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:cursor-not-allowed disabled:bg-[var(--accent-soft)] disabled:text-[var(--accent)] sm:px-4">
             {isSending ? 'Sending…' : 'Send'} <ComposerIcon name="send" />
           </button>
         </div>

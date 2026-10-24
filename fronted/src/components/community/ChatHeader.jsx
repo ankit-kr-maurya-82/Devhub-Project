@@ -5,7 +5,7 @@ export default function ChatHeader({ channel, member, onOpenChannels, onOpenMemb
 
   return (
     <header className="flex shrink-0 items-start gap-2 border-b border-[var(--border)] bg-[var(--surface)] px-3 py-4 sm:gap-3 sm:px-6 sm:py-5">
-      <button type="button" onClick={onOpenChannels} aria-label="Open channel list" className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--muted)] transition-colors hover:bg-[var(--surface-raised)] hover:text-[var(--text)] md:hidden"><Icon name="menu" className="size-4" /></button>
+      <button type="button" onClick={onOpenChannels} aria-label="Open channel list" className="mt-0.5 flex size-11 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--muted)] transition-colors hover:bg-[var(--surface-raised)] hover:text-[var(--text)] md:hidden"><Icon name="menu" className="size-4" /></button>
       <span className="hidden size-10 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface-raised)] text-[var(--accent)] sm:flex"><Icon name={isDirectMessage ? 'message' : 'hash'} className="size-5" /></span>
       <div className="min-w-0 flex-1">
         <h2 className="text-base font-semibold tracking-tight text-[var(--text)] sm:text-lg">{channel ? `# ${channel.name}` : member?.name || 'Direct message'}</h2>
@@ -19,7 +19,7 @@ export default function ChatHeader({ channel, member, onOpenChannels, onOpenMemb
           )}
         </div>
       </div>
-      <button type="button" onClick={onOpenMembers} aria-label="Open member list" className="mt-0.5 flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--border)] px-3 text-sm text-[var(--muted)] transition-colors hover:bg-[var(--surface-raised)] hover:text-[var(--text)] md:hidden"><Icon name="users" className="size-4" /><span className="hidden sm:inline">Members</span></button>
+      <button type="button" onClick={onOpenMembers} aria-label="Open member list" className="mt-0.5 flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--border)] px-3 text-sm text-[var(--muted)] transition-colors hover:bg-[var(--surface-raised)] hover:text-[var(--text)] md:hidden"><Icon name="users" className="size-4" /><span className="hidden sm:inline">Members</span></button>
     </header>
   )
 }

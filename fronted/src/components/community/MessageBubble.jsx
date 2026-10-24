@@ -9,14 +9,14 @@ export default function MessageBubble({ message, author, currentUserId, onReact 
   const reactionEmojis = [...new Set([...reactions.map((reaction) => reaction.emoji), ...defaultReactions])]
 
   return (
-    <article className="group flex min-w-0 gap-3 rounded-xl px-1 py-4 sm:px-3">
-      <div aria-hidden="true" className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl bg-[var(--accent-soft)] text-sm font-semibold text-[var(--accent)] sm:size-10">
+    <article className={`group flex min-w-0 gap-3 border-b border-[var(--border)] px-1 py-3 last:border-b-0 sm:gap-4 sm:px-3 sm:py-4 ${message.authorId === currentUserId ? 'bg-[var(--surface-raised)]/50' : ''}`}>
+      <div aria-hidden="true" className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] text-sm font-semibold text-[var(--muted)] sm:size-10">
         {member.initials}
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <span className="text-sm font-semibold text-[var(--text)]">{member.name}</span>
-          {message.authorId === currentUserId && <span className="text-xs font-medium text-[var(--muted)]">you</span>}
+          {message.authorId === currentUserId && <span className="rounded border border-[var(--border)] bg-[var(--surface)] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">You</span>}
           <time dateTime={message.createdAt} title={timestamp.toLocaleString()} className="text-xs text-[var(--muted)]">
             {timestamp.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
           </time>
@@ -39,7 +39,7 @@ export default function MessageBubble({ message, author, currentUserId, onReact 
             const reaction = reactions.find((item) => item.emoji === emoji)
             const count = reaction?.count || 0
             return (
-              <button key={emoji} type="button" onClick={() => onReact(message.id, emoji)} aria-pressed={Boolean(reaction?.reacted)} aria-label={`${reaction?.reacted ? 'Remove' : 'Add'} ${emoji} reaction, ${count} ${count === 1 ? 'reaction' : 'reactions'}`} className={`flex min-h-7 items-center gap-1.5 rounded-md border px-2 text-xs transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] ${reaction?.reacted ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]' : 'border-[var(--border)] bg-[var(--surface-raised)] text-[var(--muted)] hover:border-[var(--border)] hover:bg-[var(--surface-raised)]'}`}>
+              <button key={emoji} type="button" onClick={() => onReact(message.id, emoji)} aria-pressed={Boolean(reaction?.reacted)} aria-label={`${reaction?.reacted ? 'Remove' : 'Add'} ${emoji} reaction, ${count} ${count === 1 ? 'reaction' : 'reactions'}`} className={`flex min-h-10 items-center gap-1.5 rounded-md border px-2 text-xs transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] ${reaction?.reacted ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]' : 'border-[var(--border)] bg-[var(--surface-raised)] text-[var(--muted)] hover:border-[var(--border)] hover:bg-[var(--surface-raised)]'}`}>
                 <span aria-hidden="true">{emoji}</span>
                 {count > 0 && <span>{count}</span>}
               </button>
