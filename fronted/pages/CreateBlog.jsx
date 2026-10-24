@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import BlogContent from '../components/BlogContent.jsx'
+import ConfirmDialog from '../components/ConfirmDialog.jsx'
 import api from '../src/lib/api.js'
 import { mapBlog } from '../hooks/useBlogs.js'
 
@@ -93,7 +94,7 @@ export default function CreateBlog() {
           <section className="mt-8"><h2 className="mb-3 text-lg font-semibold">Your writing</h2>{mine.length ? <ul className="space-y-2">{mine.map(blog => <li key={blog.id} className="rounded-lg border border-[var(--border)] p-3"><Link to={`/blogs/${encodeURIComponent(blog.slug)}/edit`} className="font-medium hover:text-[var(--accent)]">{blog.title}</Link><span className="ml-2 text-xs text-[var(--muted)]">{blog.status}</span></li>)}</ul> : <p className="text-sm text-[var(--muted)]">Your drafts and published blogs will appear here.</p>}</section>
         </aside>
       </div>
-      {confirmDelete && <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4"><section role="alertdialog" aria-modal="true" aria-labelledby="delete-draft-title" className="w-full max-w-md rounded-xl bg-[var(--surface)] p-6 shadow-xl"><h2 id="delete-draft-title" className="text-lg font-semibold">Delete this blog?</h2><p className="mt-2 text-sm text-[var(--muted)]">This action cannot be undone.</p><div className="mt-6 flex justify-end gap-3"><button disabled={saving} onClick={() => setConfirmDelete(false)} className="rounded-lg border border-[var(--border)] px-4 py-2">Cancel</button><button disabled={saving} onClick={remove} className="rounded-lg bg-red-700 px-4 py-2 font-medium text-white">{saving ? 'Deleting…' : 'Delete blog'}</button></div></section></div>}
+      {confirmDelete && <ConfirmDialog title="Delete this blog?" description="This action cannot be undone." busy={saving} confirmLabel="Delete blog" busyLabel="Deleting…" onConfirm={remove} onCancel={() => setConfirmDelete(false)} />}
     </main>
   )
 }

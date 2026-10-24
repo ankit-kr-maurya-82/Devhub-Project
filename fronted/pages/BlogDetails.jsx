@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import BlogContent from '../components/BlogContent.jsx'
 import ReportButton from '../components/ReportButton.jsx'
 import BlogCover from '../components/BlogCover.jsx'
+import ConfirmDialog from '../components/ConfirmDialog.jsx'
 import { formatBlogDate, readingTime } from '../data/blogs.js'
 import { useMockSession } from '../src/state/useMockSession.js'
 import api from '../src/lib/api.js'
@@ -52,7 +53,7 @@ export default function BlogDetails() {
       </header>
       {error?.slug === slug && blog?.slug === slug && <p role="alert" className="mb-4 text-sm text-red-700">{error.message}</p>}
       <article className="border-t border-[var(--border)] py-8"><BlogContent content={blog.content} /></article>
-      {confirmDelete && <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4"><section role="alertdialog" aria-modal="true" aria-labelledby="delete-blog-title" className="w-full max-w-md rounded-xl bg-[var(--surface)] p-6 shadow-xl"><h2 id="delete-blog-title" className="text-lg font-semibold">Delete this blog?</h2><p className="mt-2 text-sm text-[var(--muted)]">This action cannot be undone.</p><div className="mt-6 flex justify-end gap-3"><button disabled={deleting} onClick={() => setConfirmDelete(false)} className="rounded-lg border border-[var(--border)] px-4 py-2">Cancel</button><button disabled={deleting} onClick={deleteBlog} className="rounded-lg bg-red-700 px-4 py-2 font-medium text-white">{deleting ? 'Deleting…' : 'Delete blog'}</button></div></section></div>}
+      {confirmDelete && <ConfirmDialog title="Delete this blog?" description="This action cannot be undone." busy={deleting} confirmLabel="Delete blog" busyLabel="Deleting…" onConfirm={deleteBlog} onCancel={() => setConfirmDelete(false)} />}
     </main>
   )
 }

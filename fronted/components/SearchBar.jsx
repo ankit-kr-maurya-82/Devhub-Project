@@ -9,7 +9,7 @@ export default function SearchBar() {
   const matches = navigation.filter(item => item.label.toLowerCase().includes(query.trim().toLowerCase()))
   return (
     <div className="relative min-w-0 flex-1" onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false) }} onKeyDown={(event) => { if (event.key === 'Escape') setOpen(false) }}>
-      <label className="flex h-10 items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] px-3 text-[var(--subtle)] focus-within:border-violet-400/70">
+      <label className="flex h-10 items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] px-3 text-[var(--subtle)] focus-within:border-[var(--accent)]">
         <Icon name="search" className="size-4 shrink-0" />
         <span className="sr-only">Find a page</span>
         <input type="search" value={query} onChange={(event) => { setQuery(event.target.value); setOpen(true) }} onFocus={() => setOpen(true)} placeholder="Find a page…" className="w-full bg-transparent text-sm text-[var(--text)] outline-none placeholder:text-[var(--subtle)]" />

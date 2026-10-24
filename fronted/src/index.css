@@ -6,22 +6,32 @@
 
 @layer base {
   :root {
-    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    /* Primary is for filled controls; accent is for interactive foregrounds and focus. */
+    --font-sans: ui-sans-serif, system-ui, sans-serif;
+    --radius-control: 0.625rem;
+    --radius-card: 0.875rem;
+    --shadow-card: 0 1px 2px rgb(16 24 40 / 0.05);
+    font-family: var(--font-sans);
     color-scheme: light;
     --page: #f7f8fa;
     --surface: #ffffff;
-    --surface-raised: #f0f2f6;
+    --surface-raised: #f1f2f7;
     --border: #dde1e8;
+    --border-strong: #b8c0cc;
     --text: #202735;
     --muted: #556071;
     --subtle: #657084;
-    --accent: #6941c6;
-    --accent-soft: #f0eafa;
-    --primary: #7047cf;
-    --primary-hover: #5d34b8;
+    --primary: #5b4bc4;
+    --primary-hover: #4f3bb0;
+    --accent: #5b4bc4;
+    --accent-soft: #f1edfc;
     --success: #14734d;
     --danger: #b4233e;
+    --danger-action: #b4233e;
+    --danger-action-hover: #921b32;
     --warning: #915907;
+    --info: #2459a6;
+    --info-soft: #eaf2ff;
   }
   :root[data-theme="dark"] {
     color-scheme: dark;
@@ -29,6 +39,7 @@
     --surface: #1a1e27;
     --surface-raised: #242a36;
     --border: #363e4c;
+    --border-strong: #596273;
     --text: #f1f3f8;
     --muted: #b8c0cf;
     --subtle: #a2adbf;
@@ -38,7 +49,12 @@
     --primary-hover: #6c40c8;
     --success: #75ddb0;
     --danger: #fda4af;
+    --danger-action: #8e2c42;
+    --danger-action-hover: #762638;
     --warning: #f5cc7c;
+    --info: #93b8ff;
+    --info-soft: #1d2c43;
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.18);
   }
   body { margin: 0; min-width: 0; background: var(--page); color: var(--text); line-height: 1.5; }
   button, a, input { -webkit-tap-highlight-color: transparent; }
@@ -54,17 +70,19 @@
 }
 
 @layer components {
-  .ui-button, .ui-button-secondary {
+  .ui-button, .ui-button-secondary, .ui-button-danger {
     display: inline-flex; min-height: 2.75rem; align-items: center; justify-content: center; gap: 0.5rem;
-    border: 1px solid transparent; border-radius: 0.625rem; padding: 0.625rem 1rem;
+    border: 1px solid transparent; border-radius: var(--radius-control); padding: 0.625rem 1rem;
     font-size: 0.875rem; font-weight: 600; line-height: 1.5; transition: background-color 150ms, border-color 150ms;
   }
   .ui-button { background: var(--primary); color: white; }
   .ui-button:hover { background: var(--primary-hover); }
+  .ui-button-danger { background: var(--danger-action); color: white; }
+  .ui-button-danger:hover { background: var(--danger-action-hover); }
   .ui-button-secondary { border-color: var(--border); background: var(--surface); color: var(--text); }
-  .ui-button-secondary:hover { background: var(--surface-raised); border-color: var(--subtle); }
-  .ui-card { border: 1px solid var(--border); border-radius: 0.875rem; background: var(--surface); }
-  .ui-input { width: 100%; min-height: 2.75rem; border: 1px solid var(--border); border-radius: 0.625rem; background: var(--surface); padding: 0.75rem; font-size: 0.875rem; color: var(--text); }
+  .ui-button-secondary:hover { background: var(--surface-raised); border-color: var(--border-strong); }
+  .ui-card { border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); box-shadow: var(--shadow-card); }
+  .ui-input { width: 100%; min-height: 2.75rem; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface); padding: 0.75rem; font-size: 0.875rem; color: var(--text); }
   .ui-input:focus { border-color: var(--accent); }
   .ui-page-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
 }
