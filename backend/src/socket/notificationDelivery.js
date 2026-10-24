@@ -25,4 +25,9 @@ const disconnectUserSockets = (userId) => {
   socketServer.in(`user:${userId.toString()}`).disconnectSockets(true);
 };
 
-export { disconnectUserSockets, emitNotification, setNotificationSocketServer };
+const leaveUserRoomSockets = (userId, roomId) => {
+  if (!socketServer || !userId || !roomId) return;
+  socketServer.in(`user:${userId.toString()}`).socketsLeave(roomId.toString());
+};
+
+export { disconnectUserSockets, emitNotification, leaveUserRoomSockets, setNotificationSocketServer };

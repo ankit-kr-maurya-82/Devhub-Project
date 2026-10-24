@@ -6,12 +6,14 @@ import Question from "../src/models/question.model.js";
 import Answer from "../src/models/answer.model.js";
 import Comment from "../src/models/comment.model.js";
 import Notification from "../src/models/notification.model.js";
+import Room from "../src/models/room.model.js";
 import { loginUser, registerUser } from "../src/controllers/auth.controller.js";
 import { authMiddleware } from "../src/middlewares/auth.middleware.js";
 import { validateEnvironment } from "../src/config/env.js";
 import { createQuestion, updateQuestion } from "../src/controllers/question.controller.js";
 import { createAnswer, acceptAnswer } from "../src/controllers/answer.controller.js";
 import { updateComment } from "../src/controllers/comment.controller.js";
+import { leaveRoom } from "../src/controllers/room.controller.js";
 import createNotification from "../src/utils/createNotification.js";
 import { disconnectUserSockets, setNotificationSocketServer } from "../src/socket/notificationDelivery.js";
 import {
@@ -352,6 +354,49 @@ describe("controller and middleware unit checks", () => {
 
     expect(socketServer.in).toHaveBeenCalledWith(`user:${otherUserId}`);
     expect(disconnectSockets).toHaveBeenCalledWith(true);
+  });
+
+  it("removes a leaving user's sockets from the room after membership is saved", async () => {
+    const events = [];
+    const roomId = "507f1f77bcf86cd799439016";
+    const room = {
+      _id: roomId,
+      owner: { equals: (id) => id === otherUserId },
+      members: [{ equals: (id) => id === userId }],
+      save: vi.fn(async () => { events.push("saved"); }),
+    };
+    const socketsLeave = vi.fn((id) => { events.push(`left:${id}`); });
+    const socketServer = { in: vi.fn(() => ({ socketsLeave })) };
+    vi.spyOn(Room, "findById").mockResolvedValue(room);
+    setNotificationSocketServer(socketServer);
+    const response = makeResponse();
+
+    await leaveRoom(makeRequest({ params: { roomId } }), response);
+
+    expect(response.statusCode).toBe(200);
+    expect(room.save).toHaveBeenCalledOnce();
+    expect(socketServer.in).toHaveBeenCalledWith(`user:${userId}`);
+    expect(socketsLeave).toHaveBeenCalledWith(roomId);
+    expect(events).toEqual(["saved", `left:${roomId}`]);
+  });
+
+  it("does not evict room sockets when membership persistence fails", async () => {
+    const roomId = "507f1f77bcf86cd799439016";
+    const room = {
+      _id: roomId,
+      owner: { equals: () => false },
+      members: [{ equals: (id) => id === userId }],
+      save: vi.fn().mockRejectedValue(new Error("save failed")),
+    };
+    const socketsLeave = vi.fn();
+    setNotificationSocketServer({ in: vi.fn(() => ({ socketsLeave })) });
+    vi.spyOn(Room, "findById").mockResolvedValue(room);
+    const response = makeResponse();
+
+    await leaveRoom(makeRequest({ params: { roomId } }), response);
+
+    expect(response.statusCode).toBe(500);
+    expect(socketsLeave).not.toHaveBeenCalled();
   });
 
   it("lists only the authenticated recipient's notifications using validated pagination", async () => {

@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import Room, { roomCategories } from "../models/room.model.js";
+import { leaveUserRoomSockets } from "../socket/notificationDelivery.js";
 
 const parsePositive = (value, fallback) => {
   if (value === undefined) return fallback;
@@ -111,6 +112,7 @@ const leaveRoom = async (req, res) => {
     if (index === -1) return res.status(400).json({ success: false, message: "You are not a member of this room" });
     room.members.splice(index, 1);
     await room.save();
+    leaveUserRoomSockets(req.user._id, room._id);
     return res.status(200).json({ success: true, message: "Left room successfully", data: room });
   } catch (error) {
     console.error("Leave Room Error:", error);
