@@ -16,9 +16,9 @@ Set these in the backend service environment. Copy names and safe local defaults
 | `PORT` | Platform provided | HTTP listener port; defaults to `4000` locally. |
 | `MONGODB_URI` or `MONGO_URI` | Yes | MongoDB connection string. Set one name only. |
 | `JWT_SECRET` | Yes | Signing key, at least 32 characters in production. |
-| `CLIENT_ORIGIN` | Yes in production | Comma-separated exact frontend origins, including scheme and no path. |
+| `CLIENT_ORIGIN` | Yes in production | Comma-separated exact HTTPS frontend origins, with no path. |
 
-Set `VITE_API_URL` in the frontend build environment to the absolute API root ending in `/api/v1`, such as `https://api.example.com/api/v1`. This value is embedded in the built frontend and is not a secret. Production builds fail if it is absent. The Socket.IO client uses the origin from this URL.
+Set `VITE_API_URL` in the frontend build environment to either the absolute HTTPS API root ending in `/api/v1`, such as `https://api.example.com/api/v1`, or `/api/v1` when the frontend host proxies both `/api/v1` and `/socket.io` to the backend. This value is embedded in the built frontend and is not a secret. Production builds fail if it is absent or uses an insecure absolute HTTP URL. The Socket.IO client uses the API origin for an absolute URL and the frontend origin for `/api/v1`.
 
 Password reset links are delivered to the backend log in development only. In every non-development environment, the request endpoint returns HTTP 503 without looking up the account or creating a reset token. There is no mail provider dependency, integration, or mail environment variable in this repository, so no environment-only setting enables production recovery.
 
@@ -31,6 +31,8 @@ For a safe end-to-end check after implementation, configure the key and sender o
 Use HTTPS for both services and put them on the same site, for example `app.example.com` and `api.example.com`. Authentication uses an HttpOnly, Secure, `SameSite=Lax` cookie. A cross-site frontend/API pair on unrelated provider domains will not reliably send this cookie; use a shared custom domain or a same-origin reverse proxy.
 
 Set frontend `VITE_API_URL` to the API origin plus `/api/v1`. Both Community and Notifications derive their Socket.IO origin from this setting. For same-origin deployments, a relative `/api/v1` value keeps both sockets on the frontend origin; configure the host to proxy `/api/v1` and `/socket.io` to the backend. For separate frontend and API origins, use the absolute API URL and allow the exact frontend origin in `CLIENT_ORIGIN`. If more than one frontend origin is required, separate exact origins with commas. The API and Socket.IO server use this allowlist and credentialed requests. Do not use `*`. The backend must be reachable for WebSocket upgrades through any proxy or load balancer.
+
+Authentication and password-reset rate limits currently use the process-local in-memory store and Express's default client IP. Behind a reverse proxy, verify that the platform preserves the correct client IP; do not enable broad proxy trust without restricting it to the known proxy hops or ranges. Multiple backend instances do not share counters, so configure a shared rate-limit store before relying on these limits across a scaled deployment.
 
 ## MongoDB and indexes
 

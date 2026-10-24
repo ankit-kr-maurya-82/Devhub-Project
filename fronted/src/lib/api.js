@@ -1,19 +1,7 @@
 import { resolveSocketOrigin } from './socketConfig.js'
+import { resolveApiBase } from './apiConfig.js'
 
-const configuredApiBase = import.meta.env.VITE_API_URL?.trim()
-if (import.meta.env.PROD && !configuredApiBase) {
-  throw new Error('VITE_API_URL must be set to the production API root ending in /api/v1.')
-}
-if (import.meta.env.PROD) {
-  let parsedApiBase
-  try { parsedApiBase = new URL(configuredApiBase) } catch {
-    throw new Error('Production VITE_API_URL must be an absolute HTTP(S) URL ending in /api/v1.')
-  }
-  if (!['http:', 'https:'].includes(parsedApiBase.protocol) || parsedApiBase.pathname.replace(/\/$/, '') !== '/api/v1' || parsedApiBase.search || parsedApiBase.hash || parsedApiBase.username || parsedApiBase.password) {
-    throw new Error('Production VITE_API_URL must be an absolute HTTP(S) URL ending in /api/v1.')
-  }
-}
-const apiBase = (configuredApiBase || '/api/v1').replace(/\/$/, '')
+const apiBase = resolveApiBase(import.meta.env.VITE_API_URL, import.meta.env.PROD)
 export const socketOrigin = resolveSocketOrigin(apiBase)
 
 async function request(path, { method = 'GET', body, ...options } = {}) {

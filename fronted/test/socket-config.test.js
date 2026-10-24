@@ -2,6 +2,28 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import { describe, it } from 'node:test'
 import { createSocketClient, resolveSocketOrigin, SOCKET_OPTIONS } from '../src/lib/socketConfig.js'
+import { resolveApiBase } from '../src/lib/apiConfig.js'
+
+describe('frontend API configuration', () => {
+  it('uses the same-origin API path in development and production', () => {
+    assert.equal(resolveApiBase(undefined), '/api/v1')
+    assert.equal(resolveApiBase('/api/v1', true), '/api/v1')
+    assert.equal(resolveApiBase('/api/v1/', true), '/api/v1')
+  })
+
+  it('requires HTTPS and the API root for absolute production URLs', () => {
+    assert.equal(resolveApiBase('https://api.example.com/api/v1', true), 'https://api.example.com/api/v1')
+    for (const value of [
+      'http://api.example.com/api/v1',
+      'https://api.example.com/other',
+      'https://api.example.com/api/v1?query=1',
+      '//api.example.com/api/v1',
+    ]) {
+      assert.throws(() => resolveApiBase(value, true), /HTTPS API root/)
+    }
+    assert.throws(() => resolveApiBase(undefined, true), /VITE_API_URL must be set/)
+  })
+})
 
 describe('shared Socket.IO configuration', () => {
   it('uses the API origin for absolute URLs and same-origin defaults for relative URLs', () => {

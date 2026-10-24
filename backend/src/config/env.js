@@ -15,14 +15,15 @@ const validateOrigins = (value, isProduction) => {
     } catch {
       throw new Error("CLIENT_ORIGIN must contain comma-separated origin URLs.");
     }
+    const allowedProtocols = isProduction ? ["https:"] : ["http:", "https:"];
     if (
       origin === "*" ||
-      !["http:", "https:"].includes(parsed.protocol) ||
+      !allowedProtocols.includes(parsed.protocol) ||
       parsed.origin !== origin ||
       parsed.username ||
       parsed.password
     ) {
-      throw new Error("CLIENT_ORIGIN entries must be explicit HTTP(S) origins without paths or credentials.");
+      throw new Error(`CLIENT_ORIGIN entries must be explicit ${isProduction ? "HTTPS" : "HTTP(S)"} origins without paths or credentials.`);
     }
   }
 

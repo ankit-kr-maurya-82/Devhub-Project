@@ -96,6 +96,7 @@ describe("controller and middleware unit checks", () => {
     expect(() => validateEnvironment({ ...production, JWT_SECRET: "short" })).toThrow(/JWT_SECRET/);
     expect(() => validateEnvironment({ ...production, CLIENT_ORIGIN: "*" })).toThrow(/CLIENT_ORIGIN/);
     expect(() => validateEnvironment({ ...production, CLIENT_ORIGIN: "https://app.example.test/path" })).toThrow(/CLIENT_ORIGIN/);
+    expect(() => validateEnvironment({ ...production, CLIENT_ORIGIN: "http://app.example.test" })).toThrow(/CLIENT_ORIGIN/);
   });
 
   it("rejects invalid registration fields before querying persistence", async () => {

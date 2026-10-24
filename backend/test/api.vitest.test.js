@@ -169,6 +169,27 @@ describe("HTTP API integration with mocked persistence", () => {
     expect(mongoose.connect).not.toHaveBeenCalled();
   });
 
+  it("rate limits password reset requests before account lookup in production mode", async () => {
+    const findOne = vi.spyOn(User, "findOne");
+    await withEnvironment({ NODE_ENV: "production" }, async () => {
+      let firstResponse;
+      let lastResponse;
+      for (let attempt = 0; attempt < 41; attempt += 1) {
+        const response = await jsonRequest("/api/v1/auth/forgot-password", {
+          method: "POST",
+          token: null,
+          body: { email: "reader@example.invalid" },
+        });
+        if (attempt === 0) firstResponse = response;
+        lastResponse = response;
+      }
+
+      expect(firstResponse.status).toBe(503);
+      expect(lastResponse.status).toBe(429);
+      expect(findOne).not.toHaveBeenCalled();
+    });
+  });
+
   it("allows same-origin Swagger requests from the local backend origin", async () => {
     vi.spyOn(User, "findOne").mockResolvedValue(null);
     vi.spyOn(User.prototype, "save").mockImplementation(async function save() {
