@@ -8,7 +8,7 @@ Use Node.js 22.13+ within the 22.x line, or 24.x for both frontend builds and th
 
 ## Environment variables
 
-Set these in the backend service environment. Copy names and safe local defaults from `backend/.env.example`; never copy actual credentials into the repository.
+Configure each variable in the environment identified below. Backend runtime variables belong in the Render service environment; `VITE_API_URL` belongs in the Vercel build environment. Copy variable names and safe local defaults from the example files; never copy actual credentials into the repository.
 
 | Variable | Required in staging | Secret? | Purpose | Application validation |
 | --- | --- | --- | --- | --- |
@@ -20,6 +20,8 @@ Set these in the backend service environment. Copy names and safe local defaults
 | `RESEND_API_KEY` | Required to test password recovery | Yes | Restricted, server-side Resend sending API key. | The reset flow checks the key format; this does not validate it with Resend. Missing/invalid configuration fails closed with HTTP 503 for reset requests. |
 | `PASSWORD_RESET_FROM` | Required to test password recovery | No | Sender address at a domain verified in Resend. | Sender syntax is checked; domain verification and provider acceptance are not checked by the application. |
 | `VITE_API_URL` | Yes for a production frontend build | No; public build-time value | For the selected Vercel + Render topology, the absolute HTTPS Render API root ending in `/api/v1`, for example `https://api-staging.example.com/api/v1`. | Production build checks the URL format. It also accepts `/api/v1` for a same-origin proxy, but no such proxy is configured or included in this topology. |
+
+The following variables are for isolated tests or local test tooling only. Do not configure them as Vercel or Render runtime variables: `TEST_MONGODB_URI` and `TEST_MONGODB_ISOLATED` (index checks and isolated database tests); `DEVHUB_E2E`, `DEVHUB_E2E_CONFIRM_ISOLATED_DISPOSABLE_DB`, `E2E_BASE_URL`, `E2E_API_URL`, `E2E_USER_EMAIL`, `E2E_USER_PASSWORD`, `E2E_ADMIN_EMAIL`, `E2E_ADMIN_PASSWORD`, `E2E_PROBLEM_SLUG`, and `CHROME_BIN` (opt-in browser tests); `JWT_TOKEN` and `SOCKET_TEST_ROOM_ID` (manual Socket.IO test). E2E account credentials belong only in a private, disposable test-runner environment. `TEST_MONGODB_URI` is a test database credential, not the staging application's `MONGODB_URI`.
 
 ### Staging configuration checklist
 
@@ -82,7 +84,7 @@ Authentication and password-reset rate limits currently use the process-local in
 
 ## MongoDB and indexes
 
-Provision a production database and a least-privilege application user. Restrict network access to the backend where the provider supports it, and back up the database before releases. Mongoose models declare unique and query indexes, and automatic index creation is disabled in production. Before release, inspect a dedicated disposable/test database with the same schema and a read-only comparison:
+Provision a database dedicated to staging, separate from production, and a least-privilege application user scoped to that database. Restrict network access to the backend where the provider supports it, and confirm a staging backup and restore path before test data is added. Mongoose models declare unique and query indexes, and automatic index creation is disabled in production. Before release, inspect a dedicated disposable/test database with the same schema and a read-only comparison:
 
 ```sh
 cd backend
@@ -91,7 +93,7 @@ cd backend
 npm run db:indexes:check
 ```
 
-The checker requires both `TEST_MONGODB_URI` and the explicit `TEST_MONGODB_ISOLATED=true` acknowledgement. A test-like database name is only a secondary guard: independently verify the host/cluster and use credentials scoped to the dedicated disposable database. The checker also refuses production-like names and the same host/database target as `MONGODB_URI` or `MONGO_URI`, disables automatic index creation, and only calls Mongoose `diffIndexes()`. It reports indexes that would be created or dropped and never applies either operation. It intentionally refuses the application database, so it does not initialize or verify the staging application's indexes.
+The checker requires both `TEST_MONGODB_URI` and the explicit `TEST_MONGODB_ISOLATED=true` acknowledgement. Before any connection, identify the staging project, cluster, database name, and database user in the Atlas console; verify that the Render secret is intended for that same staging target and that the user is scoped to the staging database. If a local target check is needed, parse the URI privately and display only the host and database name; do not echo, log, or paste the URI. The checker parses the test URI internally, prints only its database name, and refuses production-like names and a target matching the configured application URI by host, port, and database name. A test-like name is only a secondary guard: independently verify the host/cluster and use credentials scoped to the dedicated disposable database. The checker disables automatic index creation and only calls Mongoose `diffIndexes()`. It reports indexes that would be created or dropped and never applies either operation. It intentionally refuses a matching application target, so it does not initialize or verify the staging application's indexes.
 
 ### Reviewed staging index initialization
 
@@ -100,7 +102,7 @@ The production-mode backend used for staging disables Mongoose automatic index c
 1. Take or verify a restorable staging snapshot. Use only staging data and credentials; never copy production data into staging.
 2. Run `db:indexes:check` only against a separately verified disposable database with the same checked-out schema. Save the reported comparison as review input; it is not a check of the staging database.
 3. Have a reviewer compare the staging collections' existing indexes with the model declarations in `backend/src/models/`. Inspect indexes read-only first. Do not run `syncIndexes()` or apply every reported difference blindly.
-4. Check for duplicate values before any unique index is proposed. Resolve data conflicts through a separately reviewed staging data change, not as part of index creation.
+4. Before proposing a unique index, run read-only aggregation checks in the staging database: group `User` documents by `username` and by `email`, `Blog` and `CodingProblem` documents by `slug`, and `Vote` documents by the compound key `(user, targetType, targetId)`; filter for groups with a count greater than one. Check null/missing values and normalization/case behavior against the model declarations too. Resolve conflicts only through a separately reviewed staging data change, before index creation.
 5. Prepare and review a one-time staging-only migration that creates only specifically approved missing indexes with their declared keys and options. It must not drop or alter existing indexes. Use an operator identity scoped to the staging database with only the index and read privileges needed; keep it separate from the application secret where possible.
 6. Apply that migration only after approval, then inspect the resulting indexes read-only and run focused staging smoke tests. Record the migration and rollback considerations. Do not execute this procedure from the app startup command.
 
@@ -159,4 +161,4 @@ The repository has no root `package.json` or deployment manifest. Build and star
 
 Use a managed MongoDB deployment for routine operations support, with database-scoped least-privilege credentials, network restrictions to the backend where available, and verified backups/restore procedures. A self-managed database avoids a managed-service dependency but transfers patching, availability, access control, backup, and recovery operations to the team. The application requires a reachable MongoDB URI and exits startup readiness until its initial connection succeeds.
 
-Vercel, Render, and MongoDB Atlas are the selected staging providers, but deployment has not been performed. Current provider pricing, free-tier availability, and plan-specific features have not been verified; confirm them directly with the providers. Do not assume a hosting plan supports persistent WebSockets, graceful process termination, or the required health checks based only on its product name. Use custom subdomains under one registrable domain (for example `app.example.com` and `api.example.com`) to preserve the current `SameSite=Lax` cookie behavior.
+Vercel, Render, and MongoDB Atlas are the selected staging providers, but deployment has not been performed. Before selecting plans, the operator must confirm persistent Node Web Service support; Socket.IO polling and WebSocket upgrades; HTTPS custom domains; environment-variable and secret management; `/healthz` checks that treat HTTP 503 as unhealthy; Render-to-Atlas network access; and a one-instance setting for the initial backend. Current provider pricing, free-tier availability, and these plan-specific capabilities have not been verified. Do not assume a hosting plan supports them based only on its product name. Use custom subdomains under one registrable domain (for example `app-staging.example.com` and `api-staging.example.com`) to preserve the current `SameSite=Lax` cookie behavior.
