@@ -35,10 +35,6 @@ const initializeSocket = (httpServer, configuredOrigins) => {
   const uniqueOrigins = [...new Set(allowedOrigins)];
   const io = new Server(httpServer, {
     cors: { origin: uniqueOrigins, credentials: true },
-    allowRequest: (request, callback) => {
-      const origin = request.headers.origin;
-      callback(null, !origin || uniqueOrigins.includes(origin));
-    },
   });
   setNotificationSocketServer(io);
   const presenceUpdates = new Map();

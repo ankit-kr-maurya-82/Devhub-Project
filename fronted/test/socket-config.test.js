@@ -28,7 +28,8 @@ describe('frontend API configuration', () => {
 describe('shared Socket.IO configuration', () => {
   it('uses the API origin for absolute URLs and same-origin defaults for relative URLs', () => {
     assert.equal(resolveSocketOrigin('https://api.example.com/api/v1'), 'https://api.example.com')
-    assert.equal(resolveSocketOrigin('http://localhost:4000/api/v1'), 'http://localhost:4000')
+    assert.equal(resolveSocketOrigin('http://localhost:4000/api/v1'), undefined)
+    assert.equal(resolveSocketOrigin('http://127.0.0.1:4000/api/v1'), undefined)
     assert.equal(resolveSocketOrigin('/api/v1'), undefined)
     assert.equal(resolveSocketOrigin(undefined), undefined)
   })
