@@ -60,7 +60,8 @@ export default function QuestionDetails() {
       .catch(error => { if (active) setRequestState({ id, loading: false, error: error.message }) })
     return () => { active = false }
   }, [id])
-  const data = (loadedQuestion?.id === id && loadedQuestion) || (question?.id === id && question)
+  // Prefer the shared question store so vote updates published by useQuestions render immediately.
+  const data = (question?.id === id && question) || (loadedQuestion?.id === id && loadedQuestion)
   const loading = requestState.id !== id || requestState.loading
   const loadError = requestState.id === id ? requestState.error : ''
   if (loading && !data) return <p role="status" className="mx-auto max-w-3xl p-8 text-sm text-[var(--muted)]">Loading question…</p>
