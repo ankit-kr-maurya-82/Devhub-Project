@@ -18,7 +18,7 @@ const reputationValue = (targetType, voteType) => {
 
 const voteOnTarget = async ({ req, res, targetType, TargetModel, idParam }) => {
   const targetId = req.params[idParam];
-  const { voteType } = req.body;
+  const voteType = req.body?.voteType;
 
   if (!mongoose.Types.ObjectId.isValid(targetId)) {
     return res.status(400).json({
