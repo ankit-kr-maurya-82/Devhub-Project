@@ -6,6 +6,7 @@ import User from "../models/user.model.js";
 import Vote from "../models/vote.model.js";
 import Notification from "../models/notification.model.js";
 import createNotification from "../utils/createNotification.js";
+import { emitVoteUpdate } from "../socket/voteDelivery.js";
 
 const scoreValue = (voteType) => (voteType === "upvote" ? 1 : -1);
 
@@ -39,6 +40,7 @@ const voteOnTarget = async ({ req, res, targetType, TargetModel, idParam }) => {
   const session = await mongoose.startSession();
   let response;
   let upvoteNotification;
+  let voteUpdate;
 
   try {
     await session.withTransaction(async () => {
@@ -151,7 +153,17 @@ const voteOnTarget = async ({ req, res, targetType, TargetModel, idParam }) => {
           success: true,
           message,
           votes: updatedTarget.votes,
+          userVote: message === "Vote removed" ? 0 : voteType === "upvote" ? 1 : -1,
         },
+      };
+      voteUpdate = {
+        targetType,
+        targetId: target._id.toString(),
+        questionId: targetType === "Question" ? target._id.toString() : target.question.toString(),
+        ...(targetType === "Answer" && { answerId: target._id.toString() }),
+        votes: updatedTarget.votes,
+        userId: req.user._id.toString(),
+        userVote: message === "Vote removed" ? 0 : voteType === "upvote" ? 1 : -1,
       };
     });
 
@@ -167,6 +179,8 @@ const voteOnTarget = async ({ req, res, targetType, TargetModel, idParam }) => {
         await createNotification(upvoteNotification);
       }
     }
+
+    if (response?.status === 200 && voteUpdate) emitVoteUpdate(voteUpdate);
 
     return res.status(response.status).json(response.body);
   } finally {

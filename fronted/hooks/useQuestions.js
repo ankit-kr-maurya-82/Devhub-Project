@@ -1,5 +1,7 @@
 import { useEffect, useSyncExternalStore } from 'react'
 import api from '../src/lib/api.js'
+import { createSocketClient } from '../src/lib/socketConfig.js'
+import { socketOrigin } from '../src/lib/api.js'
 
 let questions = []
 let status = { loading: false, error: '' }
@@ -7,6 +9,27 @@ const listeners = new Set()
 const subscribe = listener => { listeners.add(listener); return () => listeners.delete(listener) }
 const publish = () => listeners.forEach(listener => listener())
 const getSnapshot = () => questions
+let voteSocket
+
+function ensureVoteSocket() {
+  if (voteSocket) return
+  voteSocket = createSocketClient(socketOrigin)
+  voteSocket.on('voteUpdated', update => {
+    questions = questions.map(question => {
+      if (question.id !== update.questionId) return question
+      if (update.targetType === 'Question') {
+        return { ...question, votes: update.votes }
+      }
+      return {
+        ...question,
+        responses: question.responses.map(answer => answer.id === update.answerId
+          ? { ...answer, votes: update.votes }
+          : answer),
+      }
+    })
+    publish()
+  })
+}
 
 const relativeTime = dateValue => {
   const seconds = Math.max(0, Math.floor((Date.now() - new Date(dateValue).getTime()) / 1000))
@@ -61,6 +84,7 @@ export async function refreshQuestions(params = {}) {
 export function useQuestions() {
   const current = useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
   useEffect(() => {
+    ensureVoteSocket()
     if (!questions.length && !status.loading) refreshQuestions().catch(() => {})
   }, [])
   return current
@@ -126,7 +150,7 @@ export async function vote(questionId, direction, answerId) {
     ? await api.questions.voteAnswer(answerId, voteType)
     : await api.questions.vote(questionId, voteType)
   questions = questions.map(question => question.id !== questionId ? question : answerId
-    ? { ...question, responses: question.responses.map(answer => answer.id === answerId ? { ...answer, votes: result.votes, userVote: direction } : answer) }
-    : { ...question, votes: result.votes, userVote: result.message === 'Vote removed' ? 0 : direction })
+    ? { ...question, responses: question.responses.map(answer => answer.id === answerId ? { ...answer, votes: result.votes, userVote: result.userVote } : answer) }
+    : { ...question, votes: result.votes, userVote: result.userVote })
   publish()
 }

@@ -8,6 +8,7 @@ import Message from "../models/message.model.js";
 import { addUserSocket, removeUserSocket, isUserOnline } from "./presence.js";
 import { joinRoomAndRecheckMembership, withRoomMembershipLock } from "./roomMembership.js";
 import { setNotificationSocketServer } from "./notificationDelivery.js";
+import { setVoteSocketServer } from "./voteDelivery.js";
 import createNotification from "../utils/createNotification.js";
 
 const emitSocketError = (socket, message, acknowledge) => {
@@ -37,6 +38,7 @@ const initializeSocket = (httpServer, configuredOrigins) => {
     cors: { origin: uniqueOrigins, credentials: true },
   });
   setNotificationSocketServer(io);
+  setVoteSocketServer(io);
   const presenceUpdates = new Map();
 
   const savePresence = (userId, online) => {
