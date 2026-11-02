@@ -20,7 +20,8 @@ function normalizeMember(member) {
 }
 
 function normalizeMessage(message, currentUserId) {
-  const senderId = String(message.sender?._id || message.sender || '')
+  const sender = message.sender && typeof message.sender === 'object' ? message.sender : null
+  const senderId = String(sender?._id || message.sender || '')
   const counts = new Map()
   for (const reaction of message.reactions || []) {
     const prior = counts.get(reaction.emoji) || { emoji: reaction.emoji, count: 0, reacted: false }
@@ -31,6 +32,7 @@ function normalizeMessage(message, currentUserId) {
   return {
     id: String(message._id || message.id),
     authorId: senderId,
+    author: sender ? normalizeMember(sender) : null,
     text: message.isDeleted ? 'This message was deleted' : message.content,
     createdAt: message.createdAt,
     reactions: [...counts.values()],

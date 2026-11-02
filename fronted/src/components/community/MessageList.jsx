@@ -34,7 +34,7 @@ export default function MessageList({ messages, members, currentUserId, onReact,
                 <div className="h-px flex-1 bg-[var(--surface-raised)]" />
               </div>
             )}
-            <MessageBubble message={message} author={memberMap.get(message.authorId)} currentUserId={currentUserId} onReact={onReact} />
+            <MessageBubble message={message} author={message.author || memberMap.get(message.authorId)} currentUserId={currentUserId} onReact={onReact} />
           </Fragment>
         )
       })}
