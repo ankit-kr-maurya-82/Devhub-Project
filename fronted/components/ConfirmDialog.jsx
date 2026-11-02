@@ -27,7 +27,7 @@ export default function ConfirmDialog({ title, description, busy = false, confir
       aria-describedby={descriptionId}
       onCancel={preventDismissWhileBusy}
       onClose={onCancel}
-      className="fixed inset-0 m-auto max-h-[85dvh] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 text-[var(--text)] shadow-xl backdrop:bg-black/50"
+      className="fixed inset-0 m-auto max-h-[85dvh] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--surface)] p-5 text-[var(--text)] shadow-[var(--shadow-dialog)] backdrop:bg-black/50 sm:p-6"
     >
       <h2 id={titleId} className="text-lg font-semibold">{title}</h2>
       <p id={descriptionId} className="mt-2 text-sm text-[var(--muted)]">{description}</p>

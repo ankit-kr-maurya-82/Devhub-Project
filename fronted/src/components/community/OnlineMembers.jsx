@@ -1,4 +1,5 @@
 import Icon from '../../../components/Icon'
+import Avatar from '../../../components/Avatar.jsx'
 
 function MemberGroup({ title, members, online }) {
   return (
@@ -8,8 +9,8 @@ function MemberGroup({ title, members, online }) {
         {members.map((member) => (
           <li key={member.id} className="flex items-center gap-3 rounded-lg px-1 py-2">
             <span className="relative shrink-0">
-              <span aria-hidden="true" className="flex size-8 items-center justify-center rounded-lg bg-[var(--accent-soft)] text-xs font-semibold text-[var(--accent)]">{member.initials}</span>
-              <span aria-label={online ? 'Online' : 'Offline'} className={`absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border-2 border-[var(--surface)] ${online ? 'bg-[var(--success)]' : 'bg-[var(--subtle)]'}`} />
+              <Avatar name={member.name} src={member.avatar} size="sm" className="rounded-lg" />
+              <span className={`absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border-2 border-[var(--surface)] ${online ? 'bg-[var(--success)]' : 'bg-[var(--subtle)]'}`}><span className="sr-only">{online ? 'Online' : 'Offline'}</span></span>
             </span>
             <div className="min-w-0 flex-1">
               <p className={`truncate text-sm font-medium ${online ? 'text-[var(--text)]' : 'text-[var(--muted)]'}`}>{member.name}</p>

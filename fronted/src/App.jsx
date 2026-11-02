@@ -21,9 +21,6 @@ const AskQuestion = lazy(() => import('../pages/AskQuestion.jsx'))
 const Blogs = lazy(() => import('../pages/Blogs.jsx'))
 const BlogDetails = lazy(() => import('../pages/BlogDetails.jsx'))
 const CreateBlog = lazy(() => import('../pages/CreateBlog.jsx'))
-const CodingPractice = lazy(() => import('../pages/CodingPractice.jsx'))
-const ProblemDetails = lazy(() => import('../pages/ProblemDetails.jsx'))
-const Submissions = lazy(() => import('../pages/Submissions.jsx'))
 const Community = lazy(() => import('./pages/Community.jsx'))
 const Notifications = lazy(() => import('./pages/Notifications.jsx'))
 const AdminLayout = lazy(() => import('./layouts/AdminLayout.jsx'))
@@ -53,9 +50,6 @@ function App() {
               <Route path="/blogs/:slug/edit" element={<RequireAuth><CreateBlog /></RequireAuth>} />
               <Route path="/blogs/:slug" element={<BlogDetails />} />
               <Route path="/create-blog" element={<RequireAuth><CreateBlog /></RequireAuth>} />
-              <Route path="/coding" element={<CodingPractice />} />
-              <Route path="/coding/problem/:slug" element={<ProblemDetails />} />
-              <Route path="/submissions" element={<RequireAuth><Submissions /></RequireAuth>} />
               <Route path="/community" element={<RequireAuth><Community /></RequireAuth>} />
               <Route path="/notifications" element={<RequireAuth><Notifications /></RequireAuth>} />
               <Route path="/admin" element={<RequireAuth><AdminLayout /></RequireAuth>}>

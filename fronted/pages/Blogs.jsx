@@ -3,6 +3,10 @@ import { Link, useSearchParams } from 'react-router-dom'
 import BlogCard from '../components/BlogCard.jsx'
 import api from '../src/lib/api.js'
 import { mapBlog } from '../hooks/useBlogs.js'
+import PageHeader from '../components/PageHeader.jsx'
+import EmptyState from '../components/EmptyState.jsx'
+import ErrorState from '../components/ErrorState.jsx'
+import Skeleton from '../components/Skeleton.jsx'
 
 export default function Blogs() {
   const [params, setParams] = useSearchParams()
@@ -36,10 +40,7 @@ export default function Blogs() {
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-7 sm:px-6 sm:py-10">
-      <header className="ui-page-header mb-6 sm:mb-8">
-        <div className="min-w-0"><p className="text-sm font-medium text-[var(--accent)]">DevHub writing</p><h1 className="mt-1">Blogs</h1><p className="mt-2 text-sm text-[var(--muted)]">Ideas, guides, and notes from the community.</p></div>
-        <Link to="/create-blog" className="ui-button">Write a blog</Link>
-      </header>
+      <PageHeader className="mb-6 sm:mb-8" eyebrow="DevHub writing" title="Blogs" description="Ideas, guides, and notes from the community." action={<Link to="/create-blog" className="ui-button">Write a blog</Link>} />
       <form className="mb-5 flex flex-wrap gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 sm:mb-6 sm:p-4" onSubmit={event => { event.preventDefault(); updateParams({ search: query.trim(), page: '' }) }}>
         <label className="sr-only" htmlFor="blog-search">Search blogs</label>
         <input id="blog-search" type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Search published blogs" className="ui-input min-w-0 flex-1" />
@@ -47,15 +48,15 @@ export default function Blogs() {
         {(search || tag) && <button type="button" onClick={() => { setQuery(''); setParams({}) }} className="ui-button-secondary">Clear filters</button>}
       </form>
       {tag && <p className="mb-4 text-sm text-[var(--muted)]">Filtered by <strong className="font-medium text-[var(--text)]">{tag}</strong></p>}
-      {loading && <p role="status" aria-live="polite" aria-busy="true" className="ui-card p-8 text-center text-sm text-[var(--muted)]">Loading blogs…</p>}
-      {!loading && error?.key === requestKey && <div role="alert" className="ui-card flex flex-wrap items-center justify-between gap-3 border-[var(--danger)] p-4 text-sm text-[var(--danger)]"><span>{error.message}</span><button type="button" onClick={() => setRefreshCount(count => count + 1)} className="ui-button-secondary">Retry</button></div>}
-      {!loading && !error && result.data.length === 0 && <div className="ui-card p-7 text-center sm:p-10"><h2 className="font-semibold">{search || tag ? 'No matching blogs' : 'No published blogs yet'}</h2><p className="mt-2 text-sm text-[var(--muted)]">{search || tag ? 'Try another search or clear your filters.' : 'Be the first to publish a blog.'}</p>{(search || tag) && <button type="button" onClick={() => { setQuery(''); setParams({}) }} className="ui-button-secondary mt-4">Clear filters</button>}</div>}
+      {loading && <div role="status" aria-live="polite" aria-busy="true" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"><span className="sr-only">Loading blogs…</span>{Array.from({ length: 6 }, (_, index) => <div key={index} aria-hidden="true" className="ui-card overflow-hidden"><Skeleton className="h-24 rounded-none" /><div className="space-y-3 p-5"><Skeleton className="h-4 w-1/3" /><Skeleton className="h-6 w-4/5" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-2/3" /></div></div>)}</div>}
+      {!loading && error?.key === requestKey && <ErrorState title="Could not load blogs" description={error.message} onRetry={() => setRefreshCount(count => count + 1)} />}
+      {!loading && !error && result.data.length === 0 && <EmptyState title={search || tag ? 'No matching blogs' : 'No published blogs yet'} description={search || tag ? 'Try another search or clear your filters.' : 'Be the first to publish a blog.'} action={(search || tag) ? <button type="button" onClick={() => { setQuery(''); setParams({}) }} className="ui-button-secondary">Clear filters</button> : <Link to="/create-blog" className="ui-button">Write the first blog</Link>} />}
       {!loading && !error && result.data.length > 0 && <>
         <div className="grid min-w-0 gap-4 sm:grid-cols-2 lg:grid-cols-3">{result.data.map(blog => <BlogCard key={blog.id} blog={blog} selectedTag={tag} onTagSelect={selected => updateParams({ tag: selected, page: '' })} />)}</div>
         <nav aria-label="Blog pages" className="mt-7 flex flex-wrap items-center justify-center gap-3 sm:gap-4">
-          <button disabled={!result.pagination?.hasPrevPage} onClick={() => updateParams({ page: String(Number(page) - 1) })} className="ui-button-secondary">Previous</button>
+          <button type="button" disabled={!result.pagination?.hasPrevPage} onClick={() => updateParams({ page: String(Number(page) - 1) })} className="ui-button-secondary">Previous</button>
           <span aria-live="polite" className="text-sm text-[var(--muted)]">Page {result.pagination?.page || 1} of {Math.max(1, result.pagination?.totalPages || 1)}</span>
-          <button disabled={!result.pagination?.hasNextPage} onClick={() => updateParams({ page: String(Number(page) + 1) })} className="ui-button-secondary">Next</button>
+          <button type="button" disabled={!result.pagination?.hasNextPage} onClick={() => updateParams({ page: String(Number(page) + 1) })} className="ui-button-secondary">Next</button>
         </nav>
       </>}
     </div>

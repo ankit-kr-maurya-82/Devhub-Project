@@ -2,8 +2,10 @@ import { Link, useSearchParams } from 'react-router-dom'
 import QuestionCard from '../components/QuestionCard'
 import TagBadge from '../components/TagBadge'
 import Icon from '../components/Icon'
-import { useQuestions } from '../hooks/useQuestions'
-import { useQuestionStatus } from '../hooks/useQuestions'
+import { refreshQuestions, useQuestions, useQuestionStatus } from '../hooks/useQuestions'
+import PageHeader from '../components/PageHeader'
+import EmptyState from '../components/EmptyState'
+import ErrorState from '../components/ErrorState'
 
 export default function Questions() {
   const questions = useQuestions()
@@ -24,10 +26,7 @@ export default function Questions() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-5 sm:space-y-6">
-      <header className="ui-page-header">
-        <div><h1>Questions</h1><p className="mt-2 text-sm text-[var(--muted)]">Find an answer or ask the community for help.</p></div>
-        <Link to="/ask-question" className="ui-button"><Icon name="plus" className="size-4" />Ask a question</Link>
-      </header>
+      <PageHeader eyebrow="Community knowledge" title="Questions" description="Find a solution, share what you know, or ask the community for help." action={<Link to="/ask-question" className="ui-button"><Icon name="plus" className="size-4" />Ask a question</Link>} />
       <section aria-label="Search and filter questions" className="ui-card space-y-4 p-4 sm:p-5">
         <label className="flex min-h-11 items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--page)] px-3 focus-within:border-[var(--accent)] sm:px-4">
           <Icon name="search" className="size-5 shrink-0 text-[var(--muted)]" />
@@ -47,10 +46,10 @@ export default function Questions() {
             {['Newest', 'Active', 'Unanswered'].map(value => <button key={value} type="button" aria-pressed={filter === value} onClick={() => update('filter', value)} className={`rounded-md px-3 py-2 text-xs font-medium ${filter === value ? 'bg-[var(--surface)] text-[var(--accent)] shadow-sm' : 'text-[var(--muted)] hover:text-[var(--text)]'}`}>{value === 'Active' ? 'Recently active' : value}</button>)}
           </div>
         </div>
-        {loading && !questions.length && <p role="status" aria-live="polite" className="ui-card p-5 text-sm text-[var(--muted)]">Loading questions…</p>}
-        {error && <p role="alert" className="ui-card border-[var(--danger)] p-5 text-sm text-[var(--danger)]">Could not load questions: {error}</p>}
+        {loading && !questions.length && <p role="status" aria-live="polite" aria-busy="true" className="ui-card p-5 text-sm text-[var(--muted)]">Loading questions…</p>}
+        {error && <ErrorState title="Could not load questions" description={error} onRetry={() => refreshQuestions().catch(() => {})} />}
         {visible.map(question => <QuestionCard key={question.id} question={question} selectedTag={tag} onTagSelect={selectTag} />)}
-        {!loading && !error && !visible.length && <div className="ui-card p-8 text-center"><h2 className="font-semibold">No questions found</h2><p className="mt-2 text-sm text-[var(--muted)]">Try a different search or clear the filters.</p><button type="button" onClick={() => setParams({})} className="ui-button-secondary mt-4">Clear filters</button></div>}
+        {!loading && !error && !visible.length && <EmptyState title={questions.length ? 'No questions match these filters' : 'No questions yet'} description={questions.length ? 'Try a different search or clear the filters to see more questions.' : 'Be the first to ask the community.'} action={<div className="flex flex-wrap justify-center gap-2">{!!questions.length && <button type="button" onClick={() => setParams({})} className="ui-button-secondary">Clear filters</button>}<Link to="/ask-question" className="ui-button">Ask a question</Link></div>} />}
       </section>
       <p className="text-xs leading-5 text-[var(--muted)]">Questions are loaded from the DevHub API.</p>
     </div>

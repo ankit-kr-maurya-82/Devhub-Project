@@ -1,4 +1,5 @@
 import Icon from '../../../components/Icon.jsx'
+import Avatar from '../../../components/Avatar.jsx'
 
 const defaultReactions = ['👍', '🔥', '💜']
 
@@ -10,9 +11,7 @@ export default function MessageBubble({ message, author, currentUserId, onReact 
 
   return (
     <article className={`group flex min-w-0 gap-3 border-b border-[var(--border)] px-1 py-3 last:border-b-0 sm:gap-4 sm:px-3 sm:py-4 ${message.authorId === currentUserId ? 'bg-[var(--surface-raised)]/50' : ''}`}>
-      <div aria-hidden="true" className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] text-sm font-semibold text-[var(--muted)] sm:size-10">
-        {member.initials}
-      </div>
+      <Avatar name={member.name} src={member.avatar} size="md" className="mt-0.5 size-9 rounded-lg text-sm sm:size-10" />
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <span className="text-sm font-semibold text-[var(--text)]">{member.name}</span>

@@ -1,5 +1,6 @@
 import ChannelList from './ChannelList'
 import DirectMessages from './DirectMessages'
+import Avatar from '../../../components/Avatar.jsx'
 
 export default function CommunitySidebar({ channels, contacts, members, activeConversation, onSelectChannel, onSelectDirectMessage, currentUser }) {
   return (
@@ -11,7 +12,7 @@ export default function CommunitySidebar({ channels, contacts, members, activeCo
       {currentUser && (
         <div className="flex shrink-0 items-center gap-3 border-t border-[var(--border)] bg-[var(--surface-raised)] px-5 py-4">
           <span className="relative shrink-0">
-            <span aria-hidden="true" className="flex size-9 items-center justify-center rounded-xl bg-[var(--accent-soft)] text-sm font-semibold text-[var(--accent)]">{currentUser.initials}</span>
+            <Avatar name={currentUser.name} src={currentUser.avatar} size="sm" className="rounded-xl" />
             <span className={`absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border-2 border-[var(--surface)] ${currentUser.online ? 'bg-[var(--success)]' : 'bg-[var(--subtle)]'}`} />
           </span>
           <div className="min-w-0">

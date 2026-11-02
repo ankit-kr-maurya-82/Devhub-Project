@@ -2,6 +2,9 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import Icon from '../components/Icon'
 import { useMockSession } from '../src/state/useMockSession.js'
+import Avatar from '../components/Avatar.jsx'
+import Badge from '../components/Badge.jsx'
+import PageHeader from '../components/PageHeader.jsx'
 
 export default function Profile() {
   const { user, updateProfile } = useMockSession()
@@ -24,16 +27,16 @@ export default function Profile() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-5 sm:space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3"><Link to="/dashboard" className="inline-flex min-h-11 items-center text-sm font-medium text-[var(--muted)] hover:text-[var(--accent)]">← Dashboard</Link><button type="button" onClick={() => { if (!editing) setForm({ name: user?.name || '', bio: user?.bio || '', skills: (user?.skills || []).join(', ') }); setEditing(value => !value); setError(''); setMessage('') }} className="ui-button-secondary">{editing ? 'Cancel edit' : 'Edit profile'}</button></div>
-      <header className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 sm:p-7">
-        <div className="flex min-w-0 items-center gap-4 sm:gap-5"><div role="img" aria-label={`${user?.name || user?.username || 'User'} avatar placeholder`} className="flex size-16 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--accent-soft)] text-xl font-semibold text-[var(--accent)] sm:size-20">{(user?.name || user?.username || '?').slice(0, 1).toUpperCase()}</div><div className="min-w-0"><h1 className="break-words">{user?.name || user?.username}</h1><p className="mt-1 break-words text-sm text-[var(--muted)]">@{user?.username}</p></div></div>
+      <Link to="/dashboard" className="inline-flex min-h-11 items-center text-sm font-medium text-[var(--muted)] hover:text-[var(--accent)]">← Dashboard</Link>
+      <section className="ui-card space-y-6 p-4 sm:p-7">
+        <PageHeader eyebrow="Your space" title="Profile" description="Manage how you appear to the DevHub community." action={<button type="button" onClick={() => { if (!editing) setForm({ name: user?.name || '', bio: user?.bio || '', skills: (user?.skills || []).join(', ') }); setEditing(value => !value); setError(''); setMessage('') }} className="ui-button-secondary">{editing ? 'Cancel edit' : 'Edit profile'}</button>} />
+        <div className="flex min-w-0 items-center gap-4 border-b border-[var(--border)] pb-5 sm:gap-5"><Avatar name={user?.name || user?.username} src={user?.avatar} size="lg" className="size-16 text-xl sm:size-20 sm:text-2xl" /><div className="min-w-0"><p className="break-words text-xl font-semibold tracking-tight sm:text-2xl">{user?.name || user?.username}</p><p className="mt-1 break-words text-sm text-[var(--muted)]">@{user?.username}</p></div></div>
         <div className="mt-5 border-t border-[var(--border)] pt-4 sm:mt-6 sm:pt-5">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Profile information</h2>
-          <p className="mt-2 break-all text-sm text-[var(--text)]">{user?.email}</p>
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">About</h2>
           <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-7 text-[var(--muted)]">{user?.bio || 'No bio added.'}</p>
         </div>
-        <div className="mt-5 flex flex-wrap items-start gap-x-6 gap-y-4 border-t border-[var(--border)] pt-5"><p className="text-sm"><span className="font-semibold tabular-nums">{user?.reputation ?? 0}</span><span className="ml-2 text-[var(--muted)]">reputation</span></p><div className="min-w-0 flex-1"><h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Skills</h2>{user?.skills?.length ? <div className="flex flex-wrap gap-2">{user.skills.map(skill => <span key={skill} className="max-w-full break-words rounded-md border border-[var(--border)] bg-[var(--surface-raised)] px-2.5 py-1.5 text-xs text-[var(--text)]">{skill}</span>)}</div> : <p className="text-sm text-[var(--muted)]">No skills added.</p>}</div></div>
-      </header>
+        <div className="flex flex-wrap items-start gap-x-6 gap-y-4 border-t border-[var(--border)] pt-5"><p className="flex items-center gap-2 text-sm"><Badge variant="accent">{user?.reputation ?? 0} reputation</Badge></p><div className="min-w-0 flex-1"><h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Skills</h2>{user?.skills?.length ? <div className="flex flex-wrap gap-2">{user.skills.map(skill => <Badge key={skill} variant="neutral" className="max-w-full break-words">{skill}</Badge>)}</div> : <p className="text-sm text-[var(--muted)]">No skills added.</p>}</div></div>
+      </section>
       {editing && <form onSubmit={submit} aria-label="Edit profile" className="space-y-5 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-6">
         <h2 className="text-lg font-semibold">Edit profile</h2>
         <label htmlFor="profile-name" className="block text-sm font-medium">Display name<input id="profile-name" maxLength={100} value={form.name} onChange={event => setForm(current => ({ ...current, name: event.target.value }))} className="ui-input mt-2" /></label>

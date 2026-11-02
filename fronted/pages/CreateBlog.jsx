@@ -4,6 +4,9 @@ import BlogContent from '../components/BlogContent.jsx'
 import ConfirmDialog from '../components/ConfirmDialog.jsx'
 import api from '../src/lib/api.js'
 import { mapBlog } from '../hooks/useBlogs.js'
+import PageHeader from '../components/PageHeader.jsx'
+import ErrorState from '../components/ErrorState.jsx'
+import Skeleton from '../components/Skeleton.jsx'
 
 const slugify = value => value.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 120).replace(/-$/g, '')
 const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
@@ -74,21 +77,21 @@ export default function CreateBlog() {
     finally { setSaving(false) }
   }
 
-  if (loading) return <div role="status" aria-live="polite" aria-busy="true" className="mx-auto max-w-5xl px-4 py-16 text-center text-sm text-[var(--muted)]">Loading your blog…</div>
+  if (loading) return <div role="status" aria-live="polite" aria-busy="true" className="mx-auto max-w-5xl space-y-4 px-4 py-16"><span className="sr-only">Loading your blog…</span><Skeleton className="h-9 w-1/3" /><Skeleton className="h-64" /></div>
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-7 sm:px-6 sm:py-10">
-      <header className="mb-6 sm:mb-8"><Link to="/blogs" className="text-sm font-medium text-[var(--muted)] hover:text-[var(--accent)]">← All blogs</Link><h1 className="mt-3">{editing ? 'Edit blog' : 'Write a blog'}</h1><p className="mt-2 text-sm text-[var(--muted)]">Drafts are private until you publish them.</p></header>
-      {error && <p role="alert" className="ui-card mb-5 border-[var(--danger)] p-3 text-sm text-[var(--danger)]">{error}</p>}
+      <div className="mb-6 sm:mb-8"><Link to="/blogs" className="mb-3 inline-flex min-h-10 items-center text-sm font-medium text-[var(--muted)] hover:text-[var(--accent)]">← All blogs</Link><PageHeader title={editing ? 'Edit blog' : 'Write a blog'} description="Shape your ideas into a clear, readable post. Drafts stay private until you publish them." action={<Link to="/blogs" className="ui-button-secondary">Cancel</Link>} /></div>
+      {error && <ErrorState className="mb-5" title="Could not save this blog" description={error} />}
       <div className="grid min-w-0 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.8fr)] lg:gap-8">
         <form onSubmit={submit} className="ui-card min-w-0 space-y-5 p-4 sm:p-5">
-          <label htmlFor="blog-title" className="block text-sm font-medium">Title<input id="blog-title" required minLength="5" maxLength="180" value={form.title} onChange={e => change('title', e.target.value)} className="ui-input mt-2" /></label>
+          <label htmlFor="blog-title" className="block text-sm font-medium">Title<input id="blog-title" required minLength="5" maxLength="180" value={form.title} onChange={e => change('title', e.target.value)} aria-invalid={Boolean(fieldError && (form.title.trim().length < 5 || form.title.trim().length > 180))} className="ui-input mt-2" /></label>
           <label htmlFor="blog-slug" className="block text-sm font-medium">Slug<input id="blog-slug" required maxLength="120" pattern="[a-z0-9]+(-[a-z0-9]+)*" value={form.slug} onChange={e => { setSlugEdited(true); change('slug', e.target.value) }} aria-describedby="blog-slug-hint" className="ui-input mt-2 font-mono" /><span id="blog-slug-hint" className="mt-1 block break-words text-xs text-[var(--muted)]">URL: /blogs/{form.slug || 'your-title'}</span></label>
           <label htmlFor="blog-tags" className="block text-sm font-medium">Tags, comma separated<input id="blog-tags" value={form.tags} onChange={e => change('tags', e.target.value)} placeholder="react, javascript" className="ui-input mt-2" /></label>
           <label htmlFor="blog-content" className="block text-sm font-medium">Content<textarea id="blog-content" required minLength="20" maxLength="40000" rows="16" value={form.content} onChange={e => change('content', e.target.value)} aria-describedby="blog-content-hint" className="ui-input mt-2 min-h-64 resize-y font-mono leading-6" /><span id="blog-content-hint" className="mt-1 block text-xs text-[var(--muted)]">Markdown supported. {form.content.length}/40000</span></label>
           <label htmlFor="blog-status" className="block text-sm font-medium">Publication<select id="blog-status" value={form.status} onChange={e => change('status', e.target.value)} className="ui-input mt-2"><option value="draft">Save as draft</option><option value="published">Publish</option></select></label>
           {fieldError && <p role="alert" className="rounded-lg border border-[var(--danger)] p-3 text-sm text-[var(--danger)]">{fieldError}</p>}
-          <div className="flex flex-wrap gap-3"><button disabled={saving} className="ui-button">{saving ? 'Saving…' : editing ? 'Save changes' : 'Save blog'}</button>{editing && <button type="button" disabled={saving} onClick={() => setConfirmDelete(true)} className="ui-button-secondary text-[var(--danger)]">Delete</button>}</div>
+          <div className="flex flex-wrap gap-3"><button disabled={saving} aria-busy={saving} className="ui-button">{saving ? 'Saving…' : form.status === 'published' ? 'Publish blog' : 'Save draft'}</button>{editing && <button type="button" disabled={saving} onClick={() => setConfirmDelete(true)} className="ui-button-secondary text-[var(--danger)]">Delete</button>}</div>
         </form>
         <aside className="min-w-0"><h2 className="mb-3 text-lg font-semibold">Preview</h2><div className="max-h-[70vh] min-w-0 overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5"><h3 className="mb-5 break-words text-2xl font-bold">{form.title || 'Your title'}</h3><BlogContent content={form.content || 'Your content preview will appear here.'} /></div>
           <section className="mt-7"><h2 className="mb-3 text-lg font-semibold">Your writing</h2>{mine.length ? <ul className="space-y-2">{mine.map(blog => <li key={blog.id} className="flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3"><Link to={`/blogs/${encodeURIComponent(blog.slug)}/edit`} className="min-w-0 break-words font-medium hover:text-[var(--accent)]">{blog.title}</Link><span className="shrink-0 rounded-md bg-[var(--surface-raised)] px-2 py-1 text-xs text-[var(--muted)]">{blog.status}</span></li>)}</ul> : <p className="text-sm text-[var(--muted)]">Your drafts and published blogs will appear here.</p>}</section>

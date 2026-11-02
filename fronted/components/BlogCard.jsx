@@ -3,6 +3,7 @@ import { formatBlogDate } from '../data/blogs'
 import BlogCover from './BlogCover'
 import Icon from './Icon'
 import TagBadge from './TagBadge'
+import Avatar from './Avatar'
 
 export default function BlogCard({ blog, selectedTag, onTagSelect }) {
   return (
@@ -15,7 +16,7 @@ export default function BlogCard({ blog, selectedTag, onTagSelect }) {
           <span className="flex items-center gap-1.5"><Icon name="clock" className="size-3.5" />{blog.readingTime}</span>
           {blog.featured && <span className="text-[var(--accent)]">Featured</span>}
         </div>
-        <h3 className="break-words text-lg font-semibold leading-6 tracking-tight">
+        <h3 className="break-words text-xl font-semibold leading-7 tracking-tight">
           <Link to={`/blogs/${blog.id}`} className="rounded-sm hover:text-[var(--accent)]">{blog.title}</Link>
         </h3>
         <p className="mt-2 line-clamp-3 break-words text-sm leading-6 text-[var(--muted)]">{blog.description}</p>
@@ -27,7 +28,7 @@ export default function BlogCard({ blog, selectedTag, onTagSelect }) {
           ))}
         </div>
         <div className="mt-auto flex min-w-0 flex-wrap items-center justify-between gap-2 border-t border-[var(--border)] pt-3 text-xs">
-          <p className="break-words font-medium text-[var(--text)]">{blog.author}</p>
+          <p className="flex min-w-0 items-center gap-2 break-words font-medium text-[var(--text)]"><Avatar name={blog.author} size="sm" /><span className="break-words">{blog.author}</span></p>
           <time dateTime={blog.publishedAt} className="text-[var(--muted)]">{formatBlogDate(blog.publishedAt)}</time>
         </div>
       </div>

@@ -5,7 +5,12 @@ const quotePattern = /^>\s?(.*)$/
 const fencePattern = /^```(.*)$/
 
 function inlineContent(text) {
-  return text.split(/(\*\*[^*\n]+\*\*|`[^`\n]+`|\*[^*\n]+\*)/g).map((part, index) => {
+  return text.split(/(\[[^\]\n]+\]\((?:https?:\/\/|mailto:|\/)[^)]+\)|\*\*[^*\n]+\*\*|`[^`\n]+`|\*[^*\n]+\*)/g).map((part, index) => {
+    const link = part.match(/^\[([^\]]+)\]\(((?:https?:\/\/|mailto:|\/)[^)]+)\)$/i)
+    if (link) {
+      const external = /^https?:\/\//i.test(link[2])
+      return <a key={index} href={link[2]} className="font-medium text-[var(--accent)] underline underline-offset-4 hover:text-[var(--primary-hover)]" {...(external ? { target: '_blank', rel: 'noreferrer' } : {})}>{link[1]}</a>
+    }
     if (part.startsWith('**') && part.endsWith('**')) {
       return <strong key={index} className="font-semibold text-[var(--text)]">{part.slice(2, -2)}</strong>
     }

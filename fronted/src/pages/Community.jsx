@@ -9,6 +9,10 @@ import OnlineMembers from '../components/community/OnlineMembers.jsx'
 import api from '../lib/api.js'
 import { useMockSession } from '../state/useMockSession.js';
 import useSocket from '../hooks/useSocket.js';
+import PageHeader from '../../components/PageHeader.jsx'
+import EmptyState from '../../components/EmptyState.jsx'
+import ErrorState from '../../components/ErrorState.jsx'
+import Skeleton from '../../components/Skeleton.jsx'
 
 function initials(member) {
   return (member?.name || member?.username || '?').slice(0, 1).toUpperCase()
@@ -16,7 +20,7 @@ function initials(member) {
 
 function normalizeMember(member) {
   const id = String(member?._id || member?.id || '')
-  return { id, memberId: id, name: member?.name || member?.username || 'Community member', initials: initials(member), online: Boolean(member?.isOnline), reputation: member?.reputation || 0 }
+  return { id, memberId: id, name: member?.name || member?.username || 'Community member', avatar: member?.avatar || '', initials: initials(member), online: Boolean(member?.isOnline), reputation: member?.reputation || 0 }
 }
 
 function normalizeMessage(message, currentUserId) {
@@ -78,7 +82,14 @@ export default function Community() {
     onMessageUpdated: (msg) => setMessages(prev => prev.map(m => m.id === String(msg._id) ? normalizeMessage(msg, currentUserId) : m)),
     onMessageDeleted: ({ messageId }) => setMessages(prev => prev.filter(m => m.id !== String(messageId))),
     onReactionUpdated: ({ messageId, reactions }) => setMessages(prev => prev.map(m => m.id === String(messageId) ? { ...m, reactions } : m)),
-    onRoomUsers: ({ users }) => setMembers(users.map(normalizeMember)),
+    onRoomUsers: ({ users }) => setMembers(previous => {
+      const onlineUsers = new Map(users.map(user => [String(user._id || user.id), normalizeMember({ ...user, isOnline: true })]))
+      const knownIds = new Set(previous.map(member => member.id))
+      return [
+        ...previous.map(member => onlineUsers.has(member.id) ? { ...member, online: true } : { ...member, online: false }),
+        ...[...onlineUsers.values()].filter(member => !knownIds.has(member.id)),
+      ]
+    }),
     onUserOnline: (payload) => setMembers(prev => prev.map(m => m.id === payload.userId ? { ...m, online: true } : m)),
     onUserOffline: (payload) => setMembers(prev => prev.map(m => m.id === payload.userId ? { ...m, online: false, lastSeen: payload.lastSeen } : m)),
     onError: (err) => console.error(err),
@@ -191,13 +202,13 @@ export default function Community() {
   const conversationName = activeRoom ? `#${activeRoom.name}` : 'a room'
   return (
     <section aria-label="DevHub Community chat" className="mx-auto flex h-[calc(100dvh-9rem)] min-h-0 max-w-6xl flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] sm:h-[calc(100dvh-10rem)] md:h-[calc(100dvh-8.5rem)] lg:h-[calc(100dvh-7.5rem)]">
-      <div className="shrink-0 border-b border-[var(--border)] px-3 py-3 sm:px-5 sm:py-4"><div className="flex flex-wrap items-center gap-3"><h1 className="text-lg font-semibold text-[var(--text)] sm:text-xl">Community</h1><button type="button" onClick={() => setShowCreateRoom(open => !open)} aria-expanded={showCreateRoom} className="ui-button-secondary ml-auto">{showCreateRoom ? 'Cancel' : 'Create room'}</button></div><p role="status" aria-live="polite" className="mt-1 break-words text-xs text-[var(--muted)]">{connectionStatus} <span aria-hidden="true">·</span> Socket: {socketConnectionStatus}</p>{showCreateRoom && <form onSubmit={createRoom} className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto]"><input required minLength={3} maxLength={100} value={roomName} onChange={event => setRoomName(event.target.value)} aria-label="Room name" placeholder="Room name" className="ui-input" /><input maxLength={500} value={roomDescription} onChange={event => setRoomDescription(event.target.value)} aria-label="Description (optional)" placeholder="Description (optional)" className="ui-input" /><button className="ui-button">Create public room</button></form>}</div>
-      {error && <p role="alert" className="shrink-0 break-words border-b border-[var(--border)] px-4 py-2.5 text-sm text-[var(--danger)] sm:px-5">{error}</p>}
+      <div className="shrink-0 border-b border-[var(--border)] px-3 py-3 sm:px-5 sm:py-4"><PageHeader title="Community" description="Join developer conversations, share ideas, and learn together." action={<button type="button" onClick={() => setShowCreateRoom(open => !open)} aria-expanded={showCreateRoom} className="ui-button-secondary">{showCreateRoom ? 'Cancel' : 'Create room'}</button>} /><p role="status" aria-live="polite" className="mt-2 break-words text-xs text-[var(--muted)]">{connectionStatus} <span aria-hidden="true">·</span> Socket: {socketConnectionStatus}</p>{showCreateRoom && <form onSubmit={createRoom} className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto]"><input required minLength={3} maxLength={100} value={roomName} onChange={event => setRoomName(event.target.value)} aria-label="Room name" placeholder="Room name" className="ui-input" /><input maxLength={500} value={roomDescription} onChange={event => setRoomDescription(event.target.value)} aria-label="Description (optional)" placeholder="Description (optional)" className="ui-input" /><button className="ui-button">Create public room</button></form>}</div>
+      {error && <ErrorState className="shrink-0 rounded-none border-x-0 border-t-0 px-4 py-2.5 sm:px-5" title="Community update" description={error} />}
       <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] md:grid-cols-[14rem_minmax(0,1fr)] lg:grid-cols-[16rem_minmax(0,1fr)]">
         <aside aria-label="Community rooms" className="hidden min-h-0 overflow-y-auto border-r border-[var(--border)] md:block">{sidebar}</aside>
         <div className="flex min-h-0 min-w-0 flex-col bg-[var(--surface)]">
           <ChatHeader channel={activeRoom} onOpenChannels={() => setDrawer('channels')} onOpenMembers={() => setDrawer('members')} />
-          {loadingRooms || loadingMessages ? <p role="status" aria-live="polite" aria-busy="true" className="m-auto p-6 text-sm text-[var(--muted)]">{loadingRooms ? 'Loading public rooms…' : 'Loading room messages…'}</p> : activeRoom ? <MessageList key={activeRoom.id} messages={messages} members={members} currentUserId={currentUserId} onReact={toggleReaction} conversationName={conversationName} /> : <p className="m-auto p-6 text-sm text-[var(--muted)]">Select a room to begin.</p>}
+          {loadingRooms || loadingMessages ? <div role="status" aria-live="polite" aria-busy="true" className="m-auto w-full space-y-5 p-6"><span className="sr-only">{loadingRooms ? 'Loading public rooms…' : 'Loading room messages…'}</span>{[0, 1, 2].map(item => <div key={item} aria-hidden="true" className="flex gap-3"><Skeleton className="size-10 shrink-0 rounded-lg" /><div className="flex-1 space-y-2"><Skeleton className="h-4 w-1/4" /><Skeleton className="h-4 w-4/5" /></div></div>)}</div> : activeRoom ? <MessageList key={activeRoom.id} messages={messages} members={members} currentUserId={currentUserId} onReact={toggleReaction} conversationName={conversationName} /> : <EmptyState className="m-auto w-[calc(100%-2rem)]" title={rooms.length ? 'Choose a room' : 'No public rooms yet'} description={rooms.length ? 'Select a room from the channel list to join the conversation.' : 'Create a public room to start a conversation.'} />}
           <div className="min-w-0 shrink-0 border-t border-[var(--border)] bg-[var(--surface)]">{activeRoom && <MessageInput key={activeRoom.id} conversationName={conversationName} onSend={sendMessage} />}</div>
         </div>
       </div>

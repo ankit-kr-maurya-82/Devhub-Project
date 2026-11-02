@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import Icon from '../../../components/Icon.jsx'
 import { formatNotificationTime } from '../../data/notifications.js'
 import { useNotifications } from '../../state/useNotifications.js'
+import Badge from '../../../components/Badge.jsx'
 
 export default function NotificationItem({ notification, compact = false, onNavigate, onClose, onAction }) {
   const { markAsRead, deleteNotification } = useNotifications()
@@ -24,8 +25,8 @@ export default function NotificationItem({ notification, compact = false, onNavi
             onClose?.()
           }} className="block rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--accent)]">
             <div className="flex items-start gap-2">
-              <p className={`flex-1 text-sm leading-5 ${notification.read ? 'font-medium text-[var(--muted)]' : 'font-semibold text-[var(--text)]'}`}>{notification.title}</p>
-              {!notification.read && <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-[var(--accent)]"><span className="sr-only">Unread</span></span>}
+              <p className={`min-w-0 flex-1 break-words text-sm leading-5 ${notification.read ? 'font-medium text-[var(--muted)]' : 'font-semibold text-[var(--text)]'}`}>{notification.title}</p>
+              {!notification.read && <Badge variant="accent" className="shrink-0">New</Badge>}
             </div>
             <p className="mt-1 break-words leading-5 text-[var(--muted)]">{notification.message}</p>
           </Link>

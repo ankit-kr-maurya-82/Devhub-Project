@@ -8,6 +8,9 @@ import { formatBlogDate, readingTime } from '../data/blogs.js'
 import { useMockSession } from '../src/state/useMockSession.js'
 import api from '../src/lib/api.js'
 import { mapBlog } from '../hooks/useBlogs.js'
+import Avatar from '../components/Avatar.jsx'
+import Badge from '../components/Badge.jsx'
+import ErrorState from '../components/ErrorState.jsx'
 
 export default function BlogDetails() {
   const { slug } = useParams()
@@ -37,7 +40,7 @@ export default function BlogDetails() {
   }
 
   if (loading) return <div role="status" aria-live="polite" aria-busy="true" className="mx-auto max-w-4xl px-4 py-16 text-center text-sm text-[var(--muted)]">Loading blog…</div>
-  if (error?.slug === slug && !blog) return <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6"><p role="alert" className="ui-card border-[var(--danger)] p-5 text-sm text-[var(--danger)]">{error.message}</p><Link to="/blogs" className="ui-button-secondary mt-4">Back to blogs</Link></div>
+  if (error?.slug === slug && !blog) return <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6"><ErrorState title="Could not load this blog" description={error.message} /><Link to="/blogs" className="ui-button-secondary mt-4">Back to blogs</Link></div>
   if (!blog) return null
 
   return (
@@ -45,9 +48,9 @@ export default function BlogDetails() {
       <Link to="/blogs" className="text-sm font-medium text-[var(--muted)] hover:text-[var(--accent)]">← All blogs</Link>
       <div className="mt-5"><BlogCover category={blog.category} icon="code" large /></div>
       <header className="mx-auto max-w-3xl border-b border-[var(--border)] py-6 sm:py-8">
-        {!!blog.tags.length && <div className="flex flex-wrap gap-2">{blog.tags.map(item => <Link key={item} to={`/blogs?tag=${encodeURIComponent(item)}`} className="max-w-full break-words rounded-md border border-[var(--border)] bg-[var(--surface-raised)] px-2.5 py-1.5 text-xs text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]">{item}</Link>)}</div>}
+        {!!blog.tags.length && <div className="flex flex-wrap gap-2">{blog.tags.map(item => <Link key={item} to={`/blogs?tag=${encodeURIComponent(item)}`} className="rounded-sm"><Badge variant="accent">{item}</Badge></Link>)}</div>}
         <h1 className="mt-4 break-words text-3xl font-bold tracking-tight sm:text-4xl">{blog.title}</h1>
-        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-[var(--muted)]"><span className="break-words">By <strong className="font-medium text-[var(--text)]">{blog.author}</strong></span><span>{readingTime(blog.content)} <span aria-hidden="true">·</span> <time dateTime={blog.publishedAt}>{formatBlogDate(blog.publishedAt)}</time></span></div>
+        <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-3 text-sm text-[var(--muted)]"><span className="flex min-w-0 items-center gap-3"><Avatar name={blog.author} /><span className="min-w-0 break-words">By <strong className="font-medium text-[var(--text)]">{blog.author}</strong></span></span><span>{readingTime(blog.content)} <span aria-hidden="true">·</span> <time dateTime={blog.publishedAt}>{formatBlogDate(blog.publishedAt)}</time></span></div>
         {!owner && <div className="mt-4"><ReportButton targetType="blog" targetId={blog._id} /></div>}
         {owner && <div className="mt-5 flex flex-wrap gap-2"><Link to={`/blogs/${encodeURIComponent(blog.slug)}/edit`} className="ui-button-secondary">Edit</Link><button type="button" onClick={() => setConfirmDelete(true)} className="ui-button-secondary text-[var(--danger)]">Delete</button></div>}
       </header>
