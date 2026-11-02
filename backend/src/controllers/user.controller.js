@@ -31,6 +31,22 @@ const getProfile = async (req, res) => {
     }
 };
 
+const searchUsers = async (req, res) => {
+    try {
+        const query = typeof req.query.q === "string" ? req.query.q.trim() : "";
+        if (query.length < 2 || query.length > 50) return res.status(400).json({ success: false, message: "Search must be between 2 and 50 characters" });
+        const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const users = await User.find({ isActive: true, $or: [{ username: { $regex: escaped, $options: "i" } }, { name: { $regex: escaped, $options: "i" } }] })
+            .select("name username avatar reputation")
+            .sort({ username: 1 })
+            .limit(5);
+        return res.status(200).json({ success: true, data: users });
+    } catch (error) {
+        logSafeError("Search Users Error:", error);
+        return res.status(500).json({ success: false, message: "Internal server error" });
+    }
+};
+
 const updateProfile = async (req, res) => {
   try {
     const { name, username, bio, avatar, skills } = req.body ?? {};
@@ -83,5 +99,6 @@ const updateProfile = async (req, res) => {
 
 export {
     getProfile,
+    searchUsers,
     updateProfile
 };

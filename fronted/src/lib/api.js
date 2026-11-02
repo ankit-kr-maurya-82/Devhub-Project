@@ -33,6 +33,7 @@ export const api = {
     resetPassword: (token, details) => request(`/auth/reset-password/${encodeURIComponent(token)}`, { method: 'POST', body: details }),
   },
   users: {
+    search: query => request(`/user/search?q=${encodeURIComponent(query)}`),
     profile: id => request(`/user/profile/${encodeURIComponent(id)}`),
     updateProfile: details => request('/user/profile', { method: 'PUT', body: details }),
   },
