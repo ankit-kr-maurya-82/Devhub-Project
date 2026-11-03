@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Icon from '../../../components/Icon.jsx'
+import PageHeader from '../../../components/PageHeader.jsx'
 import api from '../../lib/api.js'
 
 const metrics = [
@@ -33,7 +34,7 @@ export default function AdminDashboard() {
     return () => { active = false }
   }, [refresh])
   if (loading && !dashboard) return <p role="status" aria-live="polite" className="p-8 text-sm text-[var(--muted)]">Loading admin dashboard…</p>
-  return <div className="min-w-0 space-y-6"><header><h1>Admin dashboard</h1><p className="mt-2 text-sm text-[var(--muted)]">Account, content, and moderation activity.</p></header>
+  return <div className="min-w-0 space-y-6"><PageHeader eyebrow="Admin workspace" title="Platform overview" description="Account, content, and moderation activity across DevHub." action={<button type="button" onClick={() => setRefresh(value => value + 1)} className="ui-button-secondary"><Icon name="refresh" className="size-4" />Refresh</button>} />
     {error && <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--danger)] p-4 text-sm text-[var(--danger)]"><span>{error}</span><button type="button" onClick={() => setRefresh(value => value + 1)} className="ui-button-secondary">Retry</button></div>}
     {loading && dashboard && <p role="status" aria-live="polite" className="text-sm text-[var(--muted)]">Refreshing platform statistics…</p>}
     {dashboard && <><section aria-label="Platform statistics" className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-4">{metrics.map(([key, label, icon]) => <article key={key} className="ui-card min-w-0 p-4 sm:p-5"><div className="flex min-w-0 items-center justify-between gap-3"><span className="text-sm text-[var(--muted)]">{label}</span><Icon name={icon} className="size-4 shrink-0 text-[var(--accent)]" /></div><p className="mt-3 break-words text-2xl font-semibold tabular-nums">{dashboard.counts[key]}</p></article>)}</section>

@@ -7,7 +7,7 @@ import { useMockSession } from '../src/state/useMockSession.js'
 const navClass = ({ isActive }) => `site-nav-link ${isActive ? 'is-active' : ''}`
 
 export default function Navbar({ menuOpen, onMenuToggle, menuButtonRef, showWorkspaceMenu = false }) {
-  const { theme, toggleTheme, user, logout } = useMockSession()
+  const { theme, toggleTheme, user, role, logout } = useMockSession()
   const navigate = useNavigate()
 
   return (
@@ -20,6 +20,7 @@ export default function Navbar({ menuOpen, onMenuToggle, menuButtonRef, showWork
           <NavLink to="/blogs" className={navClass}>Stories</NavLink>
           {user && <NavLink to="/community" className={navClass}>Community</NavLink>}
           {user && <NavLink to="/dashboard" className={navClass}>My space</NavLink>}
+          {role === 'admin' && <NavLink to="/admin" className={navClass}>Admin</NavLink>}
         </nav>
         <div className="site-search hidden min-w-0 flex-1 md:flex"><SearchBar /></div>
         <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
