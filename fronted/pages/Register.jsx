@@ -61,7 +61,7 @@ export default function Register() {
         <AuthField id="register-password" name="password" label="Password" type="password" autoComplete="new-password" minLength={8} placeholder="Create a password" hint="Use at least 8 characters." value={form.password} onChange={updateField} error={errors.password} />
         <AuthField id="register-confirm-password" name="confirmPassword" label="Confirm password" type="password" autoComplete="new-password" placeholder="Re-enter your password" value={form.confirmPassword} onChange={updateField} error={errors.confirmPassword} />
 
-        <button type="submit" disabled={submitting} className="mt-2 flex min-h-12 w-full items-center justify-center gap-3 rounded-xl bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--primary-hover)] active:bg-[var(--primary-hover)] disabled:opacity-60">
+        <button type="submit" disabled={submitting} className="mt-2 flex min-h-12 w-full items-center justify-center gap-3 rounded-xl bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-[var(--on-primary)] transition-colors hover:bg-[var(--primary-hover)] active:bg-[var(--primary-hover)] disabled:opacity-60">
           {submitting ? 'Creating account…' : 'Create account'}
         </button>
         <div role="status" aria-atomic="true">

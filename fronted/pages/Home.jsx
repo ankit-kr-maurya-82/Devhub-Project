@@ -1,59 +1,67 @@
-import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import Icon from '../components/Icon'
-import QuestionCard from '../components/QuestionCard'
-import TagBadge from '../components/TagBadge'
-import { useQuestions, useQuestionStatus } from '../hooks/useQuestions'
 
-const shortcuts = [
-  { to: '/ask-question', icon: 'message', title: 'Ask a question', description: 'Get help with something you’re working on.' },
-  { to: '/community', icon: 'users', title: 'Join a conversation', description: 'Meet others and share what you’re learning.' },
-]
+function HeroArtwork() {
+  return (
+    <svg className="landing-art" viewBox="0 0 560 520" role="img" aria-label="Code editor with a community conversation">
+      <defs>
+        <linearGradient id="editor-glow" x1="0" x2="1" y1="0" y2="1"><stop stopColor="#b7f28b" stopOpacity=".24"/><stop offset="1" stopColor="#8ad8d2" stopOpacity=".02"/></linearGradient>
+      </defs>
+      <circle cx="312" cy="260" r="220" fill="url(#editor-glow)" />
+      <g transform="rotate(-4 300 250)">
+        <rect x="84" y="104" width="390" height="282" rx="18" fill="#242725" stroke="#545b54" />
+        <path d="M84 150h390" stroke="#454b45" />
+        <circle cx="109" cy="128" r="5" fill="#ef8078"/><circle cx="128" cy="128" r="5" fill="#e5bd69"/><circle cx="147" cy="128" r="5" fill="#9dcc7a"/>
+        <text x="179" y="133" fill="#a5aaa2" fontSize="11" fontFamily="monospace">ideas.js</text>
+        <g fontFamily="monospace" fontSize="14">
+          <text x="110" y="185" fill="#788078">01</text><text x="148" y="185" fill="#d5a6ee">const</text><text x="194" y="185" fill="#e8e8dc">community</text><text x="281" y="185" fill="#b7f28b">=</text><text x="298" y="185" fill="#e8e8dc">{'{'}</text>
+          <text x="110" y="218" fill="#788078">02</text><text x="164" y="218" fill="#a7d9d1">learn:</text><text x="220" y="218" fill="#e5bd69">'together'</text><text x="304" y="218" fill="#e8e8dc">,</text>
+          <text x="110" y="251" fill="#788078">03</text><text x="164" y="251" fill="#a7d9d1">share:</text><text x="220" y="251" fill="#e5bd69">'freely'</text><text x="285" y="251" fill="#e8e8dc">,</text>
+          <text x="110" y="284" fill="#788078">04</text><text x="164" y="284" fill="#a7d9d1">build:</text><text x="220" y="284" fill="#e5bd69">'anything'</text>
+          <text x="110" y="317" fill="#788078">05</text><text x="148" y="317" fill="#e8e8dc">{'}'}</text>
+        </g>
+        <rect x="109" y="343" width="160" height="23" rx="11.5" fill="#303831" />
+        <circle cx="123" cy="354.5" r="4" fill="#b7f28b"/><text x="134" y="359" fill="#c4d0c0" fontSize="10" fontFamily="monospace">all systems curious</text>
+      </g>
+      <g transform="rotate(5 376 399)">
+        <rect x="287" y="340" width="208" height="91" rx="15" fill="#d7f7c3" />
+        <circle cx="312" cy="367" r="11" fill="#252b25"/><path d="M307 367h10m-5-5v10" stroke="#d7f7c3" strokeWidth="1.5"/>
+        <text x="333" y="370" fill="#344032" fontSize="11" fontFamily="sans-serif" fontWeight="700">A good question</text>
+        <text x="310" y="394" fill="#455343" fontSize="11" fontFamily="sans-serif">can open up a whole new</text><text x="310" y="410" fill="#455343" fontSize="11" fontFamily="sans-serif">way of thinking.</text>
+      </g>
+      <path d="M76 426c75 34 129 34 190 4" fill="none" stroke="#a7d9d1" strokeWidth="1.5" strokeDasharray="3 7" />
+      <circle cx="76" cy="426" r="4" fill="#b7f28b"/><circle cx="267" cy="430" r="4" fill="#b7f28b"/>
+    </svg>
+  )
+}
 
 export default function Home() {
-  const questions = useQuestions()
-  const { loading, error } = useQuestionStatus()
-  const [query, setQuery] = useState('')
-  const [selectedTag, setSelectedTag] = useState('')
-  const tags = useMemo(() => [...new Set(questions.flatMap(question => question.tags))].sort(), [questions])
-  const normalizedQuery = query.trim().toLowerCase()
-  const matches = question => (!selectedTag || question.tags.includes(selectedTag)) &&
-    [question.title, question.description, question.username, ...question.tags].join(' ').toLowerCase().includes(normalizedQuery)
-  const hasFilters = Boolean(normalizedQuery || selectedTag)
-  const visibleQuestions = questions.filter(matches).sort((a, b) => b.votes - a.votes).slice(0, hasFilters ? undefined : 3)
-  const selectTag = tag => setSelectedTag(current => current === tag ? '' : tag)
-  const clearFilters = () => { setQuery(''); setSelectedTag('') }
-
   return (
-    <div className="mx-auto max-w-6xl space-y-7 sm:space-y-9">
-      <section aria-labelledby="hero-title" className="ui-card p-5 sm:p-7">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div className="min-w-0">
-            <p className="mb-1.5 text-sm font-medium text-[var(--accent)]">Welcome to DevHub</p>
-            <h1 id="hero-title">What would you like to learn?</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">Find an answer or get help from the community.</p>
-          </div>
-          <Link to="/ask-question" className="ui-button"><Icon name="plus" className="size-4" />Ask a question</Link>
+    <div className="landing-page">
+      <header className="landing-header">
+        <Link to="/" className="landing-wordmark" aria-label="DevHub home">DevHub</Link>
+        <nav aria-label="Main navigation" className="landing-nav">
+          <Link to="/questions">Explore</Link>
+          <Link to="/blogs">Stories</Link>
+          <Link to="/community">Community</Link>
+          <Link to="/login">Sign in</Link>
+          <Link to="/register" className="landing-pill">Get started</Link>
+        </nav>
+      </header>
+      <main className="landing-hero">
+        <div className="landing-copy">
+          <p className="landing-eyebrow"><span className="landing-spark" aria-hidden="true">✳</span> For the curious and the builders</p>
+          <h1>Good ideas<br />grow together.</h1>
+          <p className="landing-subtitle">Find your people, work through the tricky bits, and share what you discover along the way.</p>
+          <Link to="/questions" className="landing-cta">Find your next idea <span aria-hidden="true">→</span></Link>
         </div>
-        <div className="mt-5 border-t border-[var(--border)] pt-5">
-          <label htmlFor="developer-search" className="mb-2 block text-sm font-semibold">Search questions</label>
-          <div className="flex min-h-13 items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--page)] px-4 focus-within:border-[var(--accent)]"><Icon name="search" className="size-5 shrink-0 text-[var(--subtle)]" /><input id="developer-search" type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Search questions or topics…" className="min-w-0 flex-1 bg-transparent py-3 text-sm outline-none" /></div>
-          {tags.length > 0 && <div className="mt-3 flex flex-wrap items-center gap-2"><span className="mr-1 text-xs text-[var(--muted)]">Topics</span>{tags.slice(0, 8).map(tag => <TagBadge key={tag} tag={tag} selected={selectedTag === tag} onSelect={selectTag} />)}</div>}
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--subtle)]"><p role="status">{hasFilters ? `${visibleQuestions.length} matching questions` : 'Questions from the DevHub community.'}</p>{hasFilters && <button type="button" onClick={clearFilters} className="rounded px-2 py-1 font-medium text-[var(--accent)]">Clear filters</button>}</div>
-        </div>
-      </section>
-
-      <section aria-label="Get started" className="grid gap-3 sm:grid-cols-2">
-        {shortcuts.map(item => <Link key={item.to} to={item.to} className="ui-card group flex items-start gap-3 p-5 transition-colors hover:border-[var(--accent)]"><span className="rounded-lg bg-[var(--accent-soft)] p-2.5 text-[var(--accent)]"><Icon name={item.icon} /></span><div className="min-w-0"><h2 className="text-sm font-semibold group-hover:text-[var(--accent)]">{item.title} <span aria-hidden="true">→</span></h2><p className="mt-1 text-sm leading-6 text-[var(--muted)]">{item.description}</p></div></Link>)}
-      </section>
-
-      <section aria-labelledby="questions-title">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><h2 id="questions-title" className="text-lg font-semibold tracking-tight sm:text-xl">{hasFilters ? 'Matching questions' : 'Recent questions'}</h2><Link to="/questions" className="rounded py-2 text-sm font-medium text-[var(--accent)] focus-visible:outline">All questions →</Link></div>
-        {loading && !questions.length && <p role="status" aria-live="polite" className="ui-card p-5 text-sm text-[var(--muted)]">Loading questions…</p>}
-        {error && <p role="alert" className="ui-card border-[var(--danger)] p-5 text-sm text-[var(--danger)]">Could not load questions: {error}</p>}
-        <div className="space-y-3">{visibleQuestions.map(question => <QuestionCard key={question.id} question={question} selectedTag={selectedTag} onTagSelect={selectTag} />)}</div>
-        {!loading && !error && !visibleQuestions.length && <div className="ui-card p-6 text-center sm:p-8"><h3 className="font-semibold">{hasFilters ? 'No matching questions' : 'No questions yet'}</h3><p className="mt-1 text-sm text-[var(--muted)]">{hasFilters ? 'Try another search or topic.' : 'Be the first to ask the community.'}</p>{hasFilters ? <button type="button" onClick={clearFilters} className="ui-button-secondary mt-4">Clear filters</button> : <Link to="/ask-question" className="ui-button mt-4">Ask a question</Link>}</div>}
-      </section>
+        <HeroArtwork />
+      </main>
+      <footer className="landing-footer">
+        <span>© {new Date().getFullYear()} DevHub</span>
+        <nav aria-label="Footer navigation">
+          <Link to="/community">Community</Link><Link to="/blogs">Blog</Link><Link to="/questions">Questions</Link><Link to="/login">Help</Link>
+        </nav>
+      </footer>
     </div>
   )
 }

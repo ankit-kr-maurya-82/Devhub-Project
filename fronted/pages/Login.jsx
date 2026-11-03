@@ -64,7 +64,7 @@ export default function Login() {
           </Link>
         </div>
 
-        <button type="submit" disabled={submitting} className="flex min-h-12 w-full items-center justify-center gap-3 rounded-xl bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--primary-hover)] active:bg-[var(--primary-hover)] disabled:opacity-60">
+        <button type="submit" disabled={submitting} className="flex min-h-12 w-full items-center justify-center gap-3 rounded-xl bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-[var(--on-primary)] transition-colors hover:bg-[var(--primary-hover)] active:bg-[var(--primary-hover)] disabled:opacity-60">
           {submitting ? 'Logging in…' : 'Log in'}
         </button>
         <div role="status" aria-atomic="true">

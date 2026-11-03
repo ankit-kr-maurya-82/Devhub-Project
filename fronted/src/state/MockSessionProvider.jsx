@@ -6,8 +6,8 @@ export default function MockSessionProvider({ children }) {
   const [user, setUser] = useState(null)
   const [sessionLoading, setSessionLoading] = useState(true)
   const [theme, setTheme] = useState(() => {
-    try { return localStorage.getItem('devhub-theme') === 'dark' ? 'dark' : 'light' }
-    catch { return 'light' }
+    try { return localStorage.getItem('devhub-theme') === 'light' ? 'light' : 'dark' }
+    catch { return 'dark' }
   })
 
   useEffect(() => {

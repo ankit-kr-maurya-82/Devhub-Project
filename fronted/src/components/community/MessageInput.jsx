@@ -103,7 +103,7 @@ export default function MessageInput({ conversationName, onSend }) {
             </div>
             <button type="button" aria-label="Add code snippet" aria-expanded={showCode} onClick={() => setShowCode(true)} className={`${toolbarButtonClass} ${showCode ? 'bg-[var(--accent-soft)] text-[var(--accent)]' : ''}`}><Icon name="code" className="size-4" /></button>
           </div>
-          <button type="submit" disabled={!canSend || isSending} className="flex min-h-11 items-center gap-2 rounded-lg bg-[var(--primary)] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[var(--primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:cursor-not-allowed disabled:bg-[var(--accent-soft)] disabled:text-[var(--accent)] sm:px-4">
+          <button type="submit" disabled={!canSend || isSending} className="flex min-h-11 items-center gap-2 rounded-lg bg-[var(--primary)] px-3 py-2 text-sm font-semibold text-[var(--on-primary)] transition hover:bg-[var(--primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:cursor-not-allowed disabled:bg-[var(--accent-soft)] disabled:text-[var(--accent)] sm:px-4">
             {isSending ? 'Sending…' : 'Send'} <ComposerIcon name="send" />
           </button>
         </div>
