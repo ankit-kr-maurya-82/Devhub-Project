@@ -75,6 +75,8 @@ export const api = {
   admin: {
     dashboard: () => request('/admin/dashboard'),
     users: params => request(`/admin/users${params ? `?${new URLSearchParams(params)}` : ''}`),
+    userActivity: (id, params) => request(`/admin/users/${encodeURIComponent(id)}/activity?${new URLSearchParams(params)}`),
+    content: (type, params) => request(`/admin/content/${encodeURIComponent(type)}?${new URLSearchParams(params)}`),
     setUserActive: (id, isActive) => request(`/admin/users/${encodeURIComponent(id)}/status`, { method: 'PATCH', body: { isActive } }),
     reports: params => request(`/admin/reports${params ? `?${new URLSearchParams(params)}` : ''}`),
     moderateReport: (id, details) => request(`/admin/reports/${encodeURIComponent(id)}`, { method: 'PATCH', body: details }),

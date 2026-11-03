@@ -26,6 +26,7 @@ const Notifications = lazy(() => import('./pages/Notifications.jsx'))
 const AdminLayout = lazy(() => import('./layouts/AdminLayout.jsx'))
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard.jsx'))
 const ManageUsers = lazy(() => import('./pages/admin/ManageUsers.jsx'))
+const ManageContent = lazy(() => import('./pages/admin/ManageContent.jsx'))
 const Reports = lazy(() => import('./pages/admin/Reports.jsx'))
 const ManageCodingProblems = lazy(() => import('./pages/admin/ManageCodingProblems.jsx'))
 
@@ -55,6 +56,9 @@ function App() {
               <Route path="/admin" element={<RequireAuth><AdminLayout /></RequireAuth>}>
                 <Route index element={<AdminDashboard />} />
                 <Route path="users" element={<ManageUsers />} />
+                <Route path="questions" element={<ManageContent type="questions" />} />
+                <Route path="answers" element={<ManageContent type="answers" />} />
+                <Route path="comments" element={<ManageContent type="comments" />} />
                 <Route path="reports" element={<Reports />} />
                 <Route path="coding" element={<ManageCodingProblems />} />
               </Route>

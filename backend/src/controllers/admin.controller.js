@@ -9,6 +9,8 @@ import CodingProblem from "../models/codingProblem.model.js";
 import Submission from "../models/submission.model.js";
 import Report from "../models/report.model.js";
 import ModerationAction from "../models/moderationAction.model.js";
+import Room from "../models/room.model.js";
+import Message from "../models/message.model.js";
 import { disconnectUserSockets } from "../socket/notificationDelivery.js";
 
 const targetModels = { blog: Blog, question: Question, answer: Answer, comment: Comment, user: User };
@@ -96,13 +98,66 @@ const listUsers = async (req, res) => {
   }
   try {
     const [users, total] = await Promise.all([
-      User.find(filter).select("name username email role isActive reputation createdAt").sort({ createdAt: -1, _id: -1 }).skip((page - 1) * limit).limit(limit),
+      User.find(filter).select("name username email role isActive reputation bio avatar skills isOnline lastSeen createdAt updatedAt").sort({ createdAt: -1, _id: -1 }).skip((page - 1) * limit).limit(limit),
       User.countDocuments(filter),
     ]);
     const totalPages = Math.ceil(total / limit);
     return res.status(200).json({ success: true, data: users, pagination: { page, limit, total, totalPages, hasNextPage: page < totalPages, hasPrevPage: page > 1 } });
   } catch (error) {
     logSafeError("Admin User List Error:", error);
+    return sendError(res, 500, "Internal server error");
+  }
+};
+
+const listUserActivity = async (req, res) => {
+  const { userId } = req.params;
+  if (!mongoose.isValidObjectId(userId)) return sendError(res, 400, "Invalid user ID");
+  const type = req.query.type;
+  const page = positive(req.query.page, 1);
+  const limit = positive(req.query.limit, 20);
+  const collections = {
+    questions: { model: Question, filter: { author: userId }, fields: "title description tags votes views answerCount isSolved moderationStatus createdAt updatedAt" },
+    answers: { model: Answer, filter: { author: userId }, fields: "content votes isAccepted moderationStatus question createdAt updatedAt", populate: ["question", "title"] },
+    comments: { model: Comment, filter: { author: userId }, fields: "content targetType targetId moderationStatus createdAt updatedAt" },
+    blogs: { model: Blog, filter: { author: userId }, fields: "title slug content tags status moderationStatus publishedAt createdAt updatedAt" },
+    submissions: { model: Submission, filter: { user: userId }, fields: "language verdict executionMetadata problem createdAt updatedAt", populate: ["problem", "title slug"] },
+    rooms: { model: Room, filter: { owner: userId }, fields: "name description category isPublic maxMembers createdAt updatedAt" },
+    messages: { model: Message, filter: { sender: userId }, fields: "content messageType isEdited isDeleted room createdAt updatedAt", populate: ["room", "name"] },
+  };
+  const collection = collections[type];
+  if (!collection) return sendError(res, 400, "Invalid user activity type");
+  if (!page || !limit || limit > 50 || !Number.isSafeInteger((page - 1) * limit)) return sendError(res, 400, "page and limit must be positive integers; limit must not exceed 50");
+  try {
+    let query = collection.model.find(collection.filter).select(collection.fields).sort({ createdAt: -1, _id: -1 }).skip((page - 1) * limit).limit(limit);
+    if (collection.populate) query = query.populate(...collection.populate);
+    const [data, total] = await Promise.all([query, collection.model.countDocuments(collection.filter)]);
+    const totalPages = Math.ceil(total / limit);
+    return res.status(200).json({ success: true, data, pagination: { page, limit, total, totalPages, hasNextPage: page < totalPages, hasPrevPage: page > 1 } });
+  } catch (error) {
+    logSafeError("Admin User Activity Error:", error);
+    return sendError(res, 500, "Internal server error");
+  }
+};
+
+const listAdminContent = async (req, res) => {
+  const page = positive(req.query.page, 1);
+  const limit = positive(req.query.limit, 20);
+  if (!page || !limit || limit > 50 || !Number.isSafeInteger((page - 1) * limit)) return sendError(res, 400, "page and limit must be positive integers; limit must not exceed 50");
+  const collections = {
+    questions: { model: Question, fields: "title description tags votes views answerCount isSolved moderationStatus createdAt updatedAt", authorFields: "name username email" },
+    answers: { model: Answer, fields: "content votes isAccepted moderationStatus question createdAt updatedAt", authorFields: "name username email", related: ["question", "title"] },
+    comments: { model: Comment, fields: "content targetType targetId moderationStatus createdAt updatedAt", authorFields: "name username email" },
+  };
+  const collection = collections[req.params.type];
+  if (!collection) return sendError(res, 404, "Admin content type not found");
+  try {
+    let query = collection.model.find({}).select(collection.fields).populate("author", collection.authorFields).sort({ createdAt: -1, _id: -1 }).skip((page - 1) * limit).limit(limit);
+    if (collection.related) query = query.populate(...collection.related);
+    const [data, total] = await Promise.all([query, collection.model.countDocuments({})]);
+    const totalPages = Math.ceil(total / limit);
+    return res.status(200).json({ success: true, data, pagination: { page, limit, total, totalPages, hasNextPage: page < totalPages, hasPrevPage: page > 1 } });
+  } catch (error) {
+    logSafeError("Admin Content List Error:", error);
     return sendError(res, 500, "Internal server error");
   }
 };
@@ -263,4 +318,4 @@ const moderateReport = async (req, res) => {
   }
 };
 
-export { getDashboard, listUsers, setUserActiveStatus, createReport, listReports, moderateReport };
+export { getDashboard, listUsers, listUserActivity, listAdminContent, setUserActiveStatus, createReport, listReports, moderateReport };
